@@ -348,7 +348,7 @@
 #define ZIGBEE_DISTINCT_TOPICS false             // [SetOption89] Enable unique device topic based on Zigbee device ShortAddr
 #define ZIGBEE_RMV_ZBRECEIVED  false             // [SetOption100] Remove ZbReceived form JSON message
 #define ZIGBEE_INDEX_EP        false             // [SetOption101] Add the source endpoint as suffix to attributes, ex `Power3` instead of `Power` if sent from endpoint 3
-#define WATCHDOG_TASK_SECONDS  5                 // [ESP32 only] Task Watchdog Timer (TWDT) time in seconds - detecting Tasmota running for a prolonged period of time without yielding with `esp_task_wdt_reset()`
+#define WATCHDOG_TASK_SECONDS  10                // [ESP32 only] Task Watchdog Timer (TWDT) time in seconds - detecting Tasmota running for a prolonged period of time without yielding with `esp_task_wdt_reset()`
 
 /*********************************************************************************************\
  * END OF SECTION 1
@@ -1005,6 +1005,7 @@
 // -- LVGL Graphics Library ---------------------------------
 //#define USE_LVGL                                 // LVGL Engine, requires Berry (+382KB)
   #define USE_LVGL_PSRAM                         // Allocate LVGL memory in PSRAM if PSRAM is connected - this might be slightly slower but leaves main memory intact
+  #define USE_LVGL_OPENHASP                      // Enable OpenHASP template compatiblity (adds LVGL template and some fonts)
   #define USE_LVGL_MAX_SLEEP  10                 // max sleep in ms when LVGL is enabled, more than 10ms will make display less responsive
   #define USE_LVGL_PNG_DECODER                   // include a PNG image decoder from file system (+16KB)
   //#define USE_LVGL_FREETYPE                      // Use the FreeType renderer to display fonts using native TTF files in file system (+77KB flash)
@@ -1039,6 +1040,7 @@
     #define BE_LV_WIDGET_METER
     #define BE_LV_WIDGET_MSGBOX
     #define BE_LV_WIDGET_SPINBOX
+    #define BE_LV_WIDGET_SPINNER
 
 #endif  // ESP32
 
