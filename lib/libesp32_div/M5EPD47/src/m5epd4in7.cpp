@@ -37,30 +37,39 @@
 #include <xtensa/core-macros.h>
 #include <driver/gpio.h>
 #include "m5epd4in7.h"
+#include "M5EPD_Driver.h"
+#include "M5EPD.h"
 
-uint8_t *m5epd47_buffer;
 
-
-uint16_t m5Epd47::GetColorFromIndex(uint8_t index) {
+uint16_t M5Epd47::GetColorFromIndex(uint8_t index) {
   return index & 0xf;
 }
 
-m5Epd47::m5Epd47(int16_t dwidth, int16_t dheight) :  Renderer(dwidth, dheight) {
+M5Epd47::M5Epd47(int16_t dwidth, int16_t dheight) :  Renderer(dwidth, dheight) {
   width = dwidth;
   height = dheight;
   disp_bpp = 4;
 }
 
-int32_t m5Epd47::Init(void) {
+int32_t M5Epd47::Init(void) {
 //  epd_init(EPD_LUT_1K);
 //  hl = epd_hl_init(WAVEFORM);
-//  epd47_buffer = epd_hl_get_framebuffer(&hl);
-  framebuffer = m5epd47_buffer;
+  uint32_t size = width * height / 2;
+  framebuffer = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   lvgl_param.fluslines = 10;
+
+
+  pinMode(M5EPD_CS_PIN, OUTPUT);
+  digitalWrite(M5EPD_CS_PIN, 1);
+
+  EPD.begin(M5EPD_SCK_PIN, M5EPD_MOSI_PIN, M5EPD_MISO_PIN, M5EPD_CS_PIN, M5EPD_BUSY_PIN);
+  EPD.SetRotation(90);
+  EPD.Clear(true);
+
   return 0;
 }
 
-void m5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
+void M5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
 
   if (p ==  DISPLAY_INIT_MODE) {
   //  epd_poweron();
@@ -91,21 +100,21 @@ void m5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
   fillScreen(15);
 }
 
-void m5Epd47::Updateframe() {
+void M5Epd47::Updateframe() {
 //  epd_poweron();
 //  epd_hl_update_screen(&hl, MODE_GL16, temperature);
 //  epd_poweroff();
 }
 
-void m5Epd47::fillScreen(uint16_t color) {
+void M5Epd47::fillScreen(uint16_t color) {
   color &= 0xf;
    uint8_t icol = (color << 4) | color;
-//   memset(epd47_buffer, icol, width * height / 2);
+   memset(framebuffer, icol, width * height / 2);
 }
 
 #define _swap(a, b) { uint16_t t = a; a = b; b = t; }
 
-void m5Epd47::drawPixel(int16_t x, int16_t y, uint16_t color) {
+void M5Epd47::drawPixel(int16_t x, int16_t y, uint16_t color) {
 uint16_t xp = x;
 uint16_t yp = y;
 uint8_t *buf_ptr;
@@ -128,7 +137,7 @@ uint8_t *buf_ptr;
 
   if (xp >= width) return;
   if (yp >= height) return;
-  buf_ptr = &m5epd47_buffer[yp * width / 2 + xp / 2];
+  buf_ptr = &framebuffer[yp * width / 2 + xp / 2];
 
     if (xp % 2) {
         *buf_ptr = (*buf_ptr & 0x0F) | (color << 4);
@@ -137,20 +146,20 @@ uint8_t *buf_ptr;
     }
 }
 
-void m5Epd47::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
+void M5Epd47::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
   while (h--) {
     drawPixel(x , y , color);
     y++;
   }
 }
-void m5Epd47::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
+void M5Epd47::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
   while (w--) {
     drawPixel(x , y , color);
     x++;
   }
 }
 
-void m5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
   // just save params or update frame
   if (!x0 && !y0 && !x1 && !y1) {
@@ -166,7 +175,7 @@ void m5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
 
 static inline void lvgl_color_swap2(uint16_t *data, uint16_t len) { for (uint32_t i = 0; i < len; i++) (data[i] = data[i] << 8 | data[i] >> 8); }
 
-void m5Epd47::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
+void M5Epd47::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
 
   if (not_swapped == false) {
     lvgl_color_swap2(data, len);

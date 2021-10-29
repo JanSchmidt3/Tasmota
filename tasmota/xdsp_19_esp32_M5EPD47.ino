@@ -19,14 +19,14 @@
 
 #ifdef ESP32
 #ifdef USE_DISPLAY
-#ifdef USE_M5EPD47x
+#ifdef USE_M5EPD47
 
 #define XDSP_19               19
 
 #define M5EPD47_BLACK  0
 #define M5EPD47_WHITE 15
 
-#include <epd4in7.h>
+#include <m5epd4in7.h>
 
 M5Epd47 *m5epd47;
 bool m5epd47_init_done = false;
@@ -49,12 +49,12 @@ void M5EpdInitDriver47(void) {
     }
 
     // init renderer
-    m5epd47  = new Epd47(Settings->display_width, Settings->display_height);
+    m5epd47  = new M5Epd47(Settings->display_width, Settings->display_height);
     m5epd47->Init();
 
     renderer = m5epd47;
     renderer->DisplayInit(DISPLAY_INIT_MODE, Settings->display_size, Settings->display_rotate, Settings->display_font);
-    renderer->setTextColor(EPD47_BLACK, EPD47_WHITE);
+    renderer->setTextColor(M5EPD47_BLACK, M5EPD47_WHITE);
 
 #ifdef SHOW_SPLASH
     // Welcome text
@@ -72,7 +72,7 @@ void M5EpdInitDriver47(void) {
     M5EPD47_Touch_Init();
 #endif // USE_TOUCH_BUTTONS
 
-    epd47_init_done = true;
+    m5epd47_init_done = true;
     AddLog(LOG_LEVEL_INFO, PSTR("DSP: M5 E-Paper 4.7"));
   }
 }
@@ -286,7 +286,7 @@ bool Xdsp19(uint8_t function)
   if (FUNC_DISPLAY_INIT_DRIVER == function) {
     M5EpdInitDriver47();
   }
-  else if (epd47_init_done && (XDSP_16 == Settings->display_model)) {
+  else if (m5epd47_init_done && (XDSP_19 == Settings->display_model)) {
     switch (function) {
       case FUNC_DISPLAY_MODEL:
         result = true;

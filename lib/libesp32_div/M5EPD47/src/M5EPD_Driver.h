@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <SPI.h>
-#include "utility/IT8951_Defines.h"
+#include "IT8951_Defines.h"
 
 #define M5EPD_PANEL_W   960
 #define M5EPD_PANEL_H   540
@@ -29,7 +29,7 @@ DU
 The direct update (DU) is a very fast, non-flashy update. This mode supports transitions from any graytone
 to black or white only. It cannot be used to update to any graytone other than black or white. The fast
 update time for this mode makes it useful for response to touch sensor or pen input or menu selection
-indictors. 
+indictors.
 
 GC16
 The grayscale clearing (GC16) mode is used to update the full display and provide a high image quality.
@@ -72,20 +72,20 @@ The A2 mode is a fast, non-flash update mode designed for fast paging turning or
 animation. This mode supports transitions from and to black or white only. It cannot be used to update to
 any graytone other than black or white. The recommended update sequence to transition into repeated A2
 updates is shown in Figure 1. The use of a white image in the transition from 4-bit to 1-bit images will
-reduce ghosting and improve image quality for A2 updates. 
+reduce ghosting and improve image quality for A2 updates.
 
 */
 
 typedef enum                  //             Typical
 {                             //   Ghosting  Update Time  Usage
-    UPDATE_MODE_INIT    = 0,  // * N/A       2000ms       Display initialization, 
-    UPDATE_MODE_DU      = 1,  //   Low       260ms        Monochrome menu, text input, and touch screen input 
+    UPDATE_MODE_INIT    = 0,  // * N/A       2000ms       Display initialization,
+    UPDATE_MODE_DU      = 1,  //   Low       260ms        Monochrome menu, text input, and touch screen input
     UPDATE_MODE_GC16    = 2,  // * Very Low  450ms        High quality images
-    UPDATE_MODE_GL16    = 3,  // * Medium    450ms        Text with white background 
+    UPDATE_MODE_GL16    = 3,  // * Medium    450ms        Text with white background
     UPDATE_MODE_GLR16   = 4,  //   Low       450ms        Text with white background
-    UPDATE_MODE_GLD16   = 5,  //   Low       450ms        Text and graphics with white background 
+    UPDATE_MODE_GLD16   = 5,  //   Low       450ms        Text and graphics with white background
     UPDATE_MODE_DU4     = 6,  // * Medium    120ms        Fast page flipping at reduced contrast
-    UPDATE_MODE_A2      = 7,  //   Medium    290ms        Anti-aliased text in menus / touch and screen input 
+    UPDATE_MODE_A2      = 7,  //   Medium    290ms        Anti-aliased text in menus / touch and screen input
     UPDATE_MODE_NONE    = 8
 } m5epd_update_mode_t;        // The ones marked with * are more commonly used
 

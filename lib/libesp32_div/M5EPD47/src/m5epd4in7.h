@@ -27,7 +27,9 @@
 #ifndef M5EPD4IN7_H
 #define M5EPD4IN7_H
 
+#include <SPI.h>
 #include <renderer.h>
+#include "M5EPD_Driver.h"
 
 #define DISPLAY_INIT_MODE 0
 #define DISPLAY_INIT_PARTIAL 1
@@ -35,13 +37,13 @@
 
 
 // Display resolution
-#define EPD47_WIDTH   960
-#define EPD47_HEIGHT  540
+#define M5EPD47_WIDTH   960
+#define M5EPD47_HEIGHT  540
 
 
-class m5Epd47 : public Renderer  {
+class M5Epd47 : public Renderer  {
 public:
-    m5Epd47(int16_t width, int16_t height);
+    M5Epd47(int16_t width, int16_t height);
     int  Init(void);
     void drawPixel(int16_t x, int16_t y, uint16_t color);
     void fillScreen(uint16_t color);
@@ -61,6 +63,7 @@ private:
   uint16_t seta_xp2;
   uint16_t seta_yp1;
   uint16_t seta_yp2;
+  M5EPD_Driver EPD = M5EPD_Driver();
 };
 
 #endif /* M5EPD4IN7_H */
