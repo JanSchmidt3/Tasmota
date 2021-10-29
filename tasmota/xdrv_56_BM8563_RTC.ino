@@ -55,7 +55,11 @@ void BM8563Detect(void) {
 }
 
 BM8563 *Get_BM8563() {
-  return &bm8563_driver.Rtc;
+  if (bm8563_driver.rtc_ready) {
+    return &bm8563_driver.Rtc;
+  } else {
+    return 0;
+  }
 }
 
 

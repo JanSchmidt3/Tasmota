@@ -37,10 +37,12 @@
 
 #define XDRV_86        86
 
+#include "M5EPD.h"
 #include "BM8563.h"
 
 struct M5EPD_globs {
   BM8563 *Rtc;
+  M5EPD m5epd;
   bool ready;
   int32_t shutdownseconds;
   uint8_t wakeup_hour;
@@ -64,17 +66,17 @@ void M5EPDDoShutdown(void) {
   }
 }
 
-void M5EPDDisplayPower(uint8_t on) {
-//  M5EPD_globs.Axp.SetDCDC3(on);
-}
-
-
 /*********************************************************************************************/
 
-// cause SC card is needed by scripter
 void M5EPDModuleInit(void) {
+
   M5EPD_globs.Rtc = Get_BM8563();
-  M5EPD_globs.ready = true;
+  if (M5EPD_globs.Rtc) {
+    M5EPD_globs.m5epd.begin();
+    M5EPD_globs.ready = true;
+  } else {
+    M5EPD_globs.ready = false;
+  }
 }
 
 void M5EPDEverySecond(void) {
@@ -90,9 +92,9 @@ void M5EPDEverySecond(void) {
 
 void M5EPDShow(uint32_t json) {
   if (json) {
-
+    ResponseAppend_P(PSTR(",\"M5EPD\":{\"BV\":%*_f"),(float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0);
   } else {
-
+    WSContentSend_Voltage("Batterie Voltage", M5EPD_globs.m5epd.getBatteryVoltage());
   }
 }
 
