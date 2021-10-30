@@ -149,11 +149,11 @@ void M5EPD47_CheckTouch(void) {
         if (touch_xp >= M5EPD47_WIDTH) touch_xp = M5EPD47_WIDTH - 1;
         if (touch_yp >= M5EPD47_HEIGHT) touch_yp = M5EPD47_HEIGHT - 1;
 
-        AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch before convert %d - %d"), touch_xp, touch_yp);
+      //  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch before convert %d - %d"), touch_xp, touch_yp);
 
         M5EPD47_RotConvert(&touch_xp, &touch_yp);
 
-        AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), touch_xp, touch_yp);
+      //  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), touch_xp, touch_yp);
 
       }
     }
