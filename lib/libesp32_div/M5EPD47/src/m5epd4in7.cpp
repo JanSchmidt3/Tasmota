@@ -132,11 +132,12 @@ uint8_t *buf_ptr;
   if (yp >= height) return;
   buf_ptr = &framebuffer[yp * width / 2 + xp / 2];
 
-    if (xp % 2) {
+    if (!(xp % 2)) {
         *buf_ptr = (*buf_ptr & 0x0F) | (color << 4);
     } else {
         *buf_ptr = (*buf_ptr & 0xF0) | (color & 0xf);
     }
+
 }
 
 void M5Epd47::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {

@@ -95,7 +95,7 @@ void M5EPDEverySecond(void) {
 void M5EPDShow(uint32_t json) {
   if (!M5EPD_globs.ready) return;
   if (json) {
-    ResponseAppend_P(PSTR(",\"M5EPD\":{\"BV\":%*_f}"),(float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0);
+    ResponseAppend_P(PSTR(",\"M5EPD\":{\"BV\":%d}"),M5EPD_globs.m5epd.getBatteryVoltage());
   } else {
     WSContentSend_Voltage("Batterie Voltage", (float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0);
   }
