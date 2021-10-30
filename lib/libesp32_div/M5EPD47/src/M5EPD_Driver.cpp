@@ -30,7 +30,7 @@ M5EPD_Driver::M5EPD_Driver(int8_t spi_index)
     _direction = 1;
 
     _update_count = false;
-    _is_reverse = false;
+    _is_reverse = true;
 }
 
 M5EPD_Driver::~M5EPD_Driver()
@@ -163,7 +163,7 @@ m5epd_err_t M5EPD_Driver::Clear(bool init)
             digitalWrite(_pin_cs, 1);
         }
     }
-    
+
     CHECK(WriteCommand(IT8951_TCON_LD_IMG_END));
 
     EndSPI();
@@ -215,7 +215,7 @@ m5epd_err_t M5EPD_Driver::WritePartGram4bpp(uint16_t x, uint16_t y, uint16_t w, 
         x = (x + 3) & 0xFFFC;
         y = (y + 3) & 0xFFFC;
     }
-    
+
     if(w & 0x03)
     {
         log_e("Gram width %d not a multiple of 4.", w);
@@ -238,7 +238,7 @@ m5epd_err_t M5EPD_Driver::WritePartGram4bpp(uint16_t x, uint16_t y, uint16_t w, 
             return M5EPD_OUTOFBOUNDS;
         }
     }
-    
+
 
     uint32_t pos = 0;
     // uint64_t length = (w / 2) * h;
@@ -253,7 +253,7 @@ m5epd_err_t M5EPD_Driver::WritePartGram4bpp(uint16_t x, uint16_t y, uint16_t w, 
         for (uint32_t x = 0; x < ((w * h) >> 2); x++)
         {
             word = gram[pos] << 8 | gram[pos + 1];
-            
+
             digitalWrite(_pin_cs, 0);
             _epd_spi->write32(word);
             digitalWrite(_pin_cs, 1);
@@ -266,7 +266,7 @@ m5epd_err_t M5EPD_Driver::WritePartGram4bpp(uint16_t x, uint16_t y, uint16_t w, 
         {
             word = gram[pos] << 8 | gram[pos + 1];
             word = 0xFFFF - word;
-            
+
             digitalWrite(_pin_cs, 0);
             _epd_spi->write32(word);
             digitalWrite(_pin_cs, 1);
@@ -304,7 +304,7 @@ m5epd_err_t M5EPD_Driver::FillPartGram4bpp(uint16_t x, uint16_t y, uint16_t w, u
         x = (x + 3) & 0xFFFC;
         y = (y + 3) & 0xFFFC;
     }
-    
+
     if(w & 0x03)
     {
         log_d("Gram width %d not a multiple of 4.", w);
@@ -361,7 +361,7 @@ m5epd_err_t M5EPD_Driver::UpdateFull(m5epd_update_mode_t mode)
     {
         CHECK(UpdateArea(0, 0, M5EPD_PANEL_H, M5EPD_PANEL_W, mode));
     }
-    
+
     return M5EPD_OK;
 }
 
@@ -478,7 +478,7 @@ m5epd_err_t M5EPD_Driver::UpdateArea(uint16_t x, uint16_t y, uint16_t w, uint16_
             break;
         }
     }
-    
+
     args[4] = mode;
     args[5] = _dev_memaddr_l;
     args[6] = _dev_memaddr_h;

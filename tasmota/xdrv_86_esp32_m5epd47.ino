@@ -73,6 +73,8 @@ void M5EPDModuleInit(void) {
   M5EPD_globs.Rtc = Get_BM8563();
   if (M5EPD_globs.Rtc) {
     M5EPD_globs.m5epd.begin();
+    delay(100);
+    AddLog(LOG_LEVEL_INFO, PSTR("DRV: M5 E-Paper 4.7"));
     M5EPD_globs.ready = true;
   } else {
     M5EPD_globs.ready = false;
@@ -91,10 +93,11 @@ void M5EPDEverySecond(void) {
 }
 
 void M5EPDShow(uint32_t json) {
+  if (!M5EPD_globs.ready) return;
   if (json) {
-    ResponseAppend_P(PSTR(",\"M5EPD\":{\"BV\":%*_f"),(float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0);
+    ResponseAppend_P(PSTR(",\"M5EPD\":{\"BV\":%*_f}"),(float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0);
   } else {
-    WSContentSend_Voltage("Batterie Voltage", M5EPD_globs.m5epd.getBatteryVoltage());
+    WSContentSend_Voltage("Batterie Voltage", (float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0);
   }
 }
 
@@ -149,7 +152,7 @@ bool Xdrv86(uint8_t function) {
     case FUNC_COMMAND:
       result = DecodeCommand(kM5EPDCommands, M5EPDCommand);
       break;
-    case FUNC_MODULE_INIT:
+    case FUNC_INIT:
       M5EPDModuleInit();
       break;
   }

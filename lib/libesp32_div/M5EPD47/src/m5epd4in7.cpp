@@ -63,7 +63,7 @@ int32_t M5Epd47::Init(void) {
   digitalWrite(M5EPD_CS_PIN, 1);
 
   EPD.begin(M5EPD_SCK_PIN, M5EPD_MOSI_PIN, M5EPD_MISO_PIN, M5EPD_CS_PIN, M5EPD_BUSY_PIN);
-  EPD.SetRotation(90);
+  EPD.SetRotation(0);
   EPD.Clear(true);
 
   return 0;
@@ -72,23 +72,17 @@ int32_t M5Epd47::Init(void) {
 void M5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
 
   if (p ==  DISPLAY_INIT_MODE) {
-  //  epd_poweron();
-  //  epd_clear();
-  //  epd_poweroff();
+    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GC16);
   }
   if (p ==  DISPLAY_INIT_FULL) {
-  //  memset(hl.back_fb, 0xff, width * height / 2);
-  //  epd_poweron();
-  //  epd_clear();
-  //  epd_hl_update_screen(&hl, MODE_GC16, temperature);
-  //  epd_poweroff();
+    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GC16);
     return;
   }
   if (p ==  DISPLAY_INIT_PARTIAL) {
-  //  memset(hl.back_fb, 0xff, width * height / 2);
-  //  epd_poweron();
-  //  epd_hl_update_screen(&hl, MODE_GL16, temperature);
-  //  epd_poweroff();
+    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GL16);
     return;
   }
   setRotation(rot);
@@ -101,9 +95,8 @@ void M5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
 }
 
 void M5Epd47::Updateframe() {
-//  epd_poweron();
-//  epd_hl_update_screen(&hl, MODE_GL16, temperature);
-//  epd_poweroff();
+    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GC16);
 }
 
 void M5Epd47::fillScreen(uint16_t color) {
