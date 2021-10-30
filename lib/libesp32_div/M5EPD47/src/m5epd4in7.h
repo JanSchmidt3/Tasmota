@@ -63,6 +63,7 @@ private:
   uint16_t seta_xp2;
   uint16_t seta_yp1;
   uint16_t seta_yp2;
+  boolean nswapped;
   M5EPD_Driver EPD = M5EPD_Driver();
 };
 

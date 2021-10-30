@@ -157,8 +157,10 @@ void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
 
   // just save params or update frame
   if (!x0 && !y0 && !x1 && !y1) {
-  //  EPD.WritePartGram4bpp(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, framebuffer);
-  //  EPD.UpdateArea(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, UPDATE_MODE_GC16);
+    if (nswapped == false) {
+      EPD.WritePartGram4bpp(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, framebuffer);
+      EPD.UpdateArea(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, UPDATE_MODE_GC16);
+    } 
   } else {
     seta_xp1 = x0;
     seta_xp2 = x1;
@@ -171,6 +173,8 @@ void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
 static inline void lvgl_color_swap2(uint16_t *data, uint16_t len) { for (uint32_t i = 0; i < len; i++) (data[i] = data[i] << 8 | data[i] >> 8); }
 
 void M5Epd47::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
+
+  nswapped = not_swapped;
 
   if (not_swapped == false) {
     lvgl_color_swap2(data, len);

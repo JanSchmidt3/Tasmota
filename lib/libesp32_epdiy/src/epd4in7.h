@@ -61,6 +61,7 @@ private:
   uint16_t seta_xp2;
   uint16_t seta_yp1;
   uint16_t seta_yp2;
+  uint8_t nswapped;
 };
 
 #endif /* EPD4IN7_H */

@@ -38,7 +38,6 @@ extern uint16_t bg_color;
 
 void EpdInitDriver47(void) {
   if (PinUsed(GPIO_EPD_DATA)) {
-
     Settings->display_model = XDSP_16;
 
     if (Settings->display_width != EPD47_WIDTH) {
