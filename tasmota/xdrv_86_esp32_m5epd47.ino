@@ -94,10 +94,11 @@ void M5EPDEverySecond(void) {
 
 void M5EPDShow(uint32_t json) {
   if (!M5EPD_globs.ready) return;
+  float bvolt = (float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0;
   if (json) {
-    ResponseAppend_P(PSTR(",\"M5EPD\":{\"BV\":%d}"),M5EPD_globs.m5epd.getBatteryVoltage());
+    ResponseAppend_P(PSTR(",\"M5EPD\":{\"BV\":%1.3f}"), bvolt);
   } else {
-    WSContentSend_Voltage("Batterie Voltage", (float)M5EPD_globs.m5epd.getBatteryVoltage()/1000.0);
+    WSContentSend_Voltage("Batterie", bvolt);
   }
 }
 

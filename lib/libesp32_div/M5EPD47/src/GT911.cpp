@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include "GT911.h"
 
+//#undef log_d
+//#define log_d Serial.printf
+
 static const uint8_t _kGT911FW540960G2T1602729168[] = {
     0x43, 0x1C, 0x02, 0xC0, 0x03, 0x02, 0x05, 0x00, 0x01, 0x18, 0x28, 0x0F, 0x50, 0x32,
     0x03, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x1A, 0x1E, 0x14, 0x87,
@@ -63,6 +66,8 @@ esp_err_t GT911::begin(uint8_t pin_sda, uint8_t pin_scl, uint8_t pin_int)
     // }
 
     attachInterrupt(pin_int, ___GT911IRQ___, FALLING);
+
+    log_d("GT911: initialized");
 
     return ESP_OK;
 }
