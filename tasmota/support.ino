@@ -1997,7 +1997,27 @@ const uint8_t I2C_RETRY_COUNTER = 3;
 uint32_t i2c_active[4] = { 0 };
 uint32_t i2c_buffer = 0;
 
+bool I2cBegin(int sda, int scl, uint32_t frequency = 100000);
+bool I2cBegin(int sda, int scl, uint32_t frequency) {
+  bool result = true;
+#ifdef ESP8266
+  Wire.begin(sda, scl);
+#endif
 #ifdef ESP32
+  result = Wire.begin(sda, scl, frequency);
+#endif
+//  AddLog(LOG_LEVEL_DEBUG, PSTR("I2C: Bus1 %d"), result);
+  return result;
+}
+
+#ifdef ESP32
+bool I2c2Begin(int sda, int scl, uint32_t frequency = 100000);
+bool I2c2Begin(int sda, int scl, uint32_t frequency) {
+  bool result = Wire1.begin(sda, scl, frequency);
+//  AddLog(LOG_LEVEL_DEBUG, PSTR("I2C: Bus2 %d"), result);
+  return result;
+}
+
 bool I2cValidRead(uint8_t addr, uint8_t reg, uint8_t size, uint32_t bus = 0);
 bool I2cValidRead(uint8_t addr, uint8_t reg, uint8_t size, uint32_t bus)
 #else
@@ -2007,6 +2027,7 @@ bool I2cValidRead(uint8_t addr, uint8_t reg, uint8_t size)
   uint8_t retry = I2C_RETRY_COUNTER;
   bool status = false;
 #ifdef ESP32
+  if (!TasmotaGlobal.i2c_enabled_2) { bus = 0; }
   TwoWire & myWire = (bus == 0) ? Wire : Wire1;
 #else
   TwoWire & myWire = Wire;
@@ -2121,6 +2142,7 @@ bool I2cWrite(uint8_t addr, uint8_t reg, uint32_t val, uint8_t size)
   uint8_t x = I2C_RETRY_COUNTER;
 
 #ifdef ESP32
+  if (!TasmotaGlobal.i2c_enabled_2) { bus = 0; }
   TwoWire & myWire = (bus == 0) ? Wire : Wire1;
 #else
   TwoWire & myWire = Wire;
@@ -2191,6 +2213,7 @@ void I2cScan(uint32_t bus) {
   Response_P(PSTR("{\"" D_CMND_I2CSCAN "\":\"" D_JSON_I2CSCAN_DEVICES_FOUND_AT));
   for (address = 1; address <= 127; address++) {
 #ifdef ESP32
+    if (!TasmotaGlobal.i2c_enabled_2) { bus = 0; }
     TwoWire & myWire = (bus == 0) ? Wire : Wire1;
 #else
     TwoWire & myWire = Wire;
@@ -2269,6 +2292,7 @@ bool I2cSetDevice(uint32_t addr)
 #endif
 {
 #ifdef ESP32
+  if (!TasmotaGlobal.i2c_enabled_2) { bus = 0; }
   TwoWire & myWire = (bus == 0) ? Wire : Wire1;
 #else
   TwoWire & myWire = Wire;
