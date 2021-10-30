@@ -6529,7 +6529,6 @@ char buff[512];
 
   if (sflg) {
 #ifdef USE_DISPLAY_DUMP
-
 #include <renderer.h>
 extern Renderer *renderer;
 

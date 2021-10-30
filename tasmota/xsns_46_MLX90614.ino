@@ -38,11 +38,19 @@ struct  {
     };
   float obj_temp;
   float amb_temp;
+  TwoWire *wire;
   bool ready = false;
 } mlx90614;
 
 void MLX90614_Init(void)
 {
+
+#ifdef Esp8266
+  mlx90614.wire = &Wire;
+#else
+  mlx90614.wire = &Wire1;
+#endif
+
   if (!I2cSetDevice(I2_ADR_IRT)) { return; }
   I2cSetActiveFound(I2_ADR_IRT, "MLX90614");
   mlx90614.ready = true;
