@@ -2304,6 +2304,27 @@ bool I2cSetDevice(uint32_t addr)
   myWire.beginTransmission((uint8_t)addr);
   return (0 == myWire.endTransmission());
 }
+
+TwoWire *I2C_Check_Device(uint32_t addr, const char *name) {
+TwoWire *wire = 0;
+uint8_t bus = 0;
+#ifdef ESP32
+  if (!I2cSetDevice(addr, 0)) {
+    if (!I2cSetDevice(addr, 1)) { return wire; }
+    wire = &Wire1;
+    bus = 1;
+  } else {
+    wire = &Wire;
+  }
+  I2cSetActiveFound(addr, name, bus);
+#else
+  if (!I2cSetDevice(addr)) { return wire; }
+  wire = &Wire;
+  I2cSetActiveFound(addr, name);
+#endif
+  return wire;
+}
+
 #endif  // USE_I2C
 
 /*********************************************************************************************\
