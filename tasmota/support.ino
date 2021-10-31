@@ -2309,6 +2309,7 @@ TwoWire *I2C_Check_Device(uint32_t addr, const char *name) {
 TwoWire *wire = 0;
 uint8_t bus = 0;
 #ifdef ESP32
+  if (I2cActive(addr)) { return wire; }  // already active
   if (!I2cSetDevice(addr, 0)) {
     if (!I2cSetDevice(addr, 1)) { return wire; }
     wire = &Wire1;
@@ -2318,7 +2319,8 @@ uint8_t bus = 0;
   }
   I2cSetActiveFound(addr, name, bus);
 #else
-  if (!I2cSetDevice(addr)) { return wire; }
+  if (I2cActive(addr)) { return wire; }  // already active
+  if (!I2cSetDevice(addr)) { return wire; } // not found
   wire = &Wire;
   I2cSetActiveFound(addr, name);
 #endif
