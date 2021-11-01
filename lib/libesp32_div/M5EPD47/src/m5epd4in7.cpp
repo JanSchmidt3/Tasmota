@@ -172,12 +172,12 @@ void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
   if (!x0 && !y0 && !x1 && !y1) {
     if (nswapped == false) {
       if ( (seta_xp1 == 0) && (seta_yp1_b == 0) && (seta_xp2 == width) && (seta_yp2 == height)) {
-        Updateframe();
+      //  Updateframe();
       } else {
         uint16_t w = seta_xp2 - seta_xp1;
         uint16_t h = seta_yp2 - seta_yp1_b;
       //  Serial.printf("lvgl 2 area %d - %d - %d - %d\n",seta_xp1, seta_yp1_b, w, h);
-        ep_update_area(seta_xp1, seta_yp1_b, w, h, 2);
+      //  ep_update_area(seta_xp1, seta_yp1_b, w, h, 2);
       }
 
     }
