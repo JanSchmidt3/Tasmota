@@ -24,7 +24,8 @@
  *
  * Module 19
 
-  {"NAME":"M5Stack_EPD47","GPIO":[6210,1,1,1,6720,1,1,1,704,672,736,1,1,1,1,1,0,641,609,1,0,640,1,0,0,0,0,0,608,1,1,1,0,0,0,1],"FLAG":0,"BASE":1}
+
+  {"NAME":"M5Stack_EPD47","GPIO":[7616,1,1,1,6720,1,1,1,704,672,736,1,1,1,1,1,0,641,609,1,0,640,1,0,0,0,0,0,608,1,1,1,0,0,0,1],"FLAG":0,"BASE":1}
 
 
 internal i2c use port 2
@@ -57,6 +58,8 @@ struct M5EPD_globs {
 /*********************************************************************************************/
 
 void M5EPDDoShutdown(void) {
+  if (!M5EPD_globs.Rtc) return;
+
   SettingsSaveAll();
   RtcSettingsSave();
   M5EPD_globs.Rtc->clearIRQ();
@@ -74,19 +77,17 @@ void M5EPDDoShutdown(void) {
 
 /*********************************************************************************************/
 
-void M5EPDModuleInit(void) {
 
-  I2c2Begin(21, 22, 400000);
-
+void M5EPDRtcInit(void) {
   M5EPD_globs.Rtc = Get_BM8563();
-  if (M5EPD_globs.Rtc) {
-    M5EPD_globs.m5epd.begin();
-    delay(100);
-    AddLog(LOG_LEVEL_INFO, PSTR("DRV: M5 E-Paper 4.7"));
-    M5EPD_globs.ready = true;
-  } else {
-    M5EPD_globs.ready = false;
-  }
+}
+
+void M5EPDModuleInit(void) {
+  I2c2Begin(21, 22, 400000);
+  M5EPD_globs.m5epd.begin();
+  delay(100);
+  AddLog(LOG_LEVEL_INFO, PSTR("DRV: M5 E-Paper 4.7"));
+  M5EPD_globs.ready = true;
 }
 
 void M5EPDEverySecond(void) {
@@ -162,6 +163,9 @@ bool Xdrv86(uint8_t function) {
       result = DecodeCommand(kM5EPDCommands, M5EPDCommand);
       break;
     case FUNC_INIT:
+      M5EPDRtcInit();
+      break;
+    case FUNC_MODULE_INIT:
       M5EPDModuleInit();
       break;
   }

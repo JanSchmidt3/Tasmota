@@ -52,6 +52,8 @@ public:
     void setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
     void pushColors(uint16_t *data, uint16_t len, boolean first);
     uint16_t GetColorFromIndex(uint8_t index);
+    void ep_update_mode(uint8_t mode);
+    void ep_update_area(uint16_t xp, uint16_t yp, uint16_t width, uint16_t height, uint8_t mode);
 private:
   uint16_t width;
   uint16_t height;
@@ -62,6 +64,7 @@ private:
   uint16_t seta_yp1;
   uint16_t seta_yp2;
   uint8_t nswapped;
+  uint8_t upd_mode;
 };
 
 #endif /* EPD4IN7_H */

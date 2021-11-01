@@ -723,7 +723,27 @@ void DisplayText(void)
             break;
           case 'u':
             // rounded rectangle
-            { int16_t rad;
+            { int16_t rad, xp, yp, width, height;
+            if (*cp == 'p') {
+              // update epaper display
+              cp++;
+              var = atoiv(cp, &xp);
+              cp += var;
+              cp++;
+              var = atoiv(cp, &yp);
+              cp += var;
+              cp++;
+              var = atoiv(cp, &width);
+              cp += var;
+              cp++;
+              var = atoiv(cp, &height);
+              cp += var;
+              cp++;
+              var = atoiv(cp, &temp);
+              cp += var;
+              if (renderer) renderer->ep_update_area(xp, yp, width, height, temp);
+              break;
+            }
             var = atoiv(cp, &temp);
             cp += var;
             cp++;

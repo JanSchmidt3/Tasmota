@@ -89,6 +89,7 @@ void Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
     epd_poweroff();
     return;
   }
+  upd_mode = MODE_GL16;
   setRotation(rot);
   setTextWrap(false);
   cp437(true);
@@ -98,9 +99,18 @@ void Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
   fillScreen(15);
 }
 
+void Epd47::ep_update_area(uint16_t xp, uint16_t yp, uint16_t width, uint16_t height, uint8_t mode) {
+  //EPD.WritePartGram4bpp(xp, yp, width, height, framebuffer);
+  //EPD.UpdateArea(xp, yp, width, height, (m5epd_update_mode_t)mode);
+}
+
+void Epd47::ep_update_mode(uint8_t mode) {
+  upd_mode = mode;
+}
+
 void Epd47::Updateframe() {
   epd_poweron();
-  epd_hl_update_screen(&hl, MODE_GL16, temperature);
+  epd_hl_update_screen(&hl, upd_mode, temperature);
   epd_poweroff();
 }
 

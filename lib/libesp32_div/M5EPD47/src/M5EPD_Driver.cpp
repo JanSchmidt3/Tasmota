@@ -12,11 +12,11 @@ M5EPD_Driver::M5EPD_Driver(int8_t spi_index)
 {
     if (spi_index > 0 && spi_index < 4)
     {
-        _epd_spi = new SPIClass(spi_index);
+      //  _epd_spi = new SPIClass(spi_index);
     }
     else
     {
-        _epd_spi = new SPIClass(VSPI);
+      //  _epd_spi = new SPIClass(VSPI);
     }
     _pin_cs = -1;
     _pin_busy = -1;
@@ -35,20 +35,20 @@ M5EPD_Driver::M5EPD_Driver(int8_t spi_index)
 
 M5EPD_Driver::~M5EPD_Driver()
 {
-    delete _epd_spi;
+    //delete _epd_spi;
 }
 
 m5epd_err_t M5EPD_Driver::begin(int8_t sck, int8_t mosi, int8_t miso, int8_t cs, int8_t busy, int8_t rst)
 {
-    _epd_spi->begin(sck, miso, mosi, 4);
+    _epd_spi = &SPI;
+    _epd_spi->begin(sck, miso, mosi, -1);
     _pin_cs = cs;
     _pin_busy = busy;
     _pin_sck = sck;
     _pin_mosi = mosi;
     _pin_miso = miso;
     _pin_rst = rst;
-    if (_pin_rst != -1)
-    {
+    if (_pin_rst != -1) {
         pinMode(_pin_rst, OUTPUT);
         ResetDriver();
     }
@@ -192,6 +192,7 @@ m5epd_err_t M5EPD_Driver::WriteFullGram4bpp(const uint8_t *gram)
     }
 }
 
+
 /** @brief Write the image at the specified location, Partial update
   * @param x Update X coordinate, >>> Must be a multiple of 4 <<<
   * @param y Update Y coordinate
@@ -277,6 +278,55 @@ m5epd_err_t M5EPD_Driver::WritePartGram4bpp(uint16_t x, uint16_t y, uint16_t w, 
 
     EndSPI();
 
+    return M5EPD_OK;
+}
+/** @brief Write the image at the specified location, Partial update
+  * @param x Update X coordinate, >>> Must be a multiple of 4 <<<
+  * @param y Update Y coordinate
+  * @param w width of gram, >>> Must be a multiple of 4 <<<
+  * @param h height of gram
+  * @param gram 4bpp garm data
+  * @retval m5epd_err_t
+  */
+m5epd_err_t M5EPD_Driver::WritePartGram4bpp2(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t dw, uint16_t dh, const uint8_t *framebuffer) {
+    _endian_type = IT8951_LDIMG_B_ENDIAN;
+    _pix_bpp = IT8951_4BPP;
+
+    x &= 0xfffc;
+    w &= 0xfffc;
+    if ( (x + w) < (dw - 4) ) w += 4;
+    uint8_t *usp = (uint8_t*) framebuffer + ( ((y * dw) / 2) + (x / 2) );
+
+    StartSPI();
+
+    uint16_t word = 0;
+    CHECK(SetTargetMemoryAddr(_tar_memaddr));
+    CHECK(SetArea(x, y, w, h));
+    if (_is_reverse) {
+      for (uint32_t yp = 0; yp < h; yp++) {
+        for (uint32_t xp = 0; xp < w/4; xp++) {
+            word = usp[xp] << 8 | usp[xp+1];
+            digitalWrite(_pin_cs, 0);
+            _epd_spi->write32(word);
+            digitalWrite(_pin_cs, 1);
+        }
+        usp += dw/2;
+      }
+    } else {
+      for (uint32_t yp = 0; yp < h; yp++) {
+        for (uint32_t xp = 0; xp < w/4; xp++) {
+            word = usp[xp] << 8 | usp[xp+1];
+            word = 0xFFFF - word;
+            digitalWrite(_pin_cs, 0);
+            _epd_spi->write32(word);
+            digitalWrite(_pin_cs, 1);
+        }
+        usp += dw/2;
+      }
+    }
+    CHECK(WriteCommand(IT8951_TCON_LD_IMG_END));
+
+    EndSPI();
     return M5EPD_OK;
 }
 
@@ -583,6 +633,7 @@ void M5EPD_Driver::EndSPI(void)
 
 m5epd_err_t M5EPD_Driver::WaitBusy(uint32_t timeout)
 {
+
     uint32_t start_time = millis();
     while (1)
     {

@@ -33,6 +33,7 @@ void M5EPD::begin() {
 
     pinMode(M5EPD_EXT_PWR_EN_PIN, OUTPUT);
     pinMode(M5EPD_EPD_PWR_EN_PIN, OUTPUT);
+
     pinMode(M5EPD_KEY_RIGHT_PIN, INPUT);
     pinMode(M5EPD_KEY_PUSH_PIN, INPUT);
     pinMode(M5EPD_KEY_LEFT_PIN, INPUT);
@@ -43,6 +44,7 @@ void M5EPD::begin() {
     delay(1000);
 
     BatteryADCBegin();
+
 }
 
 /** @brief Initialize ADC to read voltage, will use ADC_UNIT_1

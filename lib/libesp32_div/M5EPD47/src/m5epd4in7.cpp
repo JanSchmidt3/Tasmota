@@ -58,6 +58,8 @@ int32_t M5Epd47::Init(void) {
   framebuffer = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   lvgl_param.fluslines = 10;
 
+//  framebuffer_part = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  upd_mode = UPDATE_MODE_GL16;
 
   pinMode(M5EPD_CS_PIN, OUTPUT);
   digitalWrite(M5EPD_CS_PIN, 1);
@@ -85,6 +87,7 @@ void M5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
     EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GL16);
     return;
   }
+
   setRotation(rot);
   setTextWrap(false);
   cp437(true);
@@ -95,8 +98,40 @@ void M5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
 }
 
 void M5Epd47::Updateframe() {
-    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
-    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GC16);
+  EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+  EPD.UpdateArea(0, 0, width, height, (m5epd_update_mode_t)upd_mode);
+}
+
+//displaytext [up100:100:200:200:7]
+
+void M5Epd47::ep_update_area(uint16_t xp, uint16_t yp, uint16_t awidth, uint16_t aheight, uint8_t mode) {
+
+/*
+  // copy part of buffer
+  xp&=0xfffc;
+  yp&=0xfffc;
+  awidth&=0xfffc;
+  uint8_t *usp = framebuffer + (yp*width)/2 + xp/2;
+  uint8_t *udp = framebuffer_part;
+
+  for (uint32_t y=0; y<aheight; y++) {
+    for (uint32_t x=0; x<awidth/2; x++) {
+      *udp++=usp[x];
+    }
+    usp += width/2;
+  }
+
+
+  EPD.WritePartGram4bpp(xp, yp, awidth, aheight, framebuffer_part);
+
+*/
+
+  EPD.WritePartGram4bpp2(xp, yp, awidth, aheight, width, height, framebuffer);
+  EPD.UpdateArea(xp, yp, awidth, aheight, (m5epd_update_mode_t)mode);
+}
+
+void M5Epd47::ep_update_mode(uint8_t mode) {
+  upd_mode = mode;
 }
 
 void M5Epd47::fillScreen(uint16_t color) {
@@ -160,7 +195,7 @@ void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
     if (nswapped == false) {
       EPD.WritePartGram4bpp(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, framebuffer);
       EPD.UpdateArea(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, UPDATE_MODE_GC16);
-    } 
+    }
   } else {
     seta_xp1 = x0;
     seta_xp2 = x1;

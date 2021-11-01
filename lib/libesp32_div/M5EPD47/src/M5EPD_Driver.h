@@ -105,6 +105,7 @@ public:
     m5epd_err_t Clear(bool init = false);
     m5epd_err_t WriteFullGram4bpp(const uint8_t *gram);
     m5epd_err_t WritePartGram4bpp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t *gram);
+    m5epd_err_t WritePartGram4bpp2(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t dw, uint16_t dh, const uint8_t *framebuffer);
     m5epd_err_t FillPartGram4bpp(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t data);
 
     m5epd_err_t SetRotation(uint16_t rotate = IT8951_ROTATE_0);
@@ -123,7 +124,7 @@ public:
 private:
     void ResetDriver(void);
     m5epd_err_t GetSysInfo(void);
-    m5epd_err_t WaitBusy(uint32_t timeout = 3000);
+    m5epd_err_t WaitBusy(uint32_t timeout = 3000); // 3000
     m5epd_err_t WriteCommand(uint16_t cmd);
     m5epd_err_t WriteWord(uint16_t data);
     m5epd_err_t WriteReg(uint16_t addr, uint16_t data);
