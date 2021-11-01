@@ -24,7 +24,10 @@ M5EPD_Driver::M5EPD_Driver(int8_t spi_index)
     _pin_mosi = -1;
     _pin_rst = -1;
 
-    _spi_freq = 10000000;
+    //_spi_freq = 10000000;
+    // data sheet says 24 Mhz
+    _spi_freq = 20000000;
+
 
     _rotate = IT8951_ROTATE_0;
     _direction = 1;
