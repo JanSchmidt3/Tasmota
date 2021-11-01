@@ -56,7 +56,7 @@ int32_t M5Epd47::Init(void) {
 //  hl = epd_hl_init(WAVEFORM);
   uint32_t size = width * height / 2;
   framebuffer = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  lvgl_param.fluslines = 10;
+  lvgl_param.fluslines = 50;
 
   upd_mode = UPDATE_MODE_GL16;
 
@@ -101,7 +101,7 @@ void M5Epd47::Updateframe() {
   EPD.UpdateArea(0, 0, width, height, (m5epd_update_mode_t)upd_mode);
 }
 
-//displaytext [up100:100:200:200:2]
+//displaytext [up0:0:960:5:2]
 
 void M5Epd47::ep_update_area(uint16_t xp, uint16_t yp, uint16_t awidth, uint16_t aheight, uint8_t mode) {
   EPD.WritePartGram4bpp2(xp, yp, awidth, aheight, width, height, framebuffer);
@@ -171,16 +171,21 @@ void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
   // just save params or update frame
   if (!x0 && !y0 && !x1 && !y1) {
     if (nswapped == false) {
-      if ( (seta_xp1 == 0) && (seta_yp1 == 0) && (seta_xp2 == width) && (seta_yp2 == height)) {
-      //  Updateframe();
+      if ( (seta_xp1 == 0) && (seta_yp1_b == 0) && (seta_xp2 == width) && (seta_yp2 == height)) {
+        Updateframe();
       } else {
-      //  ep_update_area(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, UPDATE_MODE_GL16);
+        uint16_t w = seta_xp2 - seta_xp1;
+        uint16_t h = seta_yp2 - seta_yp1_b;
+      //  Serial.printf("lvgl 2 area %d - %d - %d - %d\n",seta_xp1, seta_yp1_b, w, h);
+        ep_update_area(seta_xp1, seta_yp1_b, w, h, 2);
       }
+
     }
   } else {
     seta_xp1 = x0;
     seta_xp2 = x1;
     seta_yp1 = y0;
+    seta_yp1_b = y0;
     seta_yp2 = y1;
   }
 

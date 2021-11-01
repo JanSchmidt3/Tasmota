@@ -65,6 +65,7 @@ private:
   uint16_t seta_xp1;
   uint16_t seta_xp2;
   uint16_t seta_yp1;
+  uint16_t seta_yp1_b;
   uint16_t seta_yp2;
   boolean nswapped;
   uint8_t upd_mode;
