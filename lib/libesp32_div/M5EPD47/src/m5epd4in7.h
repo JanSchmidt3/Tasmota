@@ -68,7 +68,6 @@ private:
   uint16_t seta_yp2;
   boolean nswapped;
   uint8_t upd_mode;
-  uint8_t *framebuffer_part;
   M5EPD_Driver EPD = M5EPD_Driver();
 };
 
