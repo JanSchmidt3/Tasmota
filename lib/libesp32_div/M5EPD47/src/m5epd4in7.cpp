@@ -105,27 +105,6 @@ void M5Epd47::Updateframe() {
 //displaytext [up100:100:200:200:7]
 
 void M5Epd47::ep_update_area(uint16_t xp, uint16_t yp, uint16_t awidth, uint16_t aheight, uint8_t mode) {
-
-/*
-  // copy part of buffer
-  xp&=0xfffc;
-  yp&=0xfffc;
-  awidth&=0xfffc;
-  uint8_t *usp = framebuffer + (yp*width)/2 + xp/2;
-  uint8_t *udp = framebuffer_part;
-
-  for (uint32_t y=0; y<aheight; y++) {
-    for (uint32_t x=0; x<awidth/2; x++) {
-      *udp++=usp[x];
-    }
-    usp += width/2;
-  }
-
-
-  EPD.WritePartGram4bpp(xp, yp, awidth, aheight, framebuffer_part);
-
-*/
-
   EPD.WritePartGram4bpp2(xp, yp, awidth, aheight, width, height, framebuffer);
   EPD.UpdateArea(xp, yp, awidth, aheight, (m5epd_update_mode_t)mode);
 }
@@ -193,8 +172,7 @@ void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) 
   // just save params or update frame
   if (!x0 && !y0 && !x1 && !y1) {
     if (nswapped == false) {
-      EPD.WritePartGram4bpp(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, framebuffer);
-      EPD.UpdateArea(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, UPDATE_MODE_GC16);
+      ep_update_area(seta_xp1, seta_yp1, seta_xp2-seta_xp1, seta_yp2-seta_yp1, UPDATE_MODE_GL16);
     }
   } else {
     seta_xp1 = x0;
