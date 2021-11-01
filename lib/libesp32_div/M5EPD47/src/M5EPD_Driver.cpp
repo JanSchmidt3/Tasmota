@@ -304,7 +304,7 @@ m5epd_err_t M5EPD_Driver::WritePartGram4bpp2(uint16_t x, uint16_t y, uint16_t w,
     CHECK(SetArea(x, y, w, h));
     if (_is_reverse) {
       for (uint32_t yp = 0; yp < h; yp++) {
-        for (uint32_t xp = 0; xp < w/4; xp++) {
+        for (uint32_t xp = 0; xp < w/2; xp+=2) {
             word = usp[xp] << 8 | usp[xp+1];
             digitalWrite(_pin_cs, 0);
             _epd_spi->write32(word);
@@ -314,7 +314,7 @@ m5epd_err_t M5EPD_Driver::WritePartGram4bpp2(uint16_t x, uint16_t y, uint16_t w,
       }
     } else {
       for (uint32_t yp = 0; yp < h; yp++) {
-        for (uint32_t xp = 0; xp < w/4; xp++) {
+        for (uint32_t xp = 0; xp < w/2; xp+=2) {
             word = usp[xp] << 8 | usp[xp+1];
             word = 0xFFFF - word;
             digitalWrite(_pin_cs, 0);
