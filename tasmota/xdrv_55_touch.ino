@@ -262,6 +262,7 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
             // slider
             if (buttons[count]->didhit(touch_x, touch_y)) {
               uint16_t value = buttons[count]->UpdateSlider(touch_x, touch_y);
+              EP_Drawbutton(count);
               Touch_MQTT(count, "SLD", value);
             }
           }

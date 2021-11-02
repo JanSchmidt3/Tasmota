@@ -101,9 +101,38 @@ void M5Epd47::Updateframe() {
   EPD.UpdateArea(0, 0, width, height, (m5epd_update_mode_t)upd_mode);
 }
 
-//displaytext [up0:0:960:5:2]
 
-void M5Epd47::ep_update_area(uint16_t xp, uint16_t yp, uint16_t awidth, uint16_t aheight, uint8_t mode) {
+void M5Epd47::RotConvert(int16_t *x, int16_t *y) {
+int16_t temp;
+    uint8_t rot=getRotation();
+    switch (rot) {
+      case 0:
+        break;
+      case 1:
+        temp=*y;
+        *y=height-*x;
+        *x=temp;
+        break;
+      case 2:
+        *x=width-*x;
+        *y=height-*y;
+        break;
+      case 3:
+        temp=*y;
+        *y=*x;
+        *x=width-temp;
+        break;
+    }
+}
+
+
+//displaytext [up0:0:960:5:2]
+// needs to be rot converted
+void M5Epd47::ep_update_area(uint16_t x, uint16_t y, uint16_t awidth, uint16_t aheight, uint8_t mode) {
+  int16_t xp, yp;
+  xp = x;
+  yp = y;
+  RotConvert(&xp, &yp);
   EPD.WritePartGram4bpp2(xp, yp, awidth, aheight, width, height, framebuffer);
   EPD.UpdateArea(xp, yp, awidth, aheight, (m5epd_update_mode_t)mode);
 }

@@ -56,6 +56,7 @@ public:
     uint16_t GetColorFromIndex(uint8_t index);
     void ep_update_mode(uint8_t mode);
     void ep_update_area(uint16_t xp, uint16_t yp, uint16_t width, uint16_t height, uint8_t mode);
+    void RotConvert(int16_t *x, int16_t *y);
 
 private:
   uint16_t width;
