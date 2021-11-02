@@ -110,7 +110,7 @@ void Epd47::ep_update_mode(uint8_t mode) {
 
 void Epd47::Updateframe() {
   epd_poweron();
-  epd_hl_update_screen(&hl, upd_mode, temperature);
+  epd_hl_update_screen(&hl, (EpdDrawMode)upd_mode, temperature);
   epd_poweroff();
 }
 
