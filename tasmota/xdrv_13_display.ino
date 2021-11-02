@@ -701,6 +701,12 @@ void DisplayText(void)
             if (renderer) renderer->fillCircle(disp_xpos, disp_ypos, temp, fg_color);
             //else DisplayDrawFilledCircle(disp_xpos, disp_ypos, temp, fg_color);
             break;
+          case 'm':
+            // epaper draw mode currently only for 4,7 inch displays
+            var = atoiv(cp, &temp);
+            cp += var;
+            if (renderer) renderer->ep_update_mode(temp);
+            break;
           case 'r':
             // rectangle
             var = atoiv(cp, &temp);
