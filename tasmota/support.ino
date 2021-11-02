@@ -2004,7 +2004,14 @@ bool I2cBegin(int sda, int scl, uint32_t frequency) {
   Wire.begin(sda, scl);
 #endif
 #ifdef ESP32
+#if ESP_IDF_VERSION_MAJOR > 3  // Core 2.x uses a different I2C library
+  static bool reinit = false;
+  if (reinit) { Wire.end(); }
+#endif  // ESP_IDF_VERSION_MAJOR > 3
   result = Wire.begin(sda, scl, frequency);
+#if ESP_IDF_VERSION_MAJOR > 3  // Core 2.x uses a different I2C library
+  reinit = result;
+#endif  // ESP_IDF_VERSION_MAJOR > 3
 #endif
 //  AddLog(LOG_LEVEL_DEBUG, PSTR("I2C: Bus1 %d"), result);
   return result;
@@ -2304,29 +2311,6 @@ bool I2cSetDevice(uint32_t addr)
   myWire.beginTransmission((uint8_t)addr);
   return (0 == myWire.endTransmission());
 }
-
-TwoWire *I2C_Check_Device(uint32_t addr, const char *name) {
-TwoWire *wire = 0;
-uint8_t bus = 0;
-#ifdef ESP32
-  if (I2cActive(addr)) { return wire; }  // already active
-  if (!I2cSetDevice(addr, 0)) {
-    if (!I2cSetDevice(addr, 1)) { return wire; }
-    wire = &Wire1;
-    bus = 1;
-  } else {
-    wire = &Wire;
-  }
-  I2cSetActiveFound(addr, name, bus);
-#else
-  if (I2cActive(addr)) { return wire; }  // already active
-  if (!I2cSetDevice(addr)) { return wire; } // not found
-  wire = &Wire;
-  I2cSetActiveFound(addr, name);
-#endif
-  return wire;
-}
-
 #endif  // USE_I2C
 
 /*********************************************************************************************\

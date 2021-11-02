@@ -38,14 +38,13 @@ struct  {
     };
   float obj_temp;
   float amb_temp;
-  TwoWire *wire;
   bool ready = false;
 } mlx90614;
 
-
-void MLX90614_Init(void) {
-  mlx90614.wire = I2C_Check_Device(I2_ADR_IRT, "MLX90614");
-  if (!mlx90614.wire) return;
+void MLX90614_Init(void)
+{
+  if (!I2cSetDevice(I2_ADR_IRT)) { return; }
+  I2cSetActiveFound(I2_ADR_IRT, "MLX90614");
   mlx90614.ready = true;
 }
 
@@ -92,19 +91,19 @@ void MLX90614_Show(uint8_t json)
 uint16_t MLX90614_read16(uint8_t addr, uint8_t a) {
   uint16_t ret;
 
-  mlx90614.wire->beginTransmission(addr);
-  mlx90614.wire->write(a);
-  mlx90614.wire->endTransmission(false);
+  Wire.beginTransmission(addr);
+  Wire.write(a);
+  Wire.endTransmission(false);
 
-  mlx90614.wire->requestFrom(addr, (size_t)3);
+  Wire.requestFrom(addr, (size_t)3);
   uint8_t buff[5];
   buff[0] = addr << 1;
   buff[1] = a;
   buff[2] = (addr << 1) | 1;
-  buff[3] = mlx90614.wire->read();
-  buff[4] = mlx90614.wire->read();
+  buff[3] = Wire.read();
+  buff[4] = Wire.read();
   ret = buff[3] | (buff[4] << 8);
-  uint8_t pec = mlx90614.wire->read();
+  uint8_t pec = Wire.read();
   uint8_t cpec = MLX90614_crc8(buff, sizeof(buff));
   //AddLog(LOG_LEVEL_INFO,PSTR("%x - %x"),pec, cpec);
 
