@@ -1126,7 +1126,7 @@ extern FS *ffsp;
               if (buttons[num]) {
                 if (!sbt) {
                   buttons[num]->vpower.slider = 0;
-                  buttons[num]->initButtonUL(renderer, gxp, gyp, gxs, gys, GetColorFromIndex(outline),\
+                  buttons[num]->xinitButtonUL(renderer, gxp, gyp, gxs, gys, GetColorFromIndex(outline),\
                     GetColorFromIndex(fill), GetColorFromIndex(textcolor), bbuff, textsize);
                   if (!bflags) {
                     // power button
