@@ -86,13 +86,21 @@ void Sht3xDetect(void)
   sht3x_wire = &Wire;
 #endif
   for (uint32_t i = 0; i < SHT3X_MAX_SENSORS; i++) {
+#ifdef USE_M5EPD47
+    if (!I2cSetDevice(sht3x_addresses[i],1)) { continue; }
+#else
     if (!I2cSetDevice(sht3x_addresses[i])) { continue; }
+#endif
     float t;
     float h;
     if (Sht3xRead(t, h, sht3x_addresses[i])) {
       sht3x_sensors[sht3x_count].address = sht3x_addresses[i];
       GetTextIndexed(sht3x_sensors[sht3x_count].types, sizeof(sht3x_sensors[sht3x_count].types), i, kShtTypes);
+#ifdef USE_M5EPD47
+      I2cSetActiveFound(sht3x_sensors[sht3x_count].address, sht3x_sensors[sht3x_count].types, 1);
+#else
       I2cSetActiveFound(sht3x_sensors[sht3x_count].address, sht3x_sensors[sht3x_count].types);
+#endif
       sht3x_count++;
     }
   }
