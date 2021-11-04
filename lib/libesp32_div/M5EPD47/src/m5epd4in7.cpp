@@ -101,40 +101,47 @@ void M5Epd47::Updateframe() {
   EPD.UpdateArea(0, 0, width, height, (m5epd_update_mode_t)upd_mode);
 }
 
+#define _swap(a, b) { uint16_t t = a; a = b; b = t; }
 
-void M5Epd47::RotConvert(int16_t *x, int16_t *y) {
+
+void M5Epd47::RotConvert(int16_t *x, int16_t *y, int16_t *w, int16_t *h) {
 int16_t temp;
     uint8_t rot=getRotation();
     switch (rot) {
       case 0:
         break;
       case 1:
-        temp=*y;
-        *y=height-*x;
-        *x=temp;
+        _swap(*w, *h);
+        temp = *x;
+        *x = width - *y - *w;
+        *y = temp;
         break;
       case 2:
-        *x=width-*x;
-        *y=height-*y;
+        *x = width - *x -*w;
+        *y = height - *y -*h;
         break;
       case 3:
-        temp=*y;
-        *y=*x;
-        *x=width-temp;
+        _swap(*w, *h);
+        temp = *x;
+        *x = *y;
+        *y = height - temp - *h;
         break;
     }
 }
 
 
+
 //displaytext [up0:0:960:5:2]
 // needs to be rot converted
 void M5Epd47::ep_update_area(uint16_t x, uint16_t y, uint16_t awidth, uint16_t aheight, uint8_t mode) {
-  int16_t xp, yp;
+  int16_t xp, yp, w, h;
   xp = x;
   yp = y;
-  RotConvert(&xp, &yp);
-  EPD.WritePartGram4bpp2(xp, yp, awidth, aheight, width, height, framebuffer);
-  EPD.UpdateArea(xp, yp, awidth, aheight, (m5epd_update_mode_t)mode);
+  w = awidth;
+  h = aheight;
+  RotConvert(&xp, &yp, &w, &h);
+  EPD.WritePartGram4bpp2(xp, yp, w, h, width, height, framebuffer);
+  EPD.UpdateArea(xp, yp, w, h, (m5epd_update_mode_t)mode);
 }
 
 void M5Epd47::ep_update_mode(uint8_t mode) {
@@ -147,7 +154,7 @@ void M5Epd47::fillScreen(uint16_t color) {
    memset(framebuffer, icol, width * height / 2);
 }
 
-#define _swap(a, b) { uint16_t t = a; a = b; b = t; }
+
 
 void M5Epd47::drawPixel(int16_t x, int16_t y, uint16_t color) {
 uint16_t xp = x;
