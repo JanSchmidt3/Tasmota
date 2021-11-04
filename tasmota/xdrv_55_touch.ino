@@ -191,11 +191,20 @@ void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y)) {
 
 #ifdef USE_TOUCH_BUTTONS
 void Touch_MQTT(uint8_t index, const char *cp, uint32_t val) {
+#ifdef USE_M5EPD47
+  if (FT5206_found) {
+    ResponseTime_P(PSTR(",\"GT911\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
+  }
+#endif
 #ifdef USE_FT5206
-  if (FT5206_found) ResponseTime_P(PSTR(",\"FT5206\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
+  if (FT5206_found) {
+    ResponseTime_P(PSTR(",\"FT5206\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
+  }
 #endif
 #ifdef USE_XPT2046
-  if (XPT2046_found) ResponseTime_P(PSTR(",\"XPT2046\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
+  if (XPT2046_found) {
+    ResponseTime_P(PSTR(",\"XPT2046\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
+  }
 #endif  // USE_XPT2046
   MqttPublishTeleSensor();
 }
