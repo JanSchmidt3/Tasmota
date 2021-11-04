@@ -5440,6 +5440,8 @@ void ScriptSaveSettings(void) {
 
     SaveScript();
 
+  } else {
+    AddLog(LOG_LEVEL_INFO, PSTR("script memory error"));
   }
 
   SaveScriptEnd();
