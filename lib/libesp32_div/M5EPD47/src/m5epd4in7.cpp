@@ -48,7 +48,7 @@ uint16_t M5Epd47::GetColorFromIndex(uint8_t index) {
 M5Epd47::M5Epd47(int16_t dwidth, int16_t dheight) :  Renderer(dwidth, dheight) {
   width = dwidth;
   height = dheight;
-  disp_bpp = 4;
+  disp_bpp = 4 | 0x40;
 }
 
 int32_t M5Epd47::Init(void) {

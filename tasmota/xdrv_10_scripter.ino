@@ -6542,7 +6542,9 @@ extern Renderer *renderer;
       uint8_t *bp = renderer->framebuffer;
       uint8_t *lbuf = (uint8_t*)special_malloc(Settings->display_width * 3 + 2);
       if (!lbuf) return;
-      int8_t bpp = renderer->disp_bpp;
+      uint8_t dmflg = 0;
+      if (renderer->disp_bpp & 0x40) dmflg = 1;
+      int8_t bpp = renderer->disp_bpp & 0xbf;;
       uint8_t *lbp;
       uint8_t fileHeader[fileHeaderSize];
       createBitmapFileHeader(Settings->display_height , Settings->display_width , fileHeader);
@@ -6550,7 +6552,6 @@ extern Renderer *renderer;
       uint8_t infoHeader[infoHeaderSize];
       createBitmapInfoHeader(Settings->display_height, Settings->display_width, infoHeader );
       Webserver->client().write((uint8_t *)infoHeader, infoHeaderSize);
-
       if (bpp == -1) {
         for (uint32_t lins = Settings->display_height - 1; lins >= 0 ; lins--) {
           lbp = lbuf;
@@ -6571,16 +6572,30 @@ extern Renderer *renderer;
           if (bpp == 4) {
             for (uint32_t cols = 0; cols < Settings->display_width; cols += 2) {
               uint8_t pixel;
-              for (uint32_t cnt = 0; cnt <= 1; cnt++) {
-                if (cnt & 1) {
-                  pixel = *bp >> 4;
-                } else {
-                  pixel = *bp & 0xf;
+              if (!dmflg) {
+                for (uint32_t cnt = 0; cnt <= 1; cnt++) {
+                  if (cnt & 1) {
+                    pixel = *bp >> 4;
+                  } else {
+                    pixel = *bp & 0xf;
+                  }
                 }
                 pixel *= 15;
                 *--lbp = pixel;
                 *--lbp = pixel;
                 *--lbp = pixel;
+              } else {
+                for (uint32_t cnt = 0; cnt <= 1; cnt++) {
+                  if (!(cnt & 1)) {
+                    pixel = *bp >> 4;
+                  } else {
+                    pixel = *bp & 0xf;
+                  }
+                  pixel *= 15;
+                  *--lbp = pixel;
+                  *--lbp = pixel;
+                  *--lbp = pixel;
+                }
               }
               bp++;
             }
@@ -6602,8 +6617,8 @@ extern Renderer *renderer;
               bp++;
             }
           }
+          Webserver->client().write((const char*)lbuf, Settings->display_width * 3);
         }
-        Webserver->client().write((const char*)lbuf, Settings->display_width * 3);
       }
       if (lbuf) free(lbuf);
       Webserver->client().stop();
