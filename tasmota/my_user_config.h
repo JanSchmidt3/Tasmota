@@ -348,7 +348,6 @@
 #define ZIGBEE_DISTINCT_TOPICS false             // [SetOption89] Enable unique device topic based on Zigbee device ShortAddr
 #define ZIGBEE_RMV_ZBRECEIVED  false             // [SetOption100] Remove ZbReceived form JSON message
 #define ZIGBEE_INDEX_EP        false             // [SetOption101] Add the source endpoint as suffix to attributes, ex `Power3` instead of `Power` if sent from endpoint 3
-#define WATCHDOG_TASK_SECONDS  10                // [ESP32 only] Task Watchdog Timer (TWDT) time in seconds - detecting Tasmota running for a prolonged period of time without yielding with `esp_task_wdt_reset()`
 
 /*********************************************************************************************\
  * END OF SECTION 1
@@ -1052,6 +1051,15 @@
 //#define DEBUG_TASMOTA_DRIVER                     // Enable driver debug messages
 //#define DEBUG_TASMOTA_SENSOR                     // Enable sensor debug messages
 //#define USE_DEBUG_DRIVER                         // Use xdrv_99_debug.ino providing commands CpuChk, CfgXor, CfgDump, CfgPeek and CfgPoke
+
+/*********************************************************************************************\
+ * Profiling features
+\*********************************************************************************************/
+
+//#define USE_PROFILING                            // Enable profiling
+//#define PROFILE_THRESHOLD            70          // Minimum duration in milliseconds to start logging
+//#define USE_PROFILE_DRIVER                       // Enable driver profiling
+//#define USE_PROFILE_FUNCTION                     // Enable driver function profiling
 
 /*********************************************************************************************\
  * Optional firmware configurations

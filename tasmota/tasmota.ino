@@ -148,6 +148,8 @@ struct TasmotaGlobal_t {
   bool enable_logging;                      // Enable logging
 
   StateBitfield global_state;               // Global states (currently Wifi and Mqtt) (8 bits)
+  uint8_t init_state;                       // Tasmota init state
+  uint8_t heartbeat_inverted;               // Heartbeat pulse inverted flag
   uint8_t spi_enabled;                      // SPI configured
   uint8_t soft_spi_enabled;                 // Software SPI configured
   uint8_t blinks;                           // Number of LED blinks
@@ -317,9 +319,6 @@ void setup(void) {
   SettingsLoad();
   SettingsDelta();
 
-#ifdef ESP32
-//  TWDTInit();  // Start Task WDT for ESP32 - FreeRTOS only
-#endif
   OsWatchInit();
 
   TasmotaGlobal.seriallog_level = Settings->seriallog_level;
@@ -430,6 +429,8 @@ void setup(void) {
   XdrvCall(FUNC_PRE_INIT);
   XsnsCall(FUNC_PRE_INIT);
 
+  TasmotaGlobal.init_state = INIT_GPIOS;
+
   SetPowerOnState();
   WifiConnect();
 
@@ -512,9 +513,6 @@ void Scheduler(void) {
 #endif  // USE_DISCOVERY
 #endif  // ESP8266
 
-#ifdef ESP32
-//  TWDTLoop();
-#endif
   OsWatchLoop();
   ButtonLoop();
   SwitchLoop();
