@@ -25,7 +25,6 @@
  */
 
 #include <stdlib.h>
-#include <epd4in7.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/semphr.h>
@@ -37,59 +36,57 @@
 #include <esp_types.h>
 #include <xtensa/core-macros.h>
 #include <driver/gpio.h>
-#include "epd_driver.h"
-#include "epd_highlevel.h"
+#include "m5epd4in7.h"
+#include "M5EPD_Driver.h"
+#include "M5EPD.h"
 
-#define WAVEFORM EPD_BUILTIN_WAVEFORM
 
-uint8_t *epd47_buffer;
-
-int temperature = 25;
-
-EpdiyHighlevelState hl;
-
-uint16_t Epd47::GetColorFromIndex(uint8_t index) {
+uint16_t M5Epd47::GetColorFromIndex(uint8_t index) {
   return index & 0xf;
 }
 
-Epd47::Epd47(int16_t dwidth, int16_t dheight) :  Renderer(dwidth, dheight) {
+M5Epd47::M5Epd47(int16_t dwidth, int16_t dheight) :  Renderer(dwidth, dheight) {
   width = dwidth;
   height = dheight;
   disp_bpp = 4;
 }
 
-int32_t Epd47::Init(void) {
-  epd_init(EPD_LUT_1K);
-  hl = epd_hl_init(WAVEFORM);
-  epd47_buffer = epd_hl_get_framebuffer(&hl);
-  framebuffer = epd47_buffer;
-  lvgl_param.fluslines = 10;
+int32_t M5Epd47::Init(void) {
+//  epd_init(EPD_LUT_1K);
+//  hl = epd_hl_init(WAVEFORM);
+  uint32_t size = width * height / 2;
+  framebuffer = (uint8_t*)heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  lvgl_param.fluslines = 50;
+
+  upd_mode = UPDATE_MODE_GL16;
+
+  pinMode(M5EPD_CS_PIN, OUTPUT);
+  digitalWrite(M5EPD_CS_PIN, 1);
+
+  EPD.begin(M5EPD_SCK_PIN, M5EPD_MOSI_PIN, M5EPD_MISO_PIN, M5EPD_CS_PIN, M5EPD_BUSY_PIN);
+  EPD.SetRotation(0);
+  EPD.Clear(true);
+
   return 0;
 }
 
-void Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
+void M5Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
 
   if (p ==  DISPLAY_INIT_MODE) {
-    epd_poweron();
-    epd_clear();
-    epd_poweroff();
+    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GC16);
   }
   if (p ==  DISPLAY_INIT_FULL) {
-    memset(hl.back_fb, 0xff, width * height / 2);
-    epd_poweron();
-    epd_clear();
-    epd_hl_update_screen(&hl, MODE_GC16, temperature);
-    epd_poweroff();
+    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GC16);
     return;
   }
   if (p ==  DISPLAY_INIT_PARTIAL) {
-    memset(hl.back_fb, 0xff, width * height / 2);
-    epd_poweron();
-    epd_hl_update_screen(&hl, MODE_GL16, temperature);
-    epd_poweroff();
+    EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+    EPD.UpdateArea(0, 0, width, height, UPDATE_MODE_GL16);
     return;
   }
-  upd_mode = MODE_GL16;
+
   setRotation(rot);
   setTextWrap(false);
   cp437(true);
@@ -99,30 +96,67 @@ void Epd47::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
   fillScreen(15);
 }
 
-void Epd47::ep_update_area(uint16_t xp, uint16_t yp, uint16_t width, uint16_t height, uint8_t mode) {
-  //EPD.WritePartGram4bpp(xp, yp, width, height, framebuffer);
-  //EPD.UpdateArea(xp, yp, width, height, (m5epd_update_mode_t)mode);
-}
-
-void Epd47::ep_update_mode(uint8_t mode) {
-  upd_mode = mode;
-}
-
-void Epd47::Updateframe() {
-  epd_poweron();
-  epd_hl_update_screen(&hl, (EpdDrawMode)upd_mode, temperature);
-  epd_poweroff();
-}
-
-void Epd47::fillScreen(uint16_t color) {
-  color &= 0xf;
-   uint8_t icol = (color << 4) | color;
-   memset(epd47_buffer, icol, width * height / 2);
+void M5Epd47::Updateframe() {
+  EPD.WritePartGram4bpp(0, 0, width, height, framebuffer);
+  EPD.UpdateArea(0, 0, width, height, (m5epd_update_mode_t)upd_mode);
 }
 
 #define _swap(a, b) { uint16_t t = a; a = b; b = t; }
 
-void Epd47::drawPixel(int16_t x, int16_t y, uint16_t color) {
+
+void M5Epd47::RotConvert(int16_t *x, int16_t *y, int16_t *w, int16_t *h) {
+int16_t temp;
+    uint8_t rot=getRotation();
+    switch (rot) {
+      case 0:
+        break;
+      case 1:
+        _swap(*w, *h);
+        temp = *x;
+        *x = width - *y - *w;
+        *y = temp;
+        break;
+      case 2:
+        *x = width - *x -*w;
+        *y = height - *y -*h;
+        break;
+      case 3:
+        _swap(*w, *h);
+        temp = *x;
+        *x = *y;
+        *y = height - temp - *h;
+        break;
+    }
+}
+
+
+
+//displaytext [up0:0:960:5:2]
+// needs to be rot converted
+void M5Epd47::ep_update_area(uint16_t x, uint16_t y, uint16_t awidth, uint16_t aheight, uint8_t mode) {
+  int16_t xp, yp, w, h;
+  xp = x;
+  yp = y;
+  w = awidth;
+  h = aheight;
+  RotConvert(&xp, &yp, &w, &h);
+  EPD.WritePartGram4bpp2(xp, yp, w, h, width, height, framebuffer);
+  EPD.UpdateArea(xp, yp, w, h, (m5epd_update_mode_t)mode);
+}
+
+void M5Epd47::ep_update_mode(uint8_t mode) {
+  upd_mode = mode;
+}
+
+void M5Epd47::fillScreen(uint16_t color) {
+  color &= 0xf;
+   uint8_t icol = (color << 4) | color;
+   memset(framebuffer, icol, width * height / 2);
+}
+
+
+
+void M5Epd47::drawPixel(int16_t x, int16_t y, uint16_t color) {
 uint16_t xp = x;
 uint16_t yp = y;
 uint8_t *buf_ptr;
@@ -145,45 +179,49 @@ uint8_t *buf_ptr;
 
   if (xp >= width) return;
   if (yp >= height) return;
-  buf_ptr = &epd47_buffer[yp * width / 2 + xp / 2];
+  buf_ptr = &framebuffer[yp * width / 2 + xp / 2];
 
-    if (xp % 2) {
+    if (!(xp % 2)) {
         *buf_ptr = (*buf_ptr & 0x0F) | (color << 4);
     } else {
         *buf_ptr = (*buf_ptr & 0xF0) | (color & 0xf);
     }
+
 }
 
-void Epd47::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
+void M5Epd47::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
   while (h--) {
     drawPixel(x , y , color);
     y++;
   }
 }
-void Epd47::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
+void M5Epd47::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
   while (w--) {
     drawPixel(x , y , color);
     x++;
   }
 }
 
-void Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+void M5Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
   // just save params or update frame
   if (!x0 && !y0 && !x1 && !y1) {
     if (nswapped == false) {
-      // LVGL update
-      EpdRect area;
-      area.x = seta_xp1;
-      area.y = seta_yp1;
-      area.width = seta_xp2 - seta_xp1;
-      area.height = seta_yp2 - seta_yp1;
-      epd_hl_update_area(&hl, MODE_GL16, temperature, area);
+      if ( (seta_xp1 == 0) && (seta_yp1_b == 0) && (seta_xp2 == width) && (seta_yp2 == height)) {
+      //  Updateframe();
+      } else {
+        uint16_t w = seta_xp2 - seta_xp1;
+        uint16_t h = seta_yp2 - seta_yp1_b;
+      //  Serial.printf("lvgl 2 area %d - %d - %d - %d\n",seta_xp1, seta_yp1_b, w, h);
+      //  ep_update_area(seta_xp1, seta_yp1_b, w, h, 2);
+      }
+
     }
   } else {
     seta_xp1 = x0;
     seta_xp2 = x1;
     seta_yp1 = y0;
+    seta_yp1_b = y0;
     seta_yp2 = y1;
   }
 
@@ -191,9 +229,10 @@ void Epd47::setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
 static inline void lvgl_color_swap2(uint16_t *data, uint16_t len) { for (uint32_t i = 0; i < len; i++) (data[i] = data[i] << 8 | data[i] >> 8); }
 
-void Epd47::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
+void M5Epd47::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
 
   nswapped = not_swapped;
+
   if (not_swapped == false) {
     lvgl_color_swap2(data, len);
   }

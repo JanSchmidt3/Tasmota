@@ -24,10 +24,12 @@
  * THE SOFTWARE.
  */
 
-#ifndef EPD4IN7_H
-#define EPD4IN7_H
+#ifndef M5EPD4IN7_H
+#define M5EPD4IN7_H
 
+#include <SPI.h>
 #include <renderer.h>
+#include "M5EPD_Driver.h"
 
 #define DISPLAY_INIT_MODE 0
 #define DISPLAY_INIT_PARTIAL 1
@@ -35,13 +37,13 @@
 
 
 // Display resolution
-#define EPD47_WIDTH   960
-#define EPD47_HEIGHT  540
+#define M5EPD47_WIDTH   960
+#define M5EPD47_HEIGHT  540
 
 
-class Epd47 : public Renderer  {
+class M5Epd47 : public Renderer  {
 public:
-    Epd47(int16_t width, int16_t height);
+    M5Epd47(int16_t width, int16_t height);
     int  Init(void);
     void drawPixel(int16_t x, int16_t y, uint16_t color);
     void fillScreen(uint16_t color);
@@ -54,6 +56,8 @@ public:
     uint16_t GetColorFromIndex(uint8_t index);
     void ep_update_mode(uint8_t mode);
     void ep_update_area(uint16_t xp, uint16_t yp, uint16_t width, uint16_t height, uint8_t mode);
+    void RotConvert(int16_t *x, int16_t *y, int16_t *w, int16_t *h);
+
 private:
   uint16_t width;
   uint16_t height;
@@ -62,9 +66,11 @@ private:
   uint16_t seta_xp1;
   uint16_t seta_xp2;
   uint16_t seta_yp1;
+  uint16_t seta_yp1_b;
   uint16_t seta_yp2;
-  uint8_t nswapped;
+  boolean nswapped;
   uint8_t upd_mode;
+  M5EPD_Driver EPD = M5EPD_Driver();
 };
 
-#endif /* EPD4IN7_H */
+#endif /* M5EPD4IN7_H */
