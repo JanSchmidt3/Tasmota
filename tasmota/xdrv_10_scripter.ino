@@ -6552,7 +6552,7 @@ extern Renderer *renderer;
       uint8_t infoHeader[infoHeaderSize];
       createBitmapInfoHeader(Settings->display_height, Settings->display_width, infoHeader );
       Webserver->client().write((uint8_t *)infoHeader, infoHeaderSize);
-      if (bpp == -1) {
+      if (bpp < 0) {
         for (uint32_t lins = Settings->display_height - 1; lins >= 0 ; lins--) {
           lbp = lbuf;
           for (uint32_t cols = 0; cols < Settings->display_width; cols ++) {
