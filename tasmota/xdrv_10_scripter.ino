@@ -3280,6 +3280,21 @@ chknext:
           goto exit;
         }
 #endif
+
+#ifdef USE_TIMERS
+        if (!strncmp(vname, "ttget(", 6)) {
+          lp = GetNumericArgument(lp + 6, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          uint8_t index = fvar;
+          if (index < 1 || index > MAX_TIMERS) index = 1;
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          fvar = get_tpars(index - 1, fvar);
+          lp++;
+          len = 0;
+          goto exit;
+        }
+#endif
         break;
       case 'u':
         if (!strncmp(vname, "uptime", 6)) {
@@ -8310,6 +8325,41 @@ void lvgl_setup(void) {
 
 
 #endif // USE_LVGL
+
+
+#ifdef USE_TIMERS
+uint32_t get_tpars(uint32_t index, uint32_t sel) {
+uint32_t retval = 0;
+  switch (sel) {
+    case 0:
+      retval = Settings->timer[index].time;
+      break;
+    case 1:
+      retval = Settings->timer[index].window;
+      break;
+    case 2:
+      retval = Settings->timer[index].repeat;
+      break;
+    case 3:
+      retval = Settings->timer[index].days;
+      break;
+    case 4:
+      retval = Settings->timer[index].device;
+      break;
+    case 5:
+      retval = Settings->timer[index].power;
+      break;
+    case 6:
+      retval = Settings->timer[index].mode;
+      break;
+    case 7:
+      retval = Settings->timer[index].arm;
+      break;
+  }
+  return retval;
+}
+
+#endif
 
 /*********************************************************************************************\
  * Interface
