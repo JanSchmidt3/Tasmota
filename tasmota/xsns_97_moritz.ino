@@ -1892,19 +1892,36 @@ bool XSNS_97_cmd(void) {
       if (*cp=='d') {
         // delete one
         cp++;
-        while (*cp==' ') cp++;
-        if (*cp) {
-          man=strtol(cp,&cp,16);
-          ml.id[0]=man>>16;
-          ml.id[1]=man>>8;
-          ml.id[2]=man;
-          //AddLog_P2(LOG_LEVEL_INFO, PSTR("Moritz: index=%d,%d,%d"), ml.id[0],ml.id[1],ml.id[2]);
-          int32_t index=find_MLabel(&ml);
-          if (index>=0) {
-            memset(&ml,0,sizeof(struct MORITZ));
-            put_MLabel(index,&ml);
-            //AddLog_P2(LOG_LEVEL_INFO, PSTR("Moritz: index=%d"), index);
-            Moritz_Sort_List(0);
+        if (*cp=='a') {
+#ifdef USE_EEPROM
+          // delete all unnamed entries
+          struct MORITZ mo;
+          for (uint16_t cnt=0;cnt<MORITZ_MAX_DEVICES;cnt++) {
+            get_MLabel(cnt,&mo);
+            if (!mo.label[0]) {
+              memset(&mo,0,sizeof(struct MORITZ));
+              put_MLabel(cnt,&mo);
+            }
+          }
+          Moritz_Sort_List(0);
+          Response_P(S_JSON_MORITZ1,"label","delete all unlabeled");
+          return serviced;
+#endif
+        } else {
+          while (*cp==' ') cp++;
+          if (*cp) {
+            man=strtol(cp,&cp,16);
+            ml.id[0]=man>>16;
+            ml.id[1]=man>>8;
+            ml.id[2]=man;
+            //AddLog_P2(LOG_LEVEL_INFO, PSTR("Moritz: index=%d,%d,%d"), ml.id[0],ml.id[1],ml.id[2]);
+            int32_t index=find_MLabel(&ml);
+            if (index>=0) {
+              memset(&ml,0,sizeof(struct MORITZ));
+              put_MLabel(index,&ml);
+              //AddLog_P2(LOG_LEVEL_INFO, PSTR("Moritz: index=%d"), index);
+              Moritz_Sort_List(0);
+            }
           }
         }
         Response_P(S_JSON_MORITZ1,"label","delete one");
