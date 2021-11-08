@@ -176,6 +176,7 @@ enum UserSelectablePins {
   GPIO_BL0942_RX,                      // BL0942 Serial interface
   GPIO_HM330X_SET,                     // HM330X SET pin (sleep when low)
   GPIO_HEARTBEAT, GPIO_HEARTBEAT_INV,
+  GPIO_CC1101_CS,
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -372,6 +373,7 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_BL0942_RX "|"
   D_SENSOR_HM330X_SET "|"
   D_SENSOR_HEARTBEAT "|" D_SENSOR_HEARTBEAT "_i|"
+  D_SENSOR_CC1101_CS "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -638,6 +640,9 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #ifdef USE_TFMINIPLUS
   AGPIO(GPIO_TFMINIPLUS_TX),      // TFmini Plus TX pin
   AGPIO(GPIO_TFMINIPLUS_RX),      // TFmini Plus RX pin
+#endif
+#ifdef USE_MORITZ
+  AGPIO(GPIO_CC1101_CS),
 #endif
 
 /*-------------------------------------------------------------------------------------------*\
