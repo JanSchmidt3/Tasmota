@@ -2,7 +2,7 @@
 #include "wifi_info.h"
 #include "hap.h"
 
-extern "C" void homekit_main();
+extern "C" int32_t homekit_main();
 
 void setup() {
 	Serial.begin(115200);

@@ -231,7 +231,7 @@ extern FS *ufsp;
 
 #endif // USE_UFILESYS
 
-extern "C" void homekit_main(char *, uint32_t);
+extern "C" int32_t homekit_main(char *, uint32_t);
 
 #ifdef SUPPORT_MQTT_EVENT
   #include <LinkedList.h>                 // Import LinkedList library
@@ -8328,14 +8328,15 @@ void lvgl_setup(void) {
 
 
 #ifdef USE_TIMERS
-uint32_t get_tpars(uint32_t index, uint32_t sel) {
-uint32_t retval = 0;
+int32_t get_tpars(uint32_t index, uint32_t sel) {
+int32_t retval = 0;
   switch (sel) {
     case 0:
       retval = Settings->timer[index].time;
       break;
     case 1:
-      retval = Settings->timer[index].window;
+      //retval = Settings->timer[index].window;
+      retval = timer_window[index];
       break;
     case 2:
       retval = Settings->timer[index].repeat;
