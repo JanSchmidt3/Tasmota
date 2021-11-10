@@ -6827,6 +6827,13 @@ const char SCRIPT_MSG_SLIDER[] PROGMEM =
 const char SCRIPT_MSG_CHKBOX[] PROGMEM =
   "<div><center><label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label></div>";
 
+const char SCRIPT_MSG_PULLDOWNa[] PROGMEM =
+  "<div><label for=\'pup%d\'>%s:</label><select name='pu%d' id='pu%d' onchange='seva(value,\"%s\")'>";
+const char SCRIPT_MSG_PULLDOWNb[] PROGMEM =
+  "<option %s value='%d'>%s</option>";
+const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
+  "</select></div>";
+
 const char SCRIPT_MSG_TEXTINP[] PROGMEM =
   "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
@@ -7129,7 +7136,43 @@ void ScriptWebShow(char mc) {
               uval = 1;
             }
             WSContentSend_PD(SCRIPT_MSG_CHKBOX, label, (char*)cp, uval, vname);
+          } else if (!strncmp(lin, "pd(", 3)) {
+            // pull down
+            char *lp = lin + 3;
+            char *slp = lp;
+            float val;
+            lp = GetNumericArgument(lp, OPER_EQU, &val, 0);
+            SCRIPT_SKIP_SPACES
 
+            char vname[16];
+            ScriptGetVarname(vname, slp, sizeof(vname));
+
+            SCRIPT_SKIP_SPACES
+            char pulabel[SCRIPT_MAXSSIZE];
+            lp = GetStringArgument(lp, OPER_EQU, pulabel, 0);
+
+            WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, 1, pulabel, 1, 1, vname);
+
+            // get pu labels
+            uint8_t index = 1;
+            while (*lp) {
+              SCRIPT_SKIP_SPACES
+              lp = GetStringArgument(lp, OPER_EQU, pulabel, 0);
+              char *cp;
+              if (val == index) {
+                cp = (char*)"selected";
+              } else {
+                cp = (char*)"";
+              }
+              WSContentSend_PD(SCRIPT_MSG_PULLDOWNb, cp, index, pulabel);
+              SCRIPT_SKIP_SPACES
+              if (*lp == ')') {
+                lp++;
+                break;
+              }
+              index++;
+            }
+            WSContentSend_PD(SCRIPT_MSG_PULLDOWNc);
           } else if (!strncmp(lin, "bu(", 3)) {
             char *lp = lin + 3;
             uint8_t bcnt = 0;
