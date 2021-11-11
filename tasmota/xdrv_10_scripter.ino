@@ -6828,7 +6828,7 @@ const char SCRIPT_MSG_CHKBOX[] PROGMEM =
   "<div><center><label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_PULLDOWNa[] PROGMEM =
-  "<div><label for=\'pup%d\'>%s:</label><select name='pu%d' id='pu%d' onchange='seva(value,\"%s\")'>";
+  "<div><label for=\'pu_%s\'>%s:</label><select style='width:200px' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
 const char SCRIPT_MSG_PULLDOWNb[] PROGMEM =
   "<option %s value='%d'>%s</option>";
 const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
@@ -7151,7 +7151,7 @@ void ScriptWebShow(char mc) {
             char pulabel[SCRIPT_MAXSSIZE];
             lp = GetStringArgument(lp, OPER_EQU, pulabel, 0);
 
-            WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, 1, pulabel, 1, 1, vname);
+            WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, vname, pulabel, 1, vname, vname);
 
             // get pu labels
             uint8_t index = 1;
