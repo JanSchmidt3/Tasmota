@@ -2762,9 +2762,9 @@ void AddValue(uint8_t num,float fval) {
   // decimation option
   if (gp->decimation<0) {
     if (gp->dcnt>=-gp->decimation) {
-      gp->dcnt=0;
       // calc average
-      val=gp->summ/-gp->decimation;
+      val=gp->summ/gp->dcnt;
+      gp->dcnt=0;
       gp->summ=0;
       // add to graph
       AddGraph(num,val);
