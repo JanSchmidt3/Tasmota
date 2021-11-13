@@ -2658,7 +2658,11 @@ void Restore_graph(uint8_t num, char *path) {
     if (count<=4) {
       if (count==0) gp->xcnt=atoi(vbuff);
     } else {
-      gp->values[count-5]=atoi(vbuff);
+      uint8_t yval = atoi(vbuff);
+      if (yval >= gp->ys) {
+        yval = gp->ys - 1;
+      }
+      gp->values[count-5] = yval;
     }
   }
   fp.close();
