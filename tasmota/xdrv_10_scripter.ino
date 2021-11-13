@@ -210,6 +210,11 @@ void alt_eeprom_readBytes(uint32_t adr, uint32_t len, uint8_t *buf) {
 #include "powerwall.h"
 #endif
 
+#ifdef USE_DISPLAY_DUMP
+#include <renderer.h>
+extern Renderer *renderer;
+#endif
+
 // offsets epoch readings by 1.1.2019 00:00:00 to fit into float with second resolution
 #ifndef EPOCH_OFFSET
 #define EPOCH_OFFSET 1546300800
@@ -6546,8 +6551,8 @@ char buff[512];
 
   if (sflg) {
 #ifdef USE_DISPLAY_DUMP
-#include <renderer.h>
-extern Renderer *renderer;
+//#include <renderer.h>
+//extern Renderer *renderer;
 
     // screen copy
     #define fileHeaderSize 14
