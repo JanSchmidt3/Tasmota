@@ -3271,7 +3271,7 @@ chknext:
           len = 0;
           goto exit;
         }
-        if (!strncmp(vname, "sr(", 3)) {
+        if (!strncmp(vname, "srb(", 3)) {
           fvar = -1;
           if (glob_script_mem.sp) {
             fvar = glob_script_mem.sp->available();
@@ -3295,7 +3295,7 @@ chknext:
           len = 0;
           goto exit;
         }
-        if (!strncmp(vname, "srs(", 4)) {
+        if (!strncmp(vname, "sr(", 4)) {
           char str[SCRIPT_MAXSSIZE];
           memset(str, 0, sizeof(str));
           fvar = -1;
