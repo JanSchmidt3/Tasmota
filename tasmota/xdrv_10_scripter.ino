@@ -3225,6 +3225,8 @@ chknext:
               Settings->serial_config = sconfig;
               AddLog(LOG_LEVEL_INFO, PSTR("Serial port set to %s %d bit/s at rx=%d tx=%d"), GetSerialConfig().c_str(), (uint32_t)br,  (uint32_t)rxpin, (uint32_t)txpin);
               Settings->serial_config = savc;
+              if (rxpin == 3 and txpin == 1) ClaimSerial();
+
             } else {
               fvar = -2;
             }
@@ -3303,6 +3305,7 @@ chknext:
           }
           lp++;
           len = 0;
+          if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
           goto strexit;;
         }
         if (!strncmp(vname, "sc(", 3)) {
