@@ -3210,6 +3210,10 @@ chknext:
           if (glob_script_mem.sp) {
             fvar == -1;
           } else {
+            if (Is_gpio_used(rxpin) || Is_gpio_used(txpin)) {
+              AddLog(LOG_LEVEL_INFO, PSTR("warning: pins already used"));
+            }
+
             glob_script_mem.sp = new TasmotaSerial(rxpin, txpin, 1);
             if (glob_script_mem.sp) {
               uint32_t config;
@@ -3310,11 +3314,7 @@ chknext:
         }
         if (!strncmp(vname, "sc(", 3)) {
           fvar = -1;
-          if (glob_script_mem.sp) {
-            glob_script_mem.sp->flush();
-            delay(100);
-            delete(glob_script_mem.sp);
-            glob_script_mem.sp = 0;
+          if (Script_Close_Serial()) {
             fvar = 0;
           }
           lp+=4;
@@ -4659,6 +4659,9 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               // set pin mode
               lp = GetNumericArgument(lp + 6, OPER_EQU, &fvar, 0);
               int8_t pinnr = fvar;
+              if (Is_gpio_used(pinnr)) {
+                AddLog(LOG_LEVEL_INFO, PSTR("warning: pins already used"));
+              }
               SCRIPT_SKIP_SPACES
               uint8_t mode = 0;
               if ((*lp=='I') || (*lp=='O') || (*lp=='P')) {
@@ -5161,6 +5164,25 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
     return -1;
 }
 
+#ifdef USE_SCRIPT_SERIAL
+bool Script_Close_Serial() {
+  if (glob_script_mem.sp) {
+    glob_script_mem.sp->flush();
+    delay(100);
+    delete(glob_script_mem.sp);
+    glob_script_mem.sp = 0;
+    return true;
+  }
+  return false;
+}
+#endif //USE_SCRIPT_SERIAL
+
+bool Is_gpio_used(uint8_t gpiopin) {
+  if ((gpiopin < nitems(TasmotaGlobal.gpio_pin)) && (TasmotaGlobal.gpio_pin[gpiopin] > 0)) {
+    return true;
+  }
+  return false;
+}
 
 void ScripterEvery100ms(void) {
   static uint8_t xsns_index = 0;
@@ -5643,6 +5665,10 @@ void SaveScriptEnd(void) {
       AddLog(LOG_LEVEL_INFO, PSTR("script init error: %d"), res);
       return;
     }
+
+#ifdef USE_SCRIPT_SERIAL
+    Script_Close_Serial();
+#endif
 
     Run_Scripter(">B\n", 3, 0);
     Run_Scripter(">BS", 3, 0);
