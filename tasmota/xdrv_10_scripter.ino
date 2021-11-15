@@ -3195,7 +3195,7 @@ chknext:
           SCRIPT_SKIP_SPACES
           lp = GetNumericArgument(lp, OPER_EQU, &br, gv);
           SCRIPT_SKIP_SPACES
-          uint32_t sconfig = SERIAL_8N1;
+          uint32_t sconfig = TS_SERIAL_8N1;
           if (*lp!=')') {
             // serial options, must be 3 chars 8N1, 7E2 etc
             uint8_t bits = *lp++ & 0xf;
