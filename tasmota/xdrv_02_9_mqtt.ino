@@ -216,6 +216,12 @@ void MqttInit(void) {
     tlsClient = new BearSSL::WiFiClientSecure_light(1024,1024);
 #endif
 
+#ifdef USE_MQTT_AWS_IOT_LIGHT
+    if (443 == Settings->mqtt_port) {
+      static const char * alpn_mqtt = "mqtt";   // needs to be static
+      tlsClient->setALPN(&alpn_mqtt, 1);         // need to set alpn to 'mqtt' for AWS IoT
+    }
+#endif
 #ifdef USE_MQTT_AWS_IOT
     loadTlsDir();   // load key and certificate data from Flash
     if ((nullptr != AWS_IoT_Private_Key) && (nullptr != AWS_IoT_Client_Certificate)) {
@@ -1883,7 +1889,7 @@ void HandleMqttConfiguration(void)
     SettingsText(SET_MQTT_HOST),
     Settings->mqtt_port,
 #ifdef USE_MQTT_TLS
-    Mqtt.mqtt_tls ? PSTR(" checked") : "",      // SetOption102 - Enable MQTT TLS
+    Mqtt.mqtt_tls ? PSTR(" checked") : "",      // SetOption103 - Enable MQTT TLS
 #endif // USE_MQTT_TLS
     Format(str, PSTR(MQTT_CLIENT_ID), sizeof(str)), PSTR(MQTT_CLIENT_ID), SettingsText(SET_MQTT_CLIENT));
   WSContentSend_P(HTTP_FORM_MQTT2,
@@ -1905,8 +1911,8 @@ void MqttSaveSettings(void) {
   cmnd += AddWebCommand(PSTR(D_CMND_TOPIC), PSTR("mt"), PSTR("1"));
   cmnd += AddWebCommand(PSTR(D_CMND_FULLTOPIC), PSTR("mf"), PSTR("1"));
 #ifdef USE_MQTT_TLS
-  cmnd += F(";" D_CMND_SO "102 ");
-  cmnd += Webserver->hasArg(F("b3"));  // SetOption102 - Enable MQTT TLS
+  cmnd += F(";" D_CMND_SO "103 ");
+  cmnd += Webserver->hasArg(F("b3"));  // SetOption103 - Enable MQTT TLS
 #endif
   ExecuteWebCommand((char*)cmnd.c_str());
 }

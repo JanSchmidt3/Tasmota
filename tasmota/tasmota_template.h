@@ -176,7 +176,6 @@ enum UserSelectablePins {
   GPIO_BL0942_RX,                      // BL0942 Serial interface
   GPIO_HM330X_SET,                     // HM330X SET pin (sleep when low)
   GPIO_HEARTBEAT, GPIO_HEARTBEAT_INV,
-  GPIO_CC1101_CS,
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -373,7 +372,6 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_BL0942_RX "|"
   D_SENSOR_HM330X_SET "|"
   D_SENSOR_HEARTBEAT "|" D_SENSOR_HEARTBEAT "_i|"
-  D_SENSOR_CC1101_CS "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -640,9 +638,6 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #ifdef USE_TFMINIPLUS
   AGPIO(GPIO_TFMINIPLUS_TX),      // TFmini Plus TX pin
   AGPIO(GPIO_TFMINIPLUS_RX),      // TFmini Plus RX pin
-#endif
-#ifdef USE_MORITZ
-  AGPIO(GPIO_CC1101_CS),
 #endif
 
 /*-------------------------------------------------------------------------------------------*\
@@ -1081,11 +1076,11 @@ const char PINS_WEMOS[] PROGMEM = "IOTXIORXIOIOFLFLFLFLFLFLIOIOIOIOIOIOIOIOIOIOI
 
 typedef struct MYIO {
   uint16_t      io[MAX_GPIO_PIN];
-} myio;                         // ESP8266: 18 * 2 = 36 bytes / ESP32: 40 * 2 = 80 bytes / ESP32-C3: 22 * 2 = 44 bytes
+} myio;                         // ESP8266: 18*2 = 36 bytes / ESP32: 40*2 = 80 bytes / ESP32-C3: 22*2 = 44 bytes / ESP32-S2: 47*2 = 94 bytes
 
 typedef struct MYCFGIO {
   uint16_t      io[MAX_USER_PINS];
-} mycfgio;                      // ESP8266: 14 * 2 = 28 bytes / ESP32: 36 * 2 = 72 bytes / ESP32-C3: 22 * 2 = 44 bytes
+} mycfgio;                      // ESP8266: 14*2 = 28 bytes / ESP32: 36*2 = 72 bytes / ESP32-C3: 22*2 = 44 bytes / ESP32-S2: 36*2 = 72 bytes
 
 #define GPIO_FLAG_USED       0  // Currently no flags used
 
@@ -1112,9 +1107,9 @@ typedef union {
 } gpio_flag;                    // 2 bytes
 
 typedef struct MYTMPLT {
-  mycfgio      gp;              // 28 / 72 / 44 bytes
+  mycfgio      gp;              // 28 / 72 / 44 / 72 bytes
   gpio_flag    flag;            // 2 bytes
-} mytmplt;                      // 30 / 74 / 46 bytes
+} mytmplt;                      // 30 / 74 / 46 / 74 bytes
 
 //********************************************************************************************
 

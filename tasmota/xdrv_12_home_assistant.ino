@@ -1,18 +1,14 @@
 /*
   xdrv_12_home_assistant.ino - home assistant support for Tasmota
-
   Copyright (C) 2021  Erik Montnemery, Federico Leoni and Theo Arends
-
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
-
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -131,6 +127,24 @@ const char HASS_DISCOVER_SHUTTER_POS[] PROGMEM =
   "\"pos_clsd\":0,"
   "\"pos_open\":100,"
   "\"set_pos_t\":\"%s%d\"";                       // cmnd/%topic%/ShutterPosition1
+
+const char HASS_DISCOVER_SHUTTER_TILT[] PROGMEM =
+ ",\"tilt_cmd_t\":\"%s%d\","           // cmnd/%topic%/ShutterTilt1
+ "\"tilt_opnd_val\":%d,"
+ "\"tilt_clsd_val\":%d";
+
+/*
+"tilt_clsd_val": "tilt_closed_value",
+"tilt_cmd_t": "tilt_command_topic",
+"tilt_cmd_tpl": "tilt_command_template",
+"tilt_inv_stat": "tilt_invert_state",
+"tilt_max": "tilt_max",
+"tilt_min": "tilt_min",
+"tilt_opnd_val": "tilt_opened_value",
+"tilt_opt": "tilt_optimistic",
+"tilt_status_t": "tilt_status_topic",
+"tilt_status_tpl": "tilt_status_template",
+*/
 
 const char HASS_DISCOVER_SENSOR_HASS_STATUS[] PROGMEM =
   ",\"json_attr_t\":\"%s\","
@@ -259,12 +273,11 @@ void HassDiscoverMessage(void) {
 #ifdef USE_SHUTTER
       if (Settings->flag3.shutter_mode) {
         for (uint32_t k = 0; k < MAX_SHUTTERS; k++) {
-          if (0 == Settings->shutter_startrelay[k]) {
-            break;
+          if (Settings->shutter_startrelay[k] > 0) {
+            Shutter[Settings->shutter_startrelay[k]-1] = Shutter[Settings->shutter_startrelay[k]] = 1;
           } else {
-            if (Settings->shutter_startrelay[k] > 0 && Settings->shutter_startrelay[k] <= MAX_SHUTTER_RELAYS) {
-              Shutter[Settings->shutter_startrelay[k]-1] = Shutter[Settings->shutter_startrelay[k]] = 1;
-            }
+            // terminate loop at first INVALID Settings->shutter_startrelay[i].
+            break;
           }
         }
       }
@@ -441,7 +454,7 @@ void HAssAnnounceRelayLight(void)
   uint8_t TuyaRel = 0;
   uint8_t TuyaRelInv = 0;
   uint8_t TuyaDim = 0;
-  uint8_t shutter_mask = 0;
+  power_t shutter_mask = 0;
 
   #ifdef ESP8266
         if (PWM_DIMMER == TasmotaGlobal.module_type ) { PwmMod = true; } //
@@ -463,9 +476,12 @@ void HAssAnnounceRelayLight(void)
 #ifdef USE_SHUTTER
   if (Settings->flag3.shutter_mode) {
     for (uint32_t i = 0; i < MAX_SHUTTERS; i++) {
-      if (Settings->shutter_startrelay[i] > 0 && Settings->shutter_startrelay[i] <= MAX_SHUTTER_RELAYS) {
+      if (Settings->shutter_startrelay[i] > 0 ) {
         bitSet(shutter_mask, Settings->shutter_startrelay[i] -1);
         bitSet(shutter_mask, Settings->shutter_startrelay[i]);
+      } else {
+        // terminate loop at first INVALID Settings->shutter_startrelay[i].
+        break;
       }
     }
   }
@@ -503,7 +519,7 @@ void HAssAnnounceRelayLight(void)
 
     if (bitRead(shutter_mask, i-1)) {
       // suppress shutter relays
-#ifdef USE_LIGHT      
+#ifdef USE_LIGHT
     } else if ((i < Light.device) && !RelayX) {
       err_flag = true;
       AddLog(LOG_LEVEL_ERROR, PSTR("%s"), kHAssError2);
@@ -1003,7 +1019,7 @@ void HAssAnnounceShutters(void)
     snprintf_P(unique_id, sizeof(unique_id), PSTR("%06X_SHT_%d"), ESP_getChipId(), i + 1);
     snprintf_P(stopic, sizeof(stopic), PSTR(HOME_ASSISTANT_DISCOVERY_PREFIX "/cover/%s/config"), unique_id);
 
-    if (Settings->flag.hass_discovery && Settings->flag3.shutter_mode && Settings->shutter_startrelay[i] > 0 && Settings->shutter_startrelay[i] <= MAX_SHUTTER_RELAYS) {
+    if (Settings->flag.hass_discovery && Settings->flag3.shutter_mode && Settings->shutter_startrelay[i] > 0) {
        ShowTopic = 0; // Show the new generated topic
       if (i > MAX_FRIENDLYNAMES) {
         snprintf_P(stemp1, sizeof(stemp1), PSTR("%s Shutter %d"), SettingsText(SET_DEVICENAME), i + 1);
@@ -1022,9 +1038,15 @@ void HAssAnnounceShutters(void)
       GetTopic_P(stemp1, STAT, TasmotaGlobal.mqtt_topic, PSTR("SHUTTER"));
       GetTopic_P(stemp2, CMND, TasmotaGlobal.mqtt_topic, PSTR("ShutterPosition"));
       TryResponseAppend_P(HASS_DISCOVER_SHUTTER_POS, stemp1, i + 1, stemp2, i + 1);
-
+      
+      GetTopic_P(stemp1, CMND, TasmotaGlobal.mqtt_topic, PSTR("ShutterTilt"));
+      TryResponseAppend_P(HASS_DISCOVER_SHUTTER_TILT, stemp1, i + 1, Settings->shutter_tilt_config[3][i], Settings->shutter_tilt_config[4][i]);
+      
       TryResponseAppend_P(HASS_DISCOVER_DEVICE_INFO_SHORT, unique_id, ESP_getChipId());
       TryResponseAppend_P(PSTR("}"));
+    } else {
+      // terminate loop at first INVALID Settings->shutter_startrelay[i].
+      break;
     }
 
     TasmotaGlobal.masterlog_level = ShowTopic;

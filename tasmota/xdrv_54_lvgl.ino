@@ -364,9 +364,6 @@ extern "C" {
  * display ecosystem.
  ************************************************************/
 
-Renderer *Init_uDisplay(const char *desc, int8_t cs);
-
-
 void start_lvgl(const char * uconfig);
 void start_lvgl(const char * uconfig) {
 
@@ -377,7 +374,7 @@ void start_lvgl(const char * uconfig) {
 
   if (!renderer || uconfig) {
 #ifdef USE_UNIVERSAL_DISPLAY    // TODO - we will probably support only UNIV_DISPLAY
-    renderer  = Init_uDisplay((char*)uconfig, -1);
+    renderer  = Init_uDisplay((char*)uconfig);
     if (!renderer) return;
 #else
     return;
@@ -401,6 +398,9 @@ void start_lvgl(const char * uconfig) {
   // Set the default background color of the display
   // This is normally overriden by an opaque screen on top
 #ifdef USE_BERRY
+  // By default set the display color to black and opacity to 100%
+  lv_disp_set_bg_color(NULL, lv_color_from_uint32(USE_LVGL_BG_DEFAULT));
+  lv_disp_set_bg_opa(NULL, LV_OPA_COVER);
   lv_obj_set_style_bg_color(lv_scr_act(), lv_color_from_uint32(USE_LVGL_BG_DEFAULT), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, LV_PART_MAIN | LV_STATE_DEFAULT);
 

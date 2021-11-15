@@ -236,7 +236,7 @@ static void smart_outlet_thread_entry(void *p)
     }
 }
 
-int32_t homekit_main()
+void homekit_main()
 {
     /* Create the application thread */
     xTaskCreate(smart_outlet_thread_entry, SMART_OUTLET_TASK_NAME, SMART_OUTLET_TASK_STACKSIZE,
