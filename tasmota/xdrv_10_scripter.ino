@@ -205,6 +205,7 @@ void alt_eeprom_readBytes(uint32_t adr, uint32_t len, uint8_t *buf) {
 
 #endif // LITTLEFS_SCRIPT_SIZE
 
+#include <TasmotaSerial.h>
 
 #ifdef TESLA_POWERWALL
 #include "powerwall.h"
@@ -439,6 +440,9 @@ struct SCRIPT_MEM {
     bool homekit_running = false;
 #endif // USE_HOMEKIT
     uint32_t epoch_offset = EPOCH_OFFSET;
+#ifdef USE_SCRIPT_SERIAL
+    TasmotaSerial *sp;
+#endif
 } glob_script_mem;
 
 
@@ -3181,6 +3185,140 @@ chknext:
           goto exit;
         }
 #endif //USE_SML_M
+
+#ifdef USE_SCRIPT_SERIAL
+        if (!strncmp(vname, "so(", 3)) {
+          float rxpin, txpin, br;
+          lp = GetNumericArgument(lp + 3, OPER_EQU, &rxpin, gv);
+          SCRIPT_SKIP_SPACES
+          lp = GetNumericArgument(lp, OPER_EQU, &txpin, gv);
+          SCRIPT_SKIP_SPACES
+          lp = GetNumericArgument(lp, OPER_EQU, &br, gv);
+          SCRIPT_SKIP_SPACES
+          uint32_t sconfig = SERIAL_8N1;
+          if (*lp!=')') {
+            // serial options, must be 3 chars 8N1, 7E2 etc
+            uint8_t bits = *lp++ & 0xf;
+            uint8_t parity = 0;
+            if (*lp == 'E') parity = 1;
+            if (*lp == 'O') parity = 2;
+            lp++;
+            uint8_t stopb = (*lp++ & 0x3) - 1;
+            sconfig = (bits - 5) + (parity * 8) + stopb * 4;
+          }
+          fvar= -1;
+          if (glob_script_mem.sp) {
+            fvar == -1;
+          } else {
+            glob_script_mem.sp = new TasmotaSerial(rxpin, txpin, 1);
+            if (glob_script_mem.sp) {
+              uint32_t config;
+#ifdef ESP8266
+              config = pgm_read_byte(kTasmotaSerialConfig + sconfig));
+#endif  // ESP8266
+
+#ifdef ESP32
+              config = pgm_read_dword(kTasmotaSerialConfig + sconfig);
+#endif // ESP32
+              fvar = glob_script_mem.sp->begin(br, config);
+              uint32_t savc = Settings->serial_config;
+              Settings->serial_config = sconfig;
+              AddLog(LOG_LEVEL_INFO, PSTR("Serial port set to %s %d bit/s at rx=%d tx=%d"), GetSerialConfig().c_str(), (uint32_t)br,  (uint32_t)rxpin, (uint32_t)txpin);
+              Settings->serial_config = savc;
+            } else {
+              fvar = -2;
+            }
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "sw(", 3)) {
+          char str[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            glob_script_mem.sp->write(str, strlen(str));
+            fvar = 0;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "swb(", 4)) {
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            glob_script_mem.sp->write(fvar);
+            fvar = 0;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "sa(", 3)) {
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            fvar = glob_script_mem.sp->available();
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "sr(", 3)) {
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            fvar = glob_script_mem.sp->available();
+            if (fvar > 0) {
+              fvar = glob_script_mem.sp->read();
+            }
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "sp(", 3)) {
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            fvar = glob_script_mem.sp->available();
+            if (fvar > 0) {
+              fvar = glob_script_mem.sp->peek();
+            }
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "srs(", 4)) {
+          char str[SCRIPT_MAXSSIZE];
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            for (uint8_t index = 0; index < sizeof(str) - 1; index++) {
+              if (!glob_script_mem.sp->available()) {
+                str[index] = 0;
+                break;
+              }
+              str[index] = glob_script_mem.sp->read();
+            }
+          }
+          lp++;
+          len = 0;
+          goto strexit;;
+        }
+        if (!strncmp(vname, "sc(", 3)) {
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            glob_script_mem.sp->flush();
+            delay(100);
+            delete(glob_script_mem.sp);
+            glob_script_mem.sp = 0;
+            fvar = 0;
+          }
+          lp+=4;
+          len = 0;
+          goto exit;
+        }
+#endif //USE_SCRIPT_SERIAL
         break;
       case 't':
         if (!strncmp(vname, "time", 4)) {
