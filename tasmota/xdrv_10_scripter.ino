@@ -3214,7 +3214,7 @@ chknext:
             if (glob_script_mem.sp) {
               uint32_t config;
 #ifdef ESP8266
-              config = pgm_read_byte(kTasmotaSerialConfig + sconfig));
+              config = pgm_read_byte(kTasmotaSerialConfig + sconfig);
 #endif  // ESP8266
 
 #ifdef ESP32
@@ -3249,7 +3249,7 @@ chknext:
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
           fvar = -1;
           if (glob_script_mem.sp) {
-            glob_script_mem.sp->write(fvar);
+            glob_script_mem.sp->write((uint8_t)fvar);
             fvar = 0;
           }
           lp++;
@@ -3291,11 +3291,11 @@ chknext:
         }
         if (!strncmp(vname, "srs(", 4)) {
           char str[SCRIPT_MAXSSIZE];
+          memset(str, 0, sizeof(str));
           fvar = -1;
           if (glob_script_mem.sp) {
             for (uint8_t index = 0; index < sizeof(str) - 1; index++) {
               if (!glob_script_mem.sp->available()) {
-                str[index] = 0;
                 break;
               }
               str[index] = glob_script_mem.sp->read();
