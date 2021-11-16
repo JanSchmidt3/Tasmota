@@ -97,7 +97,7 @@ FT5206_found = false;
 M5EPD47_touchp = new GT911();
 
 if (ESP_OK == M5EPD47_touchp->begin(&Wire1, 36)) {
-    I2cSetActiveFound(M5EPD47_address, "GT911");
+    I2cSetActiveFound(M5EPD47_address, "GT911", 1);
     FT5206_found = true;
   }
 }

@@ -34,6 +34,7 @@
 
 #define SHT3X_MAX_SENSORS   3
 
+
 const char kShtTypes[] PROGMEM = "SHT3X|SHT3X|SHTC3";
 uint8_t sht3x_addresses[] = { SHT3X_ADDR_GND, SHT3X_ADDR_VDD, SHTC3_ADDR };
 
@@ -80,27 +81,18 @@ bool Sht3xRead(float &t, float &h, uint8_t sht3x_address)
 
 void Sht3xDetect(void)
 {
-#if defined(ESP32) && defined(USE_M5EPD47)
-  sht3x_wire = &Wire1;
-#else
-  sht3x_wire = &Wire;
-#endif
+  sht3x_wire = 0;
+
   for (uint32_t i = 0; i < SHT3X_MAX_SENSORS; i++) {
-#if defined(ESP32) && defined(USE_M5EPD47)
-    if (!I2cSetDevice(sht3x_addresses[i],1)) { continue; }
-#else
-    if (!I2cSetDevice(sht3x_addresses[i])) { continue; }
-#endif
+    TwoWire *wire = I2C_Check_Device(sht3x_addresses[i]);
+    if (!wire) { continue; }
+    sht3x_wire = wire;
     float t;
     float h;
     if (Sht3xRead(t, h, sht3x_addresses[i])) {
       sht3x_sensors[sht3x_count].address = sht3x_addresses[i];
       GetTextIndexed(sht3x_sensors[sht3x_count].types, sizeof(sht3x_sensors[sht3x_count].types), i, kShtTypes);
-#if defined(ESP32) && defined(USE_M5EPD47)
-      I2cSetActiveFound(sht3x_sensors[sht3x_count].address, sht3x_sensors[sht3x_count].types, 1);
-#else
-      I2cSetActiveFound(sht3x_sensors[sht3x_count].address, sht3x_sensors[sht3x_count].types);
-#endif
+      I2cSetActiveFound(sht3x_wire, sht3x_sensors[sht3x_count].address, sht3x_sensors[sht3x_count].types);
       sht3x_count++;
     }
   }

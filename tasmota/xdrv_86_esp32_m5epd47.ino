@@ -83,7 +83,9 @@ void M5EPDRtcInit(void) {
 }
 
 void M5EPDModuleInit(void) {
-  I2c2Begin(21, 22, 400000);
+  if (!TasmotaGlobal.i2c_enabled_2) {
+    I2c2Begin(21, 22, 400000);
+  }
   M5EPD_globs.m5epd.begin();
   delay(100);
   AddLog(LOG_LEVEL_INFO, PSTR("DRV: M5 E-Paper 4.7"));
