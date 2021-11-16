@@ -631,7 +631,7 @@ void DisplayText(void)
                           srot = Settings->display_rotate;
                           Settings->display_rotate = rot;
                         }
-                        renderer = Init_uDisplay(fdesc, -1);
+                        renderer = Init_uDisplay(fdesc);
                         if (rot >= 0) {
                           Settings->display_rotate = srot;
                         }
