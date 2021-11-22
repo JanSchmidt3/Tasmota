@@ -3296,11 +3296,11 @@ chknext:
           goto exit;
         }
         if (!strncmp(vname, "sr(", 4)) {
-          char str[SCRIPT_MAXSSIZE];
-          memset(str, 0, sizeof(str));
+          char str[glob_script_mem.max_ssize];
+          memset(str, 0, glob_script_mem.max_ssize);
           fvar = -1;
           if (glob_script_mem.sp) {
-            for (uint8_t index = 0; index < sizeof(str) - 1; index++) {
+            for (uint8_t index = 0; index < glob_script_mem.max_ssize - 1; index++) {
               if (!glob_script_mem.sp->available()) {
                 break;
               }
