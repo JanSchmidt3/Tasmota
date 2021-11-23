@@ -3206,6 +3206,12 @@ chknext:
             uint8_t stopb = (*lp++ & 0x3) - 1;
             sconfig = (bits - 5) + (parity * 8) + stopb * 4;
           }
+          SCRIPT_SKIP_SPACES
+          // check for rec buffer
+          float rxbsiz = 128;
+          if (*lp!=')') {
+              lp = GetNumericArgument(lp, OPER_EQU, &rxbsiz, gv);
+          }
           fvar= -1;
           if (glob_script_mem.sp) {
             fvar == -1;
@@ -3214,7 +3220,8 @@ chknext:
               AddLog(LOG_LEVEL_INFO, PSTR("warning: pins already used"));
             }
 
-            glob_script_mem.sp = new TasmotaSerial(rxpin, txpin, 1);
+            glob_script_mem.sp = new TasmotaSerial(rxpin, txpin, 1, 0, rxbsiz);
+
             if (glob_script_mem.sp) {
               uint32_t config;
 #ifdef ESP8266
@@ -3226,8 +3233,10 @@ chknext:
 #endif // ESP32
               fvar = glob_script_mem.sp->begin(br, config);
               uint32_t savc = Settings->serial_config;
+              //setRxBufferSize(TMSBSIZ);
+
               Settings->serial_config = sconfig;
-              AddLog(LOG_LEVEL_INFO, PSTR("Serial port set to %s %d bit/s at rx=%d tx=%d"), GetSerialConfig().c_str(), (uint32_t)br,  (uint32_t)rxpin, (uint32_t)txpin);
+              AddLog(LOG_LEVEL_INFO, PSTR("Serial port set to %s %d bit/s at rx=%d tx=%d rbu=%d"), GetSerialConfig().c_str(), (uint32_t)br,  (uint32_t)rxpin, (uint32_t)txpin, (uint32_t)rxbsiz);
               Settings->serial_config = savc;
               if (rxpin == 3 and txpin == 1) ClaimSerial();
 
@@ -3295,16 +3304,25 @@ chknext:
           len = 0;
           goto exit;
         }
-        if (!strncmp(vname, "sr(", 4)) {
+        if (!strncmp(vname, "sr(", 3)) {
           char str[glob_script_mem.max_ssize];
           memset(str, 0, glob_script_mem.max_ssize);
+          lp += 3;
+          uint8_t runt = 0;
+          if (*lp != ')') {
+            // read until
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
+            runt = fvar;
+          }
           fvar = -1;
           if (glob_script_mem.sp) {
             for (uint8_t index = 0; index < glob_script_mem.max_ssize - 1; index++) {
               if (!glob_script_mem.sp->available()) {
                 break;
               }
-              str[index] = glob_script_mem.sp->read();
+              uint8_t iob = glob_script_mem.sp->read();
+              if (iob == runt) { break; }
+              str[index] = iob;
             }
           }
           lp++;
