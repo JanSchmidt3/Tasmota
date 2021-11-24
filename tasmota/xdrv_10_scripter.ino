@@ -3305,8 +3305,9 @@ chknext:
           goto exit;
         }
         if (!strncmp(vname, "sr(", 3)) {
-          char str[glob_script_mem.max_ssize];
-          memset(str, 0, glob_script_mem.max_ssize);
+          uint16_t size = glob_script_mem.max_ssize;
+          char str[size];
+          memset(str, 0, size);
           lp += 3;
           uint8_t runt = 0;
           if (*lp != ')') {
@@ -3315,19 +3316,25 @@ chknext:
             runt = fvar;
           }
           fvar = -1;
+          uint8_t flg = 0;
           if (glob_script_mem.sp) {
-            for (uint8_t index = 0; index < glob_script_mem.max_ssize - 1; index++) {
+            for (uint16_t index index = 0; index < (size - 1); index++) {
               if (!glob_script_mem.sp->available()) {
+                flg = 1;
                 break;
               }
               uint8_t iob = glob_script_mem.sp->read();
-              if (iob == runt) { break; }
+              if (iob == runt) {
+                flg = 2;
+                break;
+              }
               str[index] = iob;
             }
           }
+          //AddLog(LOG_LEVEL_INFO, PSTR(">>: %d - %d - %d - %s"), runt, flg, index, str);
           lp++;
           len = 0;
-          if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
+          if (sp) strlcpy(sp, str, size);
           goto strexit;;
         }
         if (!strncmp(vname, "sc(", 3)) {
