@@ -3318,7 +3318,7 @@ chknext:
           fvar = -1;
           uint8_t flg = 0;
           if (glob_script_mem.sp) {
-            for (uint16_t index index = 0; index < (size - 1); index++) {
+            for (uint16_t index = 0; index < (size - 1); index++) {
               if (!glob_script_mem.sp->available()) {
                 flg = 1;
                 break;
