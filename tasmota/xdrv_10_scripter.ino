@@ -2595,6 +2595,23 @@ chknext:
 #endif
         break;
       case 'i':
+        if (!strncmp(vname, "ins(", 4)) {
+          char s1[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 4, OPER_EQU, s1, 0);
+          SCRIPT_SKIP_SPACES
+          char s2[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp, OPER_EQU, s2, 0);
+          SCRIPT_SKIP_SPACES
+          char *cp = strstr(s1, s2);
+          if (cp) {
+            fvar = ((uint32_t)cp - (uint32_t)s1);
+          } else {
+            fvar = -1;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
         if (!strncmp(vname, "int(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           fvar = floor(fvar);
