@@ -8613,6 +8613,10 @@ int32_t retval = 0;
     case 7:
       retval = Settings->timer[index].arm;
       break;
+    case 8:
+      retval = Settings->flag3.timers_enable;
+      break;
+
   }
   return retval;
 }
