@@ -1163,20 +1163,20 @@ float *Get_MFAddr(uint8_t index, uint16_t *len, uint16_t *ipos) {
 
 char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp, struct GVARS *gv);
 
-
-float *get_array_by_name(char *name, uint16_t *alen) {
+char *get_array_by_name(char *lp, float **fp, uint16_t *alen) {
   struct T_INDEX ind;
   uint8_t vtype;
-  isvar(name, &vtype, &ind, 0, 0, 0);
+  lp = isvar(lp, &vtype, &ind, 0, 0, 0);
   if (vtype==VAR_NV) return 0;
   if (vtype&STYPE) return 0;
   uint16_t index = glob_script_mem.type[ind.index].index;
 
   if (glob_script_mem.type[ind.index].bits.is_filter) {
     float *fa = Get_MFAddr(index, alen, 0);
-    return fa;
+    *fp=fa;
+    return lp;
   }
-  return 0;
+  return lp;
 }
 
 float Get_MFVal(uint8_t index, int16_t bind) {
@@ -1831,6 +1831,32 @@ chknext:
           len = 0;
           goto exit;
         }
+        if (!strncmp(vname, "acp(", 4)) {
+          lp += 4;
+          SCRIPT_SKIP_SPACES
+          uint16_t alend;
+          fvar = -1;
+          toLogEOL("a1",lp);
+          float *fpd;
+          lp = get_array_by_name(lp, &fpd, &alend);
+          toLogEOL("a2",lp);
+          SCRIPT_SKIP_SPACES
+          uint16_t alens;
+          float *fps;
+          lp = get_array_by_name(lp, &fps, &alens);
+          toLogEOL("a3",lp);
+          SCRIPT_SKIP_SPACES
+          if (alend != alens) {
+            fvar = -1;
+          } else {
+            memcpy(fpd, fps, alend * sizeof(float));
+            fvar = 0;
+          }
+          AddLog(LOG_LEVEL_INFO, PSTR("acp: %d - %d - %d "), (uint32_t)fps, (uint32_t)fpd, alend);
+          lp++;
+          len = 0;
+          goto exit;
+        }
         break;
 
       case 'b':
@@ -2111,6 +2137,24 @@ chknext:
           len = 0;
           goto exit;
         }
+        if (!strncmp(vname, "fwb(", 4)) {
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          uint8_t buf[2];
+          buf[0] = fvar;
+          SCRIPT_SKIP_SPACES
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          uint8_t ind = fvar;
+          if (ind>=SFS_MAX) ind = SFS_MAX - 1;
+          if (glob_script_mem.file_flags[ind].is_open) {
+            fvar = glob_script_mem.files[ind].write(buf, 1);
+          } else {
+            fvar = 0;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+
         if (!strncmp(vname, "fr(", 3)) {
           struct T_INDEX ind;
           uint8_t vtype;
@@ -2181,6 +2225,51 @@ chknext:
           lp++;
           strlcpy(glob_script_mem.glob_snp + (sindex * glob_script_mem.max_ssize), str, glob_script_mem.max_ssize);
           fvar = index;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "frb(", 4)) {
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          uint8_t ind = fvar;
+          if (ind>=SFS_MAX) ind = SFS_MAX - 1;
+          if (glob_script_mem.file_flags[ind].is_open) {
+            uint8_t buf[2];
+            buf[0] = 0;
+            glob_script_mem.files[ind].read(buf, 1);
+            fvar = buf[0];
+          } else {
+            fvar = 0;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "fa(", 3)) {
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          uint8_t ind = fvar;
+          if (ind>=SFS_MAX) ind = SFS_MAX - 1;
+          if (glob_script_mem.file_flags[ind].is_open) {
+            fvar = glob_script_mem.files[ind].available();
+          } else {
+            fvar = -1;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        if (!strncmp(vname, "fs(", 3)) {
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          uint8_t ind = fvar;
+          SCRIPT_SKIP_SPACES
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          if (ind>=SFS_MAX) ind = SFS_MAX - 1;
+          if (glob_script_mem.file_flags[ind].is_open) {
+            fvar = glob_script_mem.files[ind].seek(fvar, fs::SeekMode::SeekCur);
+          } else {
+            fvar = -1;
+          }
+          lp++;
           len = 0;
           goto exit;
         }
@@ -2304,6 +2393,12 @@ chknext:
 
           while (*lp==' ') lp++;
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          uint8_t append = 0;
+          if (*lp=='a') {
+            lp++;
+            append = 1;
+          }
           uint8_t index = fvar;
           if (index>=SFS_MAX) index = SFS_MAX - 1;
           if (glob_script_mem.file_flags[index].is_open) {
@@ -2316,7 +2411,11 @@ chknext:
               if (cnt < (len - 1)) {
                 strcat(dstr,"\t");
               } else {
-                strcat(dstr,"\n");
+                if (!append) {
+                  strcat(dstr,"\n");
+                } else {
+                  strcat(dstr,"\t");
+                }
               }
               glob_script_mem.files[index].print(dstr);
             }
@@ -2344,24 +2443,31 @@ chknext:
           while (*lp==' ') lp++;
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           uint8_t find = fvar;
+          SCRIPT_SKIP_SPACES
+
           if (find>=SFS_MAX) find = SFS_MAX - 1;
           char str[glob_script_mem.max_ssize + 1];
           if (glob_script_mem.file_flags[find].is_open) {
             uint16_t len = 0;
             float *fa = Get_MFAddr(glob_script_mem.type[ind.index].index, &len, 0);
-            char dstr[24];
-            for (uint32_t cnt = 0; cnt<len; cnt++) {
-              uint8_t index = 0;
+            uint8_t first = 0;
+            for (uint32_t cnt = 0; cnt < len; cnt++) {
+              uint8_t slen = 0;
               char *cp = str;
+              *cp = 0;
               while (glob_script_mem.files[find].available()) {
                 uint8_t buf[1];
                 glob_script_mem.files[find].read(buf,1);
                 if (buf[0]=='\t' || buf[0]==',' || buf[0]=='\n' || buf[0]=='\r') {
-                  break;
+                  // skip leading TAB
+                  if (first) {
+                    break;
+                  }
                 } else {
                   *cp++ = buf[0];
-                  index++;
-                  if (index>=glob_script_mem.max_ssize - 1) break;
+                  first = 1;
+                  slen++;
+                  if (slen >= glob_script_mem.max_ssize - 1) break;
                 }
               }
               *cp = 0;
