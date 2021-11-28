@@ -1173,10 +1173,26 @@ char *get_array_by_name(char *lp, float **fp, uint16_t *alen) {
 
   if (glob_script_mem.type[ind.index].bits.is_filter) {
     float *fa = Get_MFAddr(index, alen, 0);
-    *fp=fa;
+    *fp = fa;
     return lp;
   }
+  *fp = 0;
   return lp;
+}
+
+float *get_array_by_name(char *name, uint16_t *alen) {
+  struct T_INDEX ind;
+  uint8_t vtype;
+  isvar(name, &vtype, &ind, 0, 0, 0);
+  if (vtype==VAR_NV) return 0;
+  if (vtype&STYPE) return 0;
+  uint16_t index = glob_script_mem.type[ind.index].index;
+
+  if (glob_script_mem.type[ind.index].bits.is_filter) {
+    float *fa = Get_MFAddr(index, alen, 0);
+    return fa;
+  }
+  return 0;
 }
 
 float Get_MFVal(uint8_t index, int16_t bind) {
@@ -1836,15 +1852,12 @@ chknext:
           SCRIPT_SKIP_SPACES
           uint16_t alend;
           fvar = -1;
-          toLogEOL("a1",lp);
           float *fpd;
           lp = get_array_by_name(lp, &fpd, &alend);
-          toLogEOL("a2",lp);
           SCRIPT_SKIP_SPACES
           uint16_t alens;
           float *fps;
           lp = get_array_by_name(lp, &fps, &alens);
-          toLogEOL("a3",lp);
           SCRIPT_SKIP_SPACES
           if (alend != alens) {
             fvar = -1;
@@ -1852,7 +1865,6 @@ chknext:
             memcpy(fpd, fps, alend * sizeof(float));
             fvar = 0;
           }
-          AddLog(LOG_LEVEL_INFO, PSTR("acp: %d - %d - %d "), (uint32_t)fps, (uint32_t)fpd, alend);
           lp++;
           len = 0;
           goto exit;
