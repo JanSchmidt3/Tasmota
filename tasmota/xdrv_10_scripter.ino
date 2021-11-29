@@ -8209,18 +8209,22 @@ void script_task2(void *arg) {
     }
   }
 }
-uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, uint32_t prio) {
+uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_t prio) {
   //return 0;
   BaseType_t res = 0;
   if (core > 1) { core = 1; }
   if (num == 1) {
-    if (esp32_tasks[0].task_t) { vTaskDelete(esp32_tasks[0].task_t); }
-    res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[0].task_t, core);
-    esp32_tasks[0].task_timer = time;
+      if (esp32_tasks[0].task_t) { vTaskDelete(esp32_tasks[0].task_t); }
+      if (prio >= 0) {
+        res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[0].task_t, core);
+        esp32_tasks[0].task_timer = time;
+      }
   } else {
-    if (esp32_tasks[1].task_t) { vTaskDelete(esp32_tasks[1].task_t); }
-    res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[1].task_t, core);
-    esp32_tasks[1].task_timer = time;
+      if (esp32_tasks[1].task_t) { vTaskDelete(esp32_tasks[1].task_t); }
+      if (prio >= 0) {
+        res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[1].task_t, core);
+        esp32_tasks[1].task_timer = time;
+      }
   }
   return res;
 }
@@ -8245,7 +8249,7 @@ void script_task2(void *arg) {
   }
 }
 
-uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, uint32_t prio) {
+uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_t prio) {
   //return 0;
   BaseType_t res = 0;
   if (core > 1) { core = 1; }
