@@ -117,7 +117,7 @@ uint32_t DecodeLightId(uint32_t hue_id);
 #endif
 
 #ifndef MAX_EXT_ARRAYS
-#define MAX_EXT_ARRAYS 3
+#define MAX_EXT_ARRAYS 5
 #endif
 
 #ifndef STASK_PRIO
@@ -1346,7 +1346,7 @@ uint8_t secs;
 
 // assume 1. entry is timestamp, others are tab delimited values until LF
 // file refernece, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
-int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa) {
+int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, uint16_t accum) {
   if (!glob_script_mem.file_flags[fref].is_open) return -1;
   char rstr[32];
   uint8_t sindex = 0;
@@ -1356,6 +1356,13 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
   uint32_t tsto = tstamp2l(ts_to);
   uint16_t lines = 0;
   uint16_t rlines = 0;
+  double summs[MAX_EXT_ARRAYS];
+  uint16_t accnt[MAX_EXT_ARRAYS];
+  for (uint8_t cnt = 0; cnt < MAX_EXT_ARRAYS; cnt++) {
+     summs[cnt] = 0;
+     accnt[cnt] = 0;
+  }
+  if (accum == 0) accum = 1;
   while (glob_script_mem.files[fref].available()) {
     // scan through file
     uint8_t buff[2], iob;
@@ -1388,8 +1395,16 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
               if (a_len[curpos]) {
                 float fval = CharToFloat(rstr);
                 //AddLog(LOG_LEVEL_INFO, PSTR("cpos %d colp %d numa %d - %s %d"),curpos, colpos, a_len[curpos], rstr, (uint32_t)fval);
-                *a_ptr[curpos]++ = fval;
-                a_len[curpos]--;
+                summs[curpos] += fval;
+                accnt[curpos] += 1;
+                if (accnt[curpos] == accum) {
+                  accnt[curpos] = 0;
+                  *a_ptr[curpos]++ = summs[curpos] / accum;
+                  summs[curpos] = 0;
+                  a_len[curpos]--;
+                }
+              } else {
+                break;
               }
             }
           }
@@ -2517,6 +2532,10 @@ chknext:
           SCRIPT_SKIP_SPACES
           uint8_t coffs = fvar;
 
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          uint16_t accum = fvar;
+
           uint16_t a_len[MAX_EXT_ARRAYS];
           float *a_ptr[MAX_EXT_ARRAYS];
 
@@ -2530,7 +2549,7 @@ chknext:
             }
           }
           lp++;
-          fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index);
+          fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index, accum);
           len = 0;
           goto exit;
         }
