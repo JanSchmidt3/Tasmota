@@ -2391,33 +2391,26 @@ chknext:
         }
 
         if (!strncmp(vname, "fwa(", 4)) {
-          struct T_INDEX ind;
-          uint8_t vtype;
-          lp = isvar(lp + 4, &vtype, &ind, 0, 0, gv);
-          if (vtype!=VAR_NV && (vtype&STYPE)==0 && glob_script_mem.type[ind.index].bits.is_filter) {
-            // found array as result
-
-          } else {
-            // error
+          uint16_t alen;
+          float *fa;
+          lp = get_array_by_name(lp + 4, &fa, &alen);
+          if (!fa) {
             fvar = 0;
             goto exit;
           }
-
-          while (*lp==' ') lp++;
+          SCRIPT_SKIP_SPACES
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
           uint8_t append = 0;
-          if (*lp=='a') {
+          if (*lp == 'a') {
             lp++;
             append = 1;
           }
           uint8_t index = fvar;
-          if (index>=SFS_MAX) index = SFS_MAX - 1;
+          if (index >= SFS_MAX) index = SFS_MAX - 1;
           if (glob_script_mem.file_flags[index].is_open) {
-            uint16_t len = 0;
-            float *fa = Get_MFAddr(glob_script_mem.type[ind.index].index, &len, 0);
             char dstr[24];
-            for (uint32_t cnt = 0; cnt<len; cnt++) {
+            for (uint32_t cnt = 0; cnt < alen; cnt++) {
               dtostrfd(*fa, glob_script_mem.script_dprec, dstr);
               fa++;
               if (cnt < (len - 1)) {
@@ -2440,30 +2433,23 @@ chknext:
           goto exit;
         }
         if (!strncmp(vname, "fra(", 4)) {
-          struct T_INDEX ind;
-          uint8_t vtype;
-          lp = isvar(lp + 4, &vtype, &ind, 0, 0, gv);
-          if (vtype!=VAR_NV && (vtype&STYPE)==0 && glob_script_mem.type[ind.index].bits.is_filter) {
-            // found array as result
-
-          } else {
-            // error
+          uint16_t alen;
+          float *fa;
+          lp = get_array_by_name(lp + 4, &fa, &alen);
+          if (!fa) {
             fvar = 0;
             goto exit;
           }
-
-          while (*lp==' ') lp++;
+          SCRIPT_SKIP_SPACES
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           uint8_t find = fvar;
           SCRIPT_SKIP_SPACES
 
-          if (find>=SFS_MAX) find = SFS_MAX - 1;
+          if (find >= SFS_MAX) find = SFS_MAX - 1;
           char str[glob_script_mem.max_ssize + 1];
           if (glob_script_mem.file_flags[find].is_open) {
-            uint16_t len = 0;
-            float *fa = Get_MFAddr(glob_script_mem.type[ind.index].index, &len, 0);
             uint8_t first = 0;
-            for (uint32_t cnt = 0; cnt < len; cnt++) {
+            for (uint32_t cnt = 0; cnt < alen; cnt++) {
               uint8_t slen = 0;
               char *cp = str;
               *cp = 0;
