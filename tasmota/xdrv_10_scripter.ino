@@ -116,6 +116,9 @@ uint32_t DecodeLightId(uint32_t hue_id);
 #define UNISHOXRSIZE 2560
 #endif
 
+#ifndef MAX_EXT_ARRAYS
+#define MAX_EXT_ARRAYS 3
+#endif
 
 #ifndef STASK_PRIO
 #define STASK_PRIO 1
@@ -1297,6 +1300,108 @@ float DoMedian5(uint8_t index, float in) {
   return median_array(mf->buffer, MEDIAN_SIZE);
 }
 
+// convert tasmota time stamp to ul seconds
+uint32_t tstamp2l(char *ts) {
+uint16_t year;
+uint8_t month;
+uint8_t day;
+uint8_t hour;
+uint8_t mins;
+uint8_t secs;
+
+  if (strchr(ts, 'T')) {
+    // 2020-12-16T15:36:41
+    year = strtol(ts, &ts, 10);
+    if (year < 2020 || year > 2040) {
+      year = 2020;
+    }
+    year -= 2000;
+    ts++;
+    month = strtol(ts, &ts, 10);
+    ts++;
+    day = strtol(ts, &ts, 10);
+    ts++;
+    hour = strtol(ts, &ts, 10);
+    ts++;
+    mins = strtol(ts, &ts, 10);
+    ts++;
+    secs = strtol(ts, &ts, 10);
+  } else {
+    // german excel fromat 16.12.20 15:36
+    day = strtol(ts, &ts, 10);
+    ts++;
+    month = strtol(ts, &ts, 10);
+    ts++;
+    year = strtol(ts, &ts, 10);
+    ts++;
+    hour = strtol(ts, &ts, 10);
+    ts++;
+    mins = strtol(ts, &ts, 10);
+    secs = 0;
+  }
+  return (year*365*86400)+(month*31*86400)+(day*86400)+(hour*3600)+(mins*60)+secs;
+}
+
+// assume 1. entry is timestamp, others are tab delimited values until LF
+// file refernece, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
+int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa) {
+  if (!glob_script_mem.file_flags[fref].is_open) return -1;
+  char rstr[32];
+  uint8_t sindex = 0;
+  uint8_t colpos = 0;
+  uint8_t range = 0;
+  uint32_t tsfrom = tstamp2l(ts_from);
+  uint32_t tsto = tstamp2l(ts_to);
+  uint16_t lines = 0;
+  uint16_t rlines = 0;
+  while (glob_script_mem.files[fref].available()) {
+    // scan through file
+    uint8_t buff[2], iob;
+    glob_script_mem.files[fref].read(buff, 1);
+    iob = buff[0];
+    if (iob == '\t' || iob == '\n') {
+      rstr[sindex] = 0;
+      sindex = 0;
+      if (iob == '\n') {
+        colpos = 0;
+        lines ++;
+      } else {
+        if (colpos == 0) {
+          // timestamp  2020-12-16T15:36:41
+          // decompose timestamps
+          uint32_t cts = tstamp2l(rstr);
+          if (cts > tsto) break;
+          if (cts >= tsfrom && cts <= tsto) {
+            // we want this range
+            range = 1;
+            rlines++;
+          } else {
+            range = 0;
+          }
+        } else {
+          // data columns
+          if (range) {
+            uint8_t curpos = colpos - coffs;
+
+            if (colpos >= coffs && curpos < numa) {
+              if (a_len[curpos]) {
+                float fval = CharToFloat(rstr);
+                //AddLog(LOG_LEVEL_INFO, PSTR("cpos %d colp %d numa %d - %s %d"),curpos, colpos, a_len[curpos], rstr, (uint32_t)fval);
+                *a_ptr[curpos]++ = fval;
+                a_len[curpos]--;
+              }
+            }
+          }
+        }
+        colpos++;
+      }
+    }
+    rstr[sindex] = iob;
+    sindex++;
+  }
+  return rlines;
+}
+
 #ifdef USE_LIGHT
 uint32_t HSVToRGB(uint16_t hue, uint8_t saturation, uint8_t value) {
 float r = 0, g = 0, b = 0;
@@ -2257,7 +2362,7 @@ chknext:
           goto exit;
         }
         if (!strncmp(vname, "fa(", 3)) {
-          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          lp = GetNumericArgument(lp + 3, OPER_EQU, &fvar, gv);
           uint8_t ind = fvar;
           if (ind>=SFS_MAX) ind = SFS_MAX - 1;
           if (glob_script_mem.file_flags[ind].is_open) {
@@ -2386,6 +2491,43 @@ chknext:
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           fvar = UfsInfo(fvar, 0);
           lp++;
+          len = 0;
+          goto exit;
+        }
+
+        if (!strncmp(vname, "fxt(", 4)) {
+          // extract from file
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          uint8_t fref = fvar;
+
+          //2020-12-16T14:30:00
+          char ts_from[24];
+          lp = GetStringArgument(lp, OPER_EQU, ts_from, 0);
+          SCRIPT_SKIP_SPACES
+
+          char ts_to[24];
+          lp = GetStringArgument(lp, OPER_EQU, ts_to, 0);
+          SCRIPT_SKIP_SPACES
+
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          uint8_t coffs = fvar;
+
+          uint16_t a_len[MAX_EXT_ARRAYS];
+          float *a_ptr[MAX_EXT_ARRAYS];
+
+          uint8_t index = 0;
+          while (index < MAX_EXT_ARRAYS) {
+            lp = get_array_by_name(lp, &a_ptr[index], &a_len[index]);
+            SCRIPT_SKIP_SPACES
+            index++;
+            if (*lp == ')' || *lp == '\n') {
+              break;
+            }
+          }
+          lp++;
+          fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index);
           len = 0;
           goto exit;
         }
