@@ -8213,18 +8213,16 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_
   //return 0;
   BaseType_t res = 0;
   if (core > 1) { core = 1; }
-  if (num == 1) {
-      if (esp32_tasks[0].task_t) { vTaskDelete(esp32_tasks[0].task_t); }
-      if (prio >= 0) {
-        res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[0].task_t, core);
-        esp32_tasks[0].task_timer = time;
-      }
-  } else {
-      if (esp32_tasks[1].task_t) { vTaskDelete(esp32_tasks[1].task_t); }
-      if (prio >= 0) {
-        res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[1].task_t, core);
-        esp32_tasks[1].task_timer = time;
-      }
+  if (num < 1) { num = 1; }
+  if (num > 2) { num = 2; }
+  num--;
+  if (esp32_tasks[num].task_t) {
+    vTaskDelete(esp32_tasks[num].task_t);
+    esp32_tasks[num].task_t = 0;
+  }
+  if (prio >= 0) {
+    res = xTaskCreatePinnedToCore(script_task1, num==0?"T1":"T2", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+    esp32_tasks[num].task_timer = time;
   }
   return res;
 }
