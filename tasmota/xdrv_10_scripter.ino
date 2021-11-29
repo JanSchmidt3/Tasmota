@@ -1300,6 +1300,8 @@ float DoMedian5(uint8_t index, float in) {
   return median_array(mf->buffer, MEDIAN_SIZE);
 }
 
+
+#ifdef USE_FEXTRACT
 // convert tasmota time stamp to ul seconds
 uint32_t tstamp2l(char *ts) {
 uint16_t year;
@@ -1382,7 +1384,6 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
           // data columns
           if (range) {
             uint8_t curpos = colpos - coffs;
-
             if (colpos >= coffs && curpos < numa) {
               if (a_len[curpos]) {
                 float fval = CharToFloat(rstr);
@@ -1401,6 +1402,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
   }
   return rlines;
 }
+#endif // USE_FEXTRACT
 
 #ifdef USE_LIGHT
 uint32_t HSVToRGB(uint16_t hue, uint8_t saturation, uint8_t value) {
@@ -2495,6 +2497,7 @@ chknext:
           goto exit;
         }
 
+#ifdef USE_FEXTRACT
         if (!strncmp(vname, "fxt(", 4)) {
           // extract from file
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
@@ -2531,7 +2534,7 @@ chknext:
           len = 0;
           goto exit;
         }
-
+#endif // USE_FEXTRACT
         if (!strncmp(vname, "fwa(", 4)) {
           uint16_t alen;
           float *fa;
