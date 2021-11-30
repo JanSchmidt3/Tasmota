@@ -1346,7 +1346,7 @@ uint8_t secs;
 
 // assume 1. entry is timestamp, others are tab delimited values until LF
 // file refernece, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
-int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, uint16_t accum) {
+int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, int16_t accum) {
   if (!glob_script_mem.file_flags[fref].is_open) return -1;
   char rstr[32];
   uint8_t sindex = 0;
@@ -1361,6 +1361,11 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
   for (uint8_t cnt = 0; cnt < MAX_EXT_ARRAYS; cnt++) {
      summs[cnt] = 0;
      accnt[cnt] = 0;
+  }
+  uint8_t dflg = 1;
+  if (accum < 0) {
+    dflg = 0;
+    accum = -accum;
   }
   if (accum == 0) accum = 1;
   while (glob_script_mem.files[fref].available()) {
@@ -1399,7 +1404,12 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
                 accnt[curpos] += 1;
                 if (accnt[curpos] == accum) {
                   accnt[curpos] = 0;
-                  *a_ptr[curpos]++ = summs[curpos] / accum;
+                  if (dflg) {
+                    *a_ptr[curpos]++ = summs[curpos] / accum;
+                  } else {
+                    *a_ptr[curpos]++ = summs[curpos];
+                  }
+
                   summs[curpos] = 0;
                   a_len[curpos]--;
                 }
@@ -2407,6 +2417,20 @@ chknext:
           len = 0;
           goto exit;
         }
+        if (!strncmp(vname, "fz(", 3)) {
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          uint8_t ind = fvar;
+          if (ind>=SFS_MAX) ind = SFS_MAX - 1;
+          if (glob_script_mem.file_flags[ind].is_open) {
+            fvar = glob_script_mem.files[ind].size();
+          } else {
+            fvar = -1;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
         if (!strncmp(vname, "fd(", 3)) {
           char str[glob_script_mem.max_ssize + 1];
           lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
@@ -2534,7 +2558,7 @@ chknext:
 
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
-          uint16_t accum = fvar;
+          int16_t accum = fvar;
 
           uint16_t a_len[MAX_EXT_ARRAYS];
           float *a_ptr[MAX_EXT_ARRAYS];
