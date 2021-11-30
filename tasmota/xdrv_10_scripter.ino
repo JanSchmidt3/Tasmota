@@ -1348,7 +1348,6 @@ uint8_t secs;
 // file refernece, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
 int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, int16_t accum) {
   if (!glob_script_mem.file_flags[fref].is_open) return -1;
-  AddLog(LOG_LEVEL_INFO, PSTR("numa %d"),numa);
   char rstr[32];
   uint8_t sindex = 0;
   uint8_t colpos = 0;
@@ -1357,9 +1356,9 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
   uint32_t tsto = tstamp2l(ts_to);
   uint16_t lines = 0;
   uint16_t rlines = 0;
-  double summs[MAX_EXT_ARRAYS];
-  uint16_t accnt[MAX_EXT_ARRAYS];
-  for (uint8_t cnt = 0; cnt < MAX_EXT_ARRAYS; cnt++) {
+  float summs[numa];
+  uint16_t accnt[numa];
+  for (uint8_t cnt = 0; cnt < numa; cnt++) {
      summs[cnt] = 0;
      accnt[cnt] = 0;
   }
