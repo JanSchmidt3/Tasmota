@@ -1399,14 +1399,13 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
                 summs[curpos] += fval;
                 accnt[curpos] += 1;
                 if (accnt[curpos] == accum) {
-                  accnt[curpos] = 0;
                   if (dflg) {
                     *a_ptr[curpos]++ = summs[curpos] / accum;
                   } else {
                     *a_ptr[curpos]++ = summs[curpos];
                   }
-
                   summs[curpos] = 0;
+                  accnt[curpos] = 0;
                   a_len[curpos]--;
                 }
               } else {
