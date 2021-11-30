@@ -1348,6 +1348,7 @@ uint8_t secs;
 // file refernece, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
 int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, int16_t accum) {
   if (!glob_script_mem.file_flags[fref].is_open) return -1;
+  AddLog(LOG_LEVEL_INFO, PSTR("numa %d"),numa);
   char rstr[32];
   uint8_t sindex = 0;
   uint8_t colpos = 0;
@@ -1373,14 +1374,10 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
     uint8_t buff[2], iob;
     glob_script_mem.files[fref].read(buff, 1);
     iob = buff[0];
-    if (iob == '\t' || iob == '\n') {
+    if (iob == '\t' || iob == ',' || iob == '\n') {
       rstr[sindex] = 0;
       sindex = 0;
-      if (iob == '\n') {
-        colpos = 0;
-        lines ++;
-      } else {
-        if (colpos == 0) {
+      if (colpos == 0) {
           // timestamp  2020-12-16T15:36:41
           // decompose timestamps
           uint32_t cts = tstamp2l(rstr);
@@ -1392,7 +1389,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
           } else {
             range = 0;
           }
-        } else {
+      } else {
           // data columns
           if (range) {
             uint8_t curpos = colpos - coffs;
@@ -1418,8 +1415,11 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t cof
               }
             }
           }
-        }
-        colpos++;
+      }
+      colpos++;
+      if (iob == '\n') {
+          colpos = 0;
+          lines ++;
       }
     }
     rstr[sindex] = iob;
