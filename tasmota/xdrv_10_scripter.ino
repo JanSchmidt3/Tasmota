@@ -8183,7 +8183,7 @@ int32_t url2file(uint8_t fref, char *url) {
   if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
     WiFiClient *stream = http.getStreamPtr();
     int32_t len = http.getSize();
-    if (len < 0) len = 999999;
+    if (len < 0) len = 99999999;
     uint8_t buff[512];
     while (http.connected() && (len > 0)) {
       size_t size = stream->available();
