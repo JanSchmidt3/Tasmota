@@ -875,9 +875,10 @@ void DisplayText(void)
             break;
           case 's':
             // size sx
-            if (renderer) renderer->setTextSize(*cp&7);
+            var = atoiv(cp, &temp);
+            if (renderer) renderer->setTextSize(temp);
             //else DisplaySetSize(*cp&3);
-            cp += 1;
+            cp+=var;
             break;
           case 'f':
             // font sx
