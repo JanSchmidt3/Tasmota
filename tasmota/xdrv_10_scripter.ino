@@ -2401,6 +2401,16 @@ chknext:
           ufsp->remove(str);
           goto nfuncexit;
         }
+        if (!strncmp(vname, "frw(", 4)) {
+          // read file from web
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          char url[SCRIPT_MAXSSIZE];
+          lp = ForceStringVar(lp, url);
+          SCRIPT_SKIP_SPACES
+          fvar = url2file(fvar, url);
+          goto nfuncexit;
+        }
 #if defined(ESP32) && defined(USE_WEBCAM)
         if (!strncmp(vname, "fwp(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
@@ -8159,6 +8169,40 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_
 
 #endif // USE_SCRIPT_TASK
 #endif // ESP32
+
+// read http content to file
+int32_t url2file(uint8_t fref, char *url) {
+  WiFiClient http_client;
+  HTTPClient http;
+  int32_t httpCode = 0;
+  char hbuff[128];
+  strcpy(hbuff, "http://");
+  strcat(hbuff, url);
+  http.begin(http_client, UrlEncode(hbuff));
+  httpCode = http.GET();
+  if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+    WiFiClient *stream = http.getStreamPtr();
+    int32_t len = http.getSize();
+    if (len < 0) len = 999999;
+    uint8_t buff[512];
+    while (http.connected() && (len > 0)) {
+      size_t size = stream->available();
+      if (size) {
+        if (size > sizeof(buff)) {
+          size = sizeof(buff);
+        }
+        uint32_t read = stream->readBytes(buff, size);
+        glob_script_mem.files[fref].write(buff, read);
+        len -= read;
+      }
+      delayMicroseconds(1);
+    }
+  }
+  http.end();
+  http_client.stop();
+  return httpCode;
+}
+
 
 int32_t http_req(char *host, char *request) {
   WiFiClient http_client;
