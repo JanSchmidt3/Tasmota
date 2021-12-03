@@ -160,8 +160,8 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t disable_referer_chk : 1;      // bit 14 (v9.5.0.5)  - SetOption128 - (Web) Allow access without referer check
     uint32_t energy_phase : 1;             // bit 15 (v9.5.0.9)  - SetOption129 - (Energy) Show phase information
     uint32_t show_heap_with_timestamp : 1; // bit 16 (v9.5.0.9)  - SetOption130 - (Debug) Show heap with logging timestamp
-    uint32_t spare17 : 1;                  // bit 17
-    uint32_t spare18 : 1;                  // bit 18
+    uint32_t tuya_allow_dimmer_0 : 1;      // bit 17 (v10.0.0.3) - SetOption131 - (Tuya) Allow save dimmer = 0 receved by MCU
+    uint32_t tls_use_fingerprint : 1;      // bit 18 (v10.0.0.4) - SetOption132 - (TLS) use fingerprint validation instead of CA based
     uint32_t spare19 : 1;                  // bit 19
     uint32_t spare20 : 1;                  // bit 20
     uint32_t spare21 : 1;                  // bit 21
@@ -598,7 +598,8 @@ typedef struct {
 
   int8_t        shutter_tilt_config[5][MAX_SHUTTERS];  //508
   int8_t        shutter_tilt_pos[MAX_SHUTTERS];        //51C
-  uint8_t       free_520[12];              // 520
+  uint16_t      influxdb_period;           // 520
+  uint8_t       free_522[10];              // 522
 
   uint16_t      mqtt_keepalive;            // 52C
   uint16_t      mqtt_socket_timeout;       // 52E
@@ -739,8 +740,9 @@ typedef struct {
   uint16_t      shd_warmup_brightness;     // F5C
   uint8_t       shd_warmup_time;           // F5E
   uint8_t       tcp_config;                // F5F
+  uint8_t       light_step_pixels;				 // F60
 
-  uint8_t       free_f60[60];              // F60 - Decrement if adding new Setting variables just above and below
+  uint8_t       free_f59[59];              // F61 - Decrement if adding new Setting variables just above and below
 
   // Only 32 bit boundary variables below
 

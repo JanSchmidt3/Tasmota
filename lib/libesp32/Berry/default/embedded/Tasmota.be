@@ -24,10 +24,11 @@ class Tasmota
   var _cb
   var wire1
   var wire2
-  var cmd_res     # store the command result, nil if disables, true if capture enabled, contains return value
-  var global      # mapping to TasmotaGlobal
+  var cmd_res         # store the command result, nil if disables, true if capture enabled, contains return value
+  var global          # mapping to TasmotaGlobal
   var settings
-  var wd          # last working directory
+  var wd              # when load() is called, `tasmota.wd` contains the name of the archive. Ex: `/M5StickC.autoconf#`
+  var _debug_present  # is `import debug` present?
 
   def init()
     # instanciate the mapping object to TasmotaGlobal
@@ -38,6 +39,12 @@ class Tasmota
       self.settings = ctypes_bytes_dyn(introspect.toptr(settings_addr), self._settings_def)
     end
     self.wd = ""
+    self._debug_present = false
+    try
+      import debug
+      self._debug_present = true
+    except .. 
+    end
   end
 
   # create a specific sub-class for rules: pattern(string) -> closure
@@ -323,6 +330,25 @@ class Tasmota
   end
 
   def load(f)
+    # embedded functions
+    # puth_path: adds the current archive to sys.path
+    def push_path(p)
+      import sys
+      var path = sys.path()
+      if path.find(p) == nil  # append only if it's not already there
+        path.push(p)
+      end
+    end
+    # pop_path: removes the path
+    def pop_path(p)
+      import sys
+      var path = sys.path()
+      var idx = path.find(p)
+      if idx != nil
+        path.remove(idx)
+      end
+    end
+
     import string
     import path
 
@@ -375,6 +401,7 @@ class Tasmota
     # recall the working directory
     if f_archive
       self.wd = f_prefix + "#"
+      push_path(self.wd)
     else
       self.wd = ""
     end
@@ -391,12 +418,17 @@ class Tasmota
     # call the compiled code
     c()
     # call successfuls
+
+    # remove path prefix
+    if f_archive
+      pop_path(f_prefix + "#")
+    end
+
     return true
   end
 
   def event(event_type, cmd, idx, payload, raw)
     import introspect
-    import debug
     import string
     if event_type=='every_50ms' self.run_deferred() end  #- first run deferred events -#
 
@@ -417,7 +449,10 @@ class Tasmota
             if done break end
           except .. as e,m
             print(string.format("BRY: Exception> '%s' - %s", e, m))
-            debug.traceback()
+            if self._debug_present
+              import debug
+              debug.traceback()
+            end
           end
         end
         i += 1
@@ -509,4 +544,52 @@ class Tasmota
     raise "internal_error", "No callback available"
   end
 
+  #- convert hue/sat to rgb -#
+  #- hue:int in range 0..359 -#
+  #- sat:int (optional) in range 0..255 -#
+  #- returns int: 0xRRGGBB -#
+  def hs2rgb(hue,sat)
+    if sat == nil  sat = 255 end
+    var r = 255   # default to white
+    var b = 255
+    var g = 255
+    # we take brightness at 100%, brightness should be set separately
+    hue = hue % 360   # normalize to 0..359
+  
+    if sat > 0
+      var i = hue / 60    # quadrant 0..5
+      var f = hue % 60    # 0..59
+      var p = 255 - sat
+      var q = tasmota.scale_uint(f, 0, 60, 255, p)    # 0..59
+      var t = tasmota.scale_uint(f, 0, 60, p, 255)
+  
+      if   i == 0
+        # r = 255
+        g = t
+        b = p
+      elif i == 1
+        r = q
+        # g = 255
+        b = p
+      elif i == 2
+        r = p
+        #g = 255
+        b = t
+      elif i == 3
+        r = p
+        g = q
+        #b = 255
+      elif i == 4
+        r = t
+        g = p
+        #b = 255
+      else
+        #r = 255
+        g = p
+        b = q
+      end
+    end
+  
+    return (r << 16) | (g << 8) | b
+  end
 end
