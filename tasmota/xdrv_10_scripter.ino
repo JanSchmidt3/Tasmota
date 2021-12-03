@@ -6941,6 +6941,7 @@ char buff[512];
     if (renderer && renderer->framebuffer) {
       uint8_t *bp = renderer->framebuffer;
       uint8_t *lbuf = (uint8_t*)special_malloc(Settings->display_width * 3 + 2);
+      memset(lbuf, 0, Settings->display_width * 3);
       if (!lbuf) return;
       uint8_t dmflg = 0;
       if (renderer->disp_bpp & 0x40) dmflg = 1;
@@ -6979,11 +6980,12 @@ char buff[512];
                   } else {
                     pixel = *bp & 0xf;
                   }
+                  pixel *= 15;
+                  *--lbp = pixel;
+                  *--lbp = pixel;
+                  *--lbp = pixel;
                 }
-                pixel *= 15;
-                *--lbp = pixel;
-                *--lbp = pixel;
-                *--lbp = pixel;
+
               } else {
                 for (uint32_t cnt = 0; cnt <= 1; cnt++) {
                   if (!(cnt & 1)) {
