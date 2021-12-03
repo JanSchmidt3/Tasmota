@@ -2401,6 +2401,7 @@ chknext:
           ufsp->remove(str);
           goto nfuncexit;
         }
+#ifdef USE_UFILESYS
         if (!strncmp(vname, "frw(", 4)) {
           // read file from web
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
@@ -2411,6 +2412,7 @@ chknext:
           fvar = url2file(fvar, url);
           goto nfuncexit;
         }
+#endif
 #if defined(ESP32) && defined(USE_WEBCAM)
         if (!strncmp(vname, "fwp(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
@@ -8172,6 +8174,8 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_
 #endif // USE_SCRIPT_TASK
 #endif // ESP32
 
+
+#ifdef USE_UFILESYS
 // read http content to file
 int32_t url2file(uint8_t fref, char *url) {
   WiFiClient http_client;
@@ -8204,7 +8208,7 @@ int32_t url2file(uint8_t fref, char *url) {
   http_client.stop();
   return httpCode;
 }
-
+#endif
 
 int32_t http_req(char *host, char *request) {
   WiFiClient http_client;
