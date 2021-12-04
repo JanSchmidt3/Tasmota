@@ -2783,6 +2783,24 @@ chknext:
           fvar = strtol(str, NULL, 16);
           goto nfuncexit;
         }
+        if (!strncmp(vname, "hf(", 3)) {
+          char str[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
+          if (strlen(str) != 8) {
+            fvar = -1;
+          } else {
+            uint8_t *ucp = (uint8_t*)&fvar;
+            char substr[3];
+            char *cp = str;
+            for (uint32_t cnt = 0; cnt < 4; cnt++) {
+              substr[0] = *cp++;
+              substr[1] = *cp++;
+              substr[2] = 0;
+              *ucp++ = strtol(substr, NULL, 16);
+            }
+          }
+          goto nfuncexit;
+        }
         if (!strncmp(vname, "http(", 5)) {
           char host[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 5, OPER_EQU, host, 0);
