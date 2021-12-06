@@ -1555,16 +1555,22 @@ void SML_Decode(uint8_t index) {
             double vdiff = meter_vars[ind - 1] - dvalues[dindex];
             dvalues[dindex] = meter_vars[ind - 1];
             double dres = (double)360000.0 * vdiff / ((double)dtime / 10000.0);
-#ifdef USE_SML_MEDIAN_FILTER
-            if (meter_desc_p[mindex].flag & 16) {
-              meter_vars[vindex] = sml_median(&sml_mf[vindex], dres);
-            } else {
-              meter_vars[vindex] = dres;
-            }
-#else
-            meter_vars[vindex] = dres;
-#endif
 
+            dvalid[vindex] += 1;
+
+            if (dvalid[vindex] >= 2) {
+              // differece is only valid after 2. calculation
+              dvalid[vindex] = 2;
+#ifdef USE_SML_MEDIAN_FILTER
+              if (meter_desc_p[mindex].flag & 16) {
+                meter_vars[vindex] = sml_median(&sml_mf[vindex], dres);
+              } else {
+                meter_vars[vindex] = dres;
+              }
+#else
+              meter_vars[vindex] = dres;
+#endif
+            }
             mp=strchr(mp,'@');
             if (mp) {
               mp++;
@@ -1573,7 +1579,7 @@ void SML_Decode(uint8_t index) {
               SML_Immediate_MQTT((const char*)mp, vindex, mindex);
             }
           }
-          dvalid[vindex] = 1;
+          //dvalid[vindex] = 1;
           dindex++;
         }
       } else if (*mp == 'h') {
