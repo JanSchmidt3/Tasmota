@@ -212,8 +212,8 @@ int8_t cs;
         replacepin(&cp, Pin(GPIO_SPI_CLK, 1));
         replacepin(&cp, Pin(GPIO_SPI_MOSI, 1));
         replacepin(&cp, Pin(GPIO_SPI_DC, 1));
-        replacepin(&cp, Pin(GPIO_BACKLIGHT, 1));
-        replacepin(&cp, Pin(GPIO_OLED_RESET, 1));
+        replacepin(&cp, Pin(GPIO_BACKLIGHT));
+        replacepin(&cp, Pin(GPIO_OLED_RESET));
         replacepin(&cp, Pin(GPIO_SPI_MISO, 1));
       } else {
         // soft spi pins
@@ -320,7 +320,7 @@ int8_t cs;
 
     Settings->display_width = renderer->width();
     Settings->display_height = renderer->height();
-    
+
     ApplyDisplayDimmer();
 
 #ifdef SHOW_SPLASH
