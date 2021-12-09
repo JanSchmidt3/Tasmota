@@ -8210,11 +8210,17 @@ int32_t url2file(uint8_t fref, char *url) {
   WiFiClient http_client;
   HTTPClient http;
   int32_t httpCode = 0;
-  char hbuff[128];
-  strcpy(hbuff, "http://");
-  strcat(hbuff, url);
-  http.begin(http_client, UrlEncode(hbuff));
-  httpCode = http.GET();
+  String weburl = "http://"+UrlEncode(url);
+  for (uint32_t retry = 0; retry < 15; retry++) {
+    http.begin(http_client, weburl);
+    httpCode = http.GET();
+    if (httpCode > 0) {
+      break;
+    }
+  }
+  if (httpCode < 0) {
+    AddLog(LOG_LEVEL_INFO,PSTR("HTTP error %d = %s"), httpCode, http.errorToString(httpCode).c_str());
+  }
   if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
     WiFiClient *stream = http.getStreamPtr();
     int32_t len = http.getSize();
