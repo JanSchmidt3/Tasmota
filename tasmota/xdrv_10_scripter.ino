@@ -1346,12 +1346,29 @@ uint8_t secs;
 
 // assume 1. entry is timestamp, others are tab delimited values until LF
 // file refernece, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
-int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, uint8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, int16_t accum) {
+int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, int16_t accum) {
   if (!glob_script_mem.file_flags[fref].is_open) return -1;
   char rstr[32];
   uint8_t sindex = 0;
   uint8_t colpos = 0;
   uint8_t range = 0;
+  if (coffs < 0) {
+    // seek to last entry
+    uint32_t cpos = glob_script_mem.files[fref].size();
+    if (cpos > 1) cpos-=2;
+    // now seek back to last line
+    while (cpos) {
+      glob_script_mem.files[fref].seek(cpos, SeekSet);
+      uint8_t buff[2], iob;
+      glob_script_mem.files[fref].read(buff, 1);
+      iob = buff[0];
+      if (iob == '\n') {
+        break;
+      }
+      cpos--;
+    }
+    return cpos;
+  }
   uint32_t tsfrom = tstamp2l(ts_from);
   uint32_t tsto = tstamp2l(ts_to);
   uint16_t lines = 0;
@@ -2377,7 +2394,7 @@ chknext:
           SCRIPT_SKIP_SPACES
           if (ind>=SFS_MAX) ind = SFS_MAX - 1;
           if (glob_script_mem.file_flags[ind].is_open) {
-            fvar = glob_script_mem.files[ind].seek(fvar, fs::SeekMode::SeekCur);
+            fvar = glob_script_mem.files[ind].seek(fvar, SeekSet);
           } else {
             fvar = -1;
           }
