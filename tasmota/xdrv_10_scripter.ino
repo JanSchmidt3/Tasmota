@@ -7606,6 +7606,28 @@ void ScriptWebShow(char mc) {
             while (*lp) {
               SCRIPT_SKIP_SPACES
               lp = GetStringArgument(lp, OPER_EQU, pulabel, 0);
+              if (index == 1 && pulabel[0] == '#') {
+                // number range
+                char *cp = &pulabel[1];
+                uint8_t from = strtol(cp, &cp, 10);
+                uint8_t to = from;
+                if (*cp == '-') {
+                  cp++;
+                  to = strtol(cp, &cp, 10);
+                }
+                for (uint32_t cnt = from; cnt <= to; cnt++) {
+                  sprintf(pulabel, "%d", cnt);
+                  if (val == index) {
+                    cp = (char*)"selected";
+                  } else {
+                    cp = (char*)"";
+                  }
+                  WSContentSend_PD(SCRIPT_MSG_PULLDOWNb, cp, index, pulabel);
+                  index++;
+                }
+                break;
+              }
+
               char *cp;
               if (val == index) {
                 cp = (char*)"selected";
