@@ -7283,7 +7283,7 @@ const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
   "</select></div>";
 
 const char SCRIPT_MSG_TEXTINP[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div><center><label><b>%s</b><input type='%s'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
   "<div><center><label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:200px' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
@@ -7706,11 +7706,16 @@ void ScriptWebShow(char mc) {
             SCRIPT_SKIP_SPACES
             char label[SCRIPT_MAXSSIZE];
             lp = GetStringArgument(lp, OPER_EQU, label, 0);
-
+            SCRIPT_SKIP_SPACES
+            char type[SCRIPT_MAXSSIZE];
+            strcpy(type, "text");
+            if (*lp != ')') {
+              lp = GetStringArgument(lp, OPER_EQU, type, 0);
+            }
             char vname[16];
             ScriptGetVarname(vname, slp, sizeof(vname));
 
-            WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, vname);
+            WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, type, str, vname);
 
           } else if (!strncmp(lin, "nm(", 3)) {
             char *lp = lin;
