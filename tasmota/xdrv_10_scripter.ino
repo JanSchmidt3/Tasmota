@@ -1353,19 +1353,32 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
   uint8_t colpos = 0;
   uint8_t range = 0;
   if (coffs < 0) {
-    // seek to last entry
     uint32_t cpos = glob_script_mem.files[fref].size();
-    if (cpos > 1) cpos-=2;
-    // now seek back to last line
-    while (cpos) {
-      glob_script_mem.files[fref].seek(cpos, SeekSet);
-      uint8_t buff[2], iob;
-      glob_script_mem.files[fref].read(buff, 1);
-      iob = buff[0];
-      if (iob == '\n') {
-        break;
+    if (coffs == -1) {
+      // seek to last entry
+      if (cpos > 1) cpos-=2;
+      // now seek back to last line
+      while (cpos) {
+        glob_script_mem.files[fref].seek(cpos, SeekSet);
+        uint8_t buff[2], iob;
+        glob_script_mem.files[fref].read(buff, 1);
+        iob = buff[0];
+        if (iob == '\n') {
+          break;
+        }
+        cpos--;
       }
-      cpos--;
+    } else {
+      // seek to line 2
+      for (uint32_t cp = 0; cp < cpos; cp++) {
+        uint8_t buff[2], iob;
+        glob_script_mem.files[fref].read(buff, 1);
+        iob = buff[0];
+        if (iob == '\n') {
+          cpos = cp + 1;
+          break;
+        }
+      }
     }
     return cpos;
   }
