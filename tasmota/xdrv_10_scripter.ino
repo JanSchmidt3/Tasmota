@@ -7327,7 +7327,7 @@ const char SCRIPT_MSG_TEXTINP[] PROGMEM =
   "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_TEXTINP_U[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
