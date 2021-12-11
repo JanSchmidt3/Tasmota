@@ -7327,7 +7327,7 @@ const char SCRIPT_MSG_CHKBOX[] PROGMEM =
   "<div><center><label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_PULLDOWNa[] PROGMEM =
-  "<div><label for=\'pu_%s\'>%s:</label><select style='width:200px' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
+  "<div><center><label for=\'pu_%s\'>%s:</label><select style='width:200px' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
 const char SCRIPT_MSG_PULLDOWNb[] PROGMEM =
   "<option %s value='%d'>%s</option>";
 const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
@@ -7587,6 +7587,19 @@ void ScriptWebShow(char mc) {
             optflg = 0;
           }
           // check for input elements
+          // prescan for html tags
+          restart:
+          //if (*lp == 0 || *lp == SCRIPT_EOL)
+          if (*lin == '<') {
+            char *cp = strchr(lin, '>');
+            if (cp) {
+              char svd = *(cp + 1);
+              *(cp + 1) = 0;
+              WSContentSend_PD("%s", lin);
+              *(cp + 1) = svd;
+              lin = cp + 1;
+            }
+          }
           if (!strncmp(lin, "sl(", 3)) {
             // insert slider sl(min max var left mid right)
             char *lp = lin;
@@ -7779,7 +7792,8 @@ void ScriptWebShow(char mc) {
             } else {
               WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, vname);
             }
-
+            lp++;
+            //goto restart;
 
           } else if (!strncmp(lin, "nm(", 3)) {
             char *lp = lin;
