@@ -1349,10 +1349,10 @@ uint32_t ts2ts(struct FE_TM *tm, char *ts) {
 }
 
 // convert time stamp format
-void cnvts(char *dst, char *src) {
+void cnvts(char *dst, char *src, uint8_t flg ) {
 struct FE_TM tm;
 
-  if (ts2ts(&tm, src) == 0) {
+  if (ts2ts(&tm, src) == 0 || flg == 1) {
     // was tsm format go to 16.12.20 15:36
     sprintf(dst, "%d.%d.%d %d:%02d", tm.day, tm.month, tm.year, tm.hour, tm.mins);
   } else {
@@ -2138,8 +2138,13 @@ chknext:
           char tsin[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, tsin, 0);
           SCRIPT_SKIP_SPACES
+          int8_t flg = -1;
+          if (*lp != ')') {
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+            flg = fvar;
+          }
           char tsout[SCRIPT_MAXSSIZE];
-          cnvts(tsout, tsin);
+          cnvts(tsout, tsin, flg);
           if (sp) strlcpy(sp, tsout, glob_script_mem.max_ssize);
           lp++;
           len = 0;
