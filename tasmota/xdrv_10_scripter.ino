@@ -1302,46 +1302,73 @@ float DoMedian5(uint8_t index, float in) {
 
 
 #ifdef USE_FEXTRACT
-// convert tasmota time stamp to ul seconds
-uint32_t tstamp2l(char *ts) {
-uint16_t year;
-uint8_t month;
-uint8_t day;
-uint8_t hour;
-uint8_t mins;
-uint8_t secs;
 
+struct FE_TM {
+  uint16_t year;
+  uint8_t month;
+  uint8_t day;
+  uint8_t hour;
+  uint8_t mins;
+  uint8_t secs;
+};
+
+uint32_t ts2ts(struct FE_TM *tm, char *ts) {
   if (strchr(ts, 'T')) {
     // 2020-12-16T15:36:41
-    year = strtol(ts, &ts, 10);
-    if (year < 2020 || year > 2040) {
-      year = 2020;
+    tm->year = strtol(ts, &ts, 10);
+    if (tm->year < 2020 || tm->year > 2040) {
+      tm->year = 2020;
     }
-    year -= 2000;
+    tm->year -= 2000;
     ts++;
-    month = strtol(ts, &ts, 10);
+    tm->month = strtol(ts, &ts, 10);
     ts++;
-    day = strtol(ts, &ts, 10);
+    tm->day = strtol(ts, &ts, 10);
     ts++;
-    hour = strtol(ts, &ts, 10);
+    tm->hour = strtol(ts, &ts, 10);
     ts++;
-    mins = strtol(ts, &ts, 10);
+    tm->mins = strtol(ts, &ts, 10);
     ts++;
-    secs = strtol(ts, &ts, 10);
+    tm->secs = strtol(ts, &ts, 10);
+    return 0;
   } else {
     // german excel fromat 16.12.20 15:36
-    day = strtol(ts, &ts, 10);
+    tm->day = strtol(ts, &ts, 10);
     ts++;
-    month = strtol(ts, &ts, 10);
+    tm->month = strtol(ts, &ts, 10);
     ts++;
-    year = strtol(ts, &ts, 10);
+    tm->year = strtol(ts, &ts, 10);
     ts++;
-    hour = strtol(ts, &ts, 10);
+    tm->hour = strtol(ts, &ts, 10);
     ts++;
-    mins = strtol(ts, &ts, 10);
-    secs = 0;
+    tm->mins = strtol(ts, &ts, 10);
+    tm->secs = 0;
+    return 1;
   }
-  return (year*365*86400)+(month*31*86400)+(day*86400)+(hour*3600)+(mins*60)+secs;
+  return 0;
+}
+
+// convert time stamp format
+void cnvts(char *dst, char *src) {
+struct FE_TM tm;
+
+  if (ts2ts(&tm, src) == 0) {
+    // was tsm format go to 16.12.20 15:36
+    sprintf(dst, "%d.%d.%d %d:%02d", tm.day, tm.month, tm.year, tm.hour, tm.mins);
+  } else {
+    // 2020-12-16T15:36:41
+    sprintf(dst, "%04d-%02d-%02dT%02d:%02d:%02d", tm.year + 2000, tm.month, tm.day, tm.hour, tm.mins, tm.secs);
+  }
+
+}
+
+// convert tasmota time stamp to ul seconds
+uint32_t tstamp2l(char *ts) {
+struct FE_TM tm;
+
+  ts2ts(&tm, ts);
+
+  return (tm.year*365*86400)+(tm.month*31*86400)+(tm.day*86400)+(tm.hour*3600)+(tm.mins*60)+tm.secs;
 }
 
 // assume 1. entry is timestamp, others are tab delimited values until LF
@@ -2106,6 +2133,20 @@ chknext:
           goto nfuncexit;
         }
 #endif
+#ifdef USE_FEXTRACT
+        if (!strncmp(vname, "cts(", 4)) {
+          char tsin[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 4, OPER_EQU, tsin, 0);
+          SCRIPT_SKIP_SPACES
+          char tsout[SCRIPT_MAXSSIZE];
+          cnvts(tsout, tsin);
+          if (sp) strlcpy(sp, tsout, glob_script_mem.max_ssize);
+          lp++;
+          len = 0;
+          goto strexit;
+        }
+#endif // USE_FEXTRACT
+
         break;
       case 'd':
         if (!strncmp(vname, "day", 3)) {
@@ -7283,7 +7324,11 @@ const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
   "</select></div>";
 
 const char SCRIPT_MSG_TEXTINP[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='%s'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+
+const char SCRIPT_MSG_TEXTINP_U[] PROGMEM =
+  "<div><center><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
   "<div><center><label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:200px' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
@@ -7706,16 +7751,25 @@ void ScriptWebShow(char mc) {
             SCRIPT_SKIP_SPACES
             char label[SCRIPT_MAXSSIZE];
             lp = GetStringArgument(lp, OPER_EQU, label, 0);
-            SCRIPT_SKIP_SPACES
-            char type[SCRIPT_MAXSSIZE];
-            strcpy(type, "text");
-            if (*lp != ')') {
-              lp = GetStringArgument(lp, OPER_EQU, type, 0);
-            }
             char vname[16];
             ScriptGetVarname(vname, slp, sizeof(vname));
+            SCRIPT_SKIP_SPACES
+            if (*lp != ')') {
+              char type[SCRIPT_MAXSSIZE];
+              lp = GetStringArgument(lp, OPER_EQU, type, 0);
+              SCRIPT_SKIP_SPACES
+              // also requires min max values
+              char min[SCRIPT_MAXSSIZE];
+              lp = GetStringArgument(lp, OPER_EQU, min, 0);
+              SCRIPT_SKIP_SPACES
+              char max[SCRIPT_MAXSSIZE];
+              lp = GetStringArgument(lp, OPER_EQU, max, 0);
+              SCRIPT_SKIP_SPACES
+              WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, label, type, str, min, max, vname);
+            } else {
+              WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, vname);
+            }
 
-            WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, type, str, vname);
 
           } else if (!strncmp(lin, "nm(", 3)) {
             char *lp = lin;
