@@ -1354,7 +1354,7 @@ struct FE_TM tm;
 
   if (ts2ts(&tm, src) == 0 || flg == 1) {
     // was tsm format go to 16.12.20 15:36
-    sprintf(dst, "%d.%d.%d %d:%02d", tm.day, tm.month, tm.year, tm.hour, tm.mins);
+    sprintf(dst, "%01d.%01d.%01d %01d:%02d", tm.day, tm.month, tm.year, tm.hour, tm.mins);
   } else {
     // 2020-12-16T15:36:41
     sprintf(dst, "%04d-%02d-%02dT%02d:%02d:%02d", tm.year + 2000, tm.month, tm.day, tm.hour, tm.mins, tm.secs);
@@ -1383,25 +1383,29 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
     uint32_t cpos = glob_script_mem.files[fref].size();
     if (coffs == -1) {
       // seek to last entry
-      if (cpos > 1) cpos-=2;
+      if (cpos > 1) cpos -= 2;
       // now seek back to last line
+      uint8_t lbuff[256];
+      uint8_t iob;
+      uint16_t index = sizeof(lbuff) -1;
+      glob_script_mem.files[fref].seek(cpos - sizeof(lbuff), SeekSet);
+      glob_script_mem.files[fref].read(lbuff, sizeof(lbuff));
       while (cpos) {
-        glob_script_mem.files[fref].seek(cpos, SeekSet);
-        uint8_t buff[2], iob;
-        glob_script_mem.files[fref].read(buff, 1);
-        iob = buff[0];
-        if (iob == '\n') {
+        iob = lbuff[index];
+        if (iob == '\n' || iob == '\r') {
           break;
         }
         cpos--;
+        index--;
       }
+      glob_script_mem.files[fref].seek(cpos, SeekSet);
     } else {
       // seek to line 2
       for (uint32_t cp = 0; cp < cpos; cp++) {
         uint8_t buff[2], iob;
         glob_script_mem.files[fref].read(buff, 1);
         iob = buff[0];
-        if (iob == '\n') {
+        if (iob == '\n' || iob == '\r') {
           cpos = cp + 1;
           break;
         }
@@ -1430,7 +1434,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
     uint8_t buff[2], iob;
     glob_script_mem.files[fref].read(buff, 1);
     iob = buff[0];
-    if (iob == '\t' || iob == ',' || iob == '\n') {
+    if (iob == '\t' || iob == ',' || iob == '\n' || iob == '\r') {
       rstr[sindex] = 0;
       sindex = 0;
       if (colpos == 0) {
@@ -1472,7 +1476,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
           }
       }
       colpos++;
-      if (iob == '\n') {
+      if (iob == '\n' || iob == '\r') {
           colpos = 0;
           lines ++;
       }
