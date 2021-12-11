@@ -1351,8 +1351,9 @@ uint32_t ts2ts(struct FE_TM *tm, char *ts) {
 // convert time stamp format
 void cnvts(char *dst, char *src, uint8_t flg ) {
 struct FE_TM tm;
+  uint8_t mode = ts2ts(&tm, src);
 
-  if (ts2ts(&tm, src) == 0 || flg == 1) {
+  if (flg == 1) {
     // was tsm format go to 16.12.20 15:36
     sprintf(dst, "%01d.%01d.%01d %01d:%02d", tm.day, tm.month, tm.year, tm.hour, tm.mins);
   } else {
