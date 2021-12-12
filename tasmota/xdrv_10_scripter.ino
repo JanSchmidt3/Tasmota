@@ -4103,9 +4103,10 @@ char *GetStringArgument(char *lp, uint8_t lastop, char *cp, struct GVARS *gv) {
   char *slp;
   struct T_INDEX ind;
   char str[SCRIPT_MAXSSIZE],str1[SCRIPT_MAXSSIZE];
+  while (*lp == ' ') { lp++; } // skip leading spaces
   while (1) {
-    lp=isvar(lp, &vtype, &ind, 0, str1, gv);
-    if (vtype!=STR_RES && !(vtype & STYPE)) {
+    lp = isvar(lp, &vtype, &ind, 0, str1, gv);
+    if (vtype != STR_RES && !(vtype & STYPE)) {
       // numeric type
       glob_script_mem.glob_error = 1;
       return lp;
@@ -4148,6 +4149,7 @@ uint8_t operand = 0;
 float fvar1,fvar;
 char *slp;
 uint8_t vtype;
+while (*lp == ' ') { lp++; } // skip leading spaces
 struct T_INDEX ind;
     while (1) {
         // get 1. value
@@ -7347,7 +7349,7 @@ const char SCRIPT_MSG_TEXTINP[] PROGMEM =
   "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_TEXTINP_U[] PROGMEM =
-  "<div><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div><center><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
@@ -7598,6 +7600,7 @@ void ScriptWebShow(char mc) {
           }
           // check for input elements
           // prescan for html tags
+          /*
           restart:
           //if (*lp == 0 || *lp == SCRIPT_EOL)
           if (*lin == '<') {
@@ -7609,7 +7612,8 @@ void ScriptWebShow(char mc) {
               *(cp + 1) = svd;
               lin = cp + 1;
             }
-          }
+          }*/
+
           if (!strncmp(lin, "sl(", 3)) {
             // insert slider sl(min max var left mid right)
             char *lp = lin;
