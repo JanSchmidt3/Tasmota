@@ -2167,6 +2167,16 @@ chknext:
           if (sp) strlcpy(sp, SettingsText(SET_DEVICENAME), glob_script_mem.max_ssize);
           goto strexit;
         }
+        if (!strncmp(vname, "dp(", 3)) {
+          lp = GetNumericArgument(lp + 3, OPER_EQU, &fvar, gv);
+          while (*lp==' ') lp++;
+          glob_script_mem.script_lzero = fvar;
+          lp = GetNumericArgument(lp , OPER_EQU, &fvar, gv);
+          while (*lp==' ') lp++;
+          glob_script_mem.script_dprec = fvar;
+          fvar = 0;
+          goto nfuncexit;
+        }
         break;
       case 'e':
         if (!strncmp(vname, "epoch", 5)) {
