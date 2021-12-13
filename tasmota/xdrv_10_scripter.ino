@@ -1448,9 +1448,11 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
   uint16_t rlines = 0;
   float summs[numa];
   uint16_t accnt[numa];
+  uint8_t mflg[numa];
   for (uint8_t cnt = 0; cnt < numa; cnt++) {
      summs[cnt] = 0;
      accnt[cnt] = 0;
+     mflg[cnt] = 0;
   }
   uint8_t dflg = 1;
   if (accum < 0) {
