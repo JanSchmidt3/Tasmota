@@ -1312,6 +1312,32 @@ struct FE_TM {
   uint8_t secs;
 };
 
+// timestamp math add days
+int32_t tso(char *src, int32_t days) {
+struct tm tmx;
+struct tm *tmp;
+struct FE_TM tm;
+  uint8_t mode = ts2ts(&tm, src);
+
+  tmx.tm_sec = tm.secs;
+  tmx.tm_min = tm.mins;
+  tmx.tm_hour = tm.hour;
+  tmx.tm_mon = tm.month - 1;
+  tmx.tm_year = tm.year + 100;
+  tmx.tm_mday = tm.day;
+  time_t tmd = mktime(&tmx);
+  tmd += days*(24*3600);
+  tmp = gmtime(&tmd);
+  tm.secs = tmp->tm_sec;
+  tm.mins = tmp->tm_min;
+  tm.hour = tmp->tm_hour;
+  tm.month = tmp->tm_mon + 1;
+  tm.year  = tmp->tm_year - 100;
+  tm.day = tmp->tm_mday;
+  tss2ts(&tm, src, mode);
+  return 0;
+}
+
 uint32_t ts2ts(struct FE_TM *tm, char *ts) {
   if (strchr(ts, 'T')) {
     // 2020-12-16T15:36:41
@@ -1348,19 +1374,21 @@ uint32_t ts2ts(struct FE_TM *tm, char *ts) {
   return 0;
 }
 
+void tss2ts(struct FE_TM *tm, char *dst, uint8_t mode) {
+  if (mode == 1) {
+    // was tsm format go to 16.12.20 15:36
+    sprintf(dst, "%01d.%01d.%01d %01d:%02d", tm->day, tm->month, tm->year, tm->hour, tm->mins);
+  } else {
+    // 2020-12-16T15:36:41
+    sprintf(dst, "%04d-%02d-%02dT%02d:%02d:%02d", tm->year + 2000, tm->month, tm->day, tm->hour, tm->mins, tm->secs);
+  }
+}
+
 // convert time stamp format
 void cnvts(char *dst, char *src, uint8_t flg ) {
 struct FE_TM tm;
   uint8_t mode = ts2ts(&tm, src);
-
-  if (flg == 1) {
-    // was tsm format go to 16.12.20 15:36
-    sprintf(dst, "%01d.%01d.%01d %01d:%02d", tm.day, tm.month, tm.year, tm.hour, tm.mins);
-  } else {
-    // 2020-12-16T15:36:41
-    sprintf(dst, "%04d-%02d-%02dT%02d:%02d:%02d", tm.year + 2000, tm.month, tm.day, tm.hour, tm.mins, tm.secs);
-  }
-
+  tss2ts(&tm, dst, flg);
 }
 
 // convert tasmota time stamp to ul seconds
@@ -3775,6 +3803,22 @@ chknext:
           SCRIPT_SKIP_SPACES
           fvar = get_tpars(index - 1, fvar);
           goto nfuncexit;
+        }
+#endif
+
+#ifdef USE_FEXTRACT
+        if (!strncmp(vname, "tso(", 4)) {
+          char str[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
+          fvar = -1;
+          SCRIPT_SKIP_SPACES
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          tso(str, fvar);
+          if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
+          lp++;
+          len = 0;
+          goto strexit;
         }
 #endif
         break;
