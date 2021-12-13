@@ -1468,7 +1468,19 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
     if (iob == '\t' || iob == ',' || iob == '\n' || iob == '\r') {
       rstr[sindex] = 0;
       sindex = 0;
-      if (colpos == 0) {
+      if (lines == 0) {
+        // header line, analye column names
+        if (colpos >= 1) {
+          uint8_t curpos = colpos - coffs;
+          char *tp = strstr(rstr, "_a");
+          if (tp) {
+            // mark absolute values, must evaluate difference
+            mflg[curpos] = 1;
+            AddLog(LOG_LEVEL_INFO, PSTR("cpos _a %d"),curpos);
+          }
+        }
+      } else {
+        if (colpos == 0) {
           // timestamp  2020-12-16T15:36:41
           // decompose timestamps
           uint32_t cts = tstamp2l(rstr);
@@ -1480,7 +1492,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
           } else {
             range = 0;
           }
-      } else {
+        } else {
           // data columns
           if (range) {
             uint8_t curpos = colpos - coffs;
@@ -1505,6 +1517,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
               }
             }
           }
+        }
       }
       colpos++;
       if (iob == '\n' || iob == '\r') {
