@@ -1447,12 +1447,14 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
   uint16_t lines = 0;
   uint16_t rlines = 0;
   float summs[numa];
+  float lastv[numa];
   uint16_t accnt[numa];
   uint8_t mflg[numa];
   for (uint8_t cnt = 0; cnt < numa; cnt++) {
      summs[cnt] = 0;
      accnt[cnt] = 0;
      mflg[cnt] = 0;
+     lastv[cnt] = 0;
   }
   uint8_t dflg = 1;
   if (accum < 0) {
@@ -1470,13 +1472,14 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
       sindex = 0;
       if (lines == 0) {
         // header line, analye column names
-        if (colpos >= 1) {
+        if (colpos >= 1 && colpos >= coffs) {
           uint8_t curpos = colpos - coffs;
-          char *tp = strstr(rstr, "_a");
-          if (tp) {
-            // mark absolute values, must evaluate difference
-            mflg[curpos] = 1;
-            AddLog(LOG_LEVEL_INFO, PSTR("cpos _a %d"),curpos);
+          if (curpos < numa) {
+            char *tp = strstr(rstr, "_a");
+            if (tp) {
+              // mark average values
+              mflg[curpos] = 1;
+            }
           }
         }
       } else {
@@ -1499,6 +1502,13 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
             if (colpos >= coffs && curpos < numa) {
               if (a_len[curpos]) {
                 float fval = CharToFloat(rstr);
+                if (!mflg[curpos]) {
+                  // absolute values, build diffs
+                  float tmp = fval;
+                  fval -= lastv[curpos];
+                  lastv[curpos] = tmp;
+                }
+                // average values
                 //AddLog(LOG_LEVEL_INFO, PSTR("cpos %d colp %d numa %d - %s %d"),curpos, colpos, a_len[curpos], rstr, (uint32_t)fval);
                 summs[curpos] += fval;
                 accnt[curpos] += 1;
