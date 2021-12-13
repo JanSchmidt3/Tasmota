@@ -1326,7 +1326,7 @@ struct FE_TM tm;
   tmx.tm_year = tm.year + 100;
   tmx.tm_mday = tm.day;
   time_t tmd = mktime(&tmx);
-  tmd += days*(24*3600);
+  tmd += days * (24 * 3600);
   tmp = gmtime(&tmd);
   tm.secs = tmp->tm_sec;
   tm.mins = tmp->tm_min;
