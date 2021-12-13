@@ -55,7 +55,7 @@
   #define COUNTER_HOOK()
 #endif
 
-#if BE_USE_PERF_COUNTERS && BE_USE_OBSERVABILITY_HOOK
+#if BE_USE_PERF_COUNTERS
   #define VM_HEARTBEAT() \
     if ((vm->counter_ins & ((1<<(BE_VM_OBSERVABILITY_SAMPLING - 1))-1) ) == 0) { /* call every 2^BE_VM_OBSERVABILITY_SAMPLING instructions */    \
         if (vm->obshook != NULL)                                                    \
@@ -142,7 +142,7 @@
     _vm->cf->status = PRIM_FUNC; \
 }
 
-static void prep_closure(bvm *vm, int32_t pos, int argc, int mode);
+static void prep_closure(bvm *vm, int pos, int argc, int mode);
 
 static void attribute_error(bvm *vm, const char *t, bvalue *b, bvalue *c)
 {
@@ -461,9 +461,7 @@ BERRY_API bvm* be_vm_new(void)
     be_gc_setpause(vm, 1);
     be_loadlibs(vm);
     vm->compopt = 0;
-#if BE_USE_OBSERVABILITY_HOOK
     vm->obshook = NULL;
-#endif
 #if BE_USE_PERF_COUNTERS
     vm->counter_ins = 0;
     vm->counter_enter = 0;
@@ -853,9 +851,9 @@ newframe: /* a new call frame */
                 reg = vm->reg;
                 bvalue *a = RA();
                 *a = a_temp;
-                if (basetype(type) == BE_FUNCTION) {
-                    if (func_isstatic(a)) {
-                        /* static method, don't bother with the instance */
+                if (var_basetype(a) == BE_FUNCTION) {
+                    if (func_isstatic(a) || (type == BE_INDEX)) {    /* if instance variable then we consider it's non-method */
+                       /* static method, don't bother with the instance */
                         a[1] = a_temp;
                         var_settype(a, NOT_METHOD);
                     } else {
@@ -1062,7 +1060,13 @@ newframe: /* a new call frame */
             if (!IGET_RA(ins)) {
                 be_except_block_setup(vm);
                 if (be_setjmp(vm->errjmp->b)) {
+                    bvalue *top = vm->top;
+                    bvalue e1 = top[0];
+                    bvalue e2 = top[1];
                     be_except_block_resume(vm);
+                    top = vm->top;
+                    top[0] = e1;
+                    top[1] = e2;
                     goto newframe;
                 }
                 reg = vm->reg;
@@ -1186,7 +1190,7 @@ newframe: /* a new call frame */
     }
 }
 
-static void prep_closure(bvm *vm, int32_t pos, int argc, int mode)
+static void prep_closure(bvm *vm, int pos, int argc, int mode)
 {
     bvalue *v, *end;
     bproto *proto = var2cl(vm->reg + pos)->proto;
@@ -1211,7 +1215,7 @@ static void prep_closure(bvm *vm, int32_t pos, int argc, int mode)
     }
 }
 
-static void do_closure(bvm *vm, int32_t pos, int argc)
+static void do_closure(bvm *vm, int pos, int argc)
 {
     // bvalue *v, *end;
     // bproto *proto = var2cl(reg)->proto;
@@ -1225,7 +1229,7 @@ static void do_closure(bvm *vm, int32_t pos, int argc)
     vm_exec(vm);
 }
 
-static void do_ntvclos(bvm *vm, int32_t pos, int argc)
+static void do_ntvclos(bvm *vm, int pos, int argc)
 {
     bntvclos *f = var_toobj(vm->reg + pos);
     push_native(vm, vm->reg + pos, argc, 0);
@@ -1233,7 +1237,7 @@ static void do_ntvclos(bvm *vm, int32_t pos, int argc)
     ret_native(vm);
 }
 
-static void do_ntvfunc(bvm *vm, int32_t pos, int argc)
+static void do_ntvfunc(bvm *vm, int pos, int argc)
 {
     bntvfunc f = var_tontvfunc(vm->reg + pos);
     push_native(vm, vm->reg + pos, argc, 0);
@@ -1241,7 +1245,7 @@ static void do_ntvfunc(bvm *vm, int32_t pos, int argc)
     ret_native(vm);
 }
 
-static void do_class(bvm *vm, int32_t pos, int argc)
+static void do_class(bvm *vm, int pos, int argc)
 {
     if (be_class_newobj(vm, var_toobj(vm->reg + pos), pos, ++argc, 0)) {
         be_incrtop(vm);
@@ -1254,7 +1258,7 @@ void be_dofunc(bvm *vm, bvalue *v, int argc)
 {
     be_assert(vm->reg <= v && v < vm->stacktop);
     be_assert(vm->stack <= vm->reg && vm->reg < vm->stacktop);
-    int32_t pos = v - vm->reg;
+    int pos = v - vm->reg;
     switch (var_type(v)) {
     case BE_CLASS: do_class(vm, pos, argc); break;
     case BE_CLOSURE: do_closure(vm, pos, argc); break;
@@ -1269,7 +1273,5 @@ BERRY_API void be_set_obs_hook(bvm *vm, bobshook hook)
     (void)vm;       /* avoid comiler warning */
     (void)hook;     /* avoid comiler warning */
 
-#if BE_USE_OBSERVABILITY_HOOK
     vm->obshook = hook;
-#endif
 }

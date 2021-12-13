@@ -342,11 +342,11 @@ typedef struct bntvmodule {
     (bvalue*) _ktab,            /* ktab */                                        \
     (struct bproto**) _protos,  /* bproto **ptab */                               \
     (binstruction*) _code,      /* code */                                        \
-    _fname,                     /* name */                                        \
+    ((bstring*) _fname),        /* name */                                        \
     sizeof(*_code)/sizeof(binstruction),                        /* codesize */    \
     BE_IIF(_has_const)(sizeof(*_ktab)/sizeof(bvalue),0),        /* nconst */      \
     BE_IIF(_has_subproto)(sizeof(*_protos)/sizeof(bproto*),0),  /* proto */       \
-    _source,                    /* source */                                      \
+    ((bstring*) _source),        /* source */                                      \
     PROTO_RUNTIME_BLOCK                                                           \
     PROTO_VAR_INFO_BLOCK                                                          \
   }
@@ -402,6 +402,7 @@ typedef void(*bntvhook)(bvm *vm, bhookinfo *info);
 
 typedef void(*bobshook)(bvm *vm, int event, ...);
 enum beobshookevents {
+  BE_OBS_PCALL_ERROR,     /* called when be_callp() returned an error, most likely an exception */
   BE_OBS_GC_START,        /* start of GC, arg = allocated size */
   BE_OBS_GC_END,          /* end of GC, arg = allocated size */
   BE_OBS_VM_HEARTBEAT,    /* VM heartbeat called every million instructions */
