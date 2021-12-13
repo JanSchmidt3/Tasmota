@@ -31,6 +31,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define USE_UFILESYS
+
 #include "Adafruit_GFX.h"
 #include "glcdfont.c"
 #ifdef __AVR__
