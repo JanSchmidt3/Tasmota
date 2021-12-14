@@ -1450,15 +1450,16 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
   float lastv[numa];
   uint16_t accnt[numa];
   uint8_t mflg[numa];
+  uint32_t lastpos = 0;
   for (uint8_t cnt = 0; cnt < numa; cnt++) {
      summs[cnt] = 0;
      accnt[cnt] = 0;
      mflg[cnt] = 0;
      lastv[cnt] = 0;
   }
-  uint8_t dflg = 1;
+  uint8_t dflg = 0;
   if (accum < 0) {
-    dflg = 0;
+    dflg = 1;
     accum = -accum;
   }
   if (accum == 0) accum = 1;
@@ -1475,10 +1476,11 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
         if (colpos >= 1 && colpos >= coffs) {
           uint8_t curpos = colpos - coffs;
           if (curpos < numa) {
+            mflg[curpos] = dflg;
             char *tp = strstr(rstr, "_a");
             if (tp) {
               // mark average values
-              mflg[curpos] = 1;
+              mflg[curpos] |= 2;
             }
           }
         }
@@ -1487,7 +1489,11 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
           // timestamp  2020-12-16T15:36:41
           // decompose timestamps
           uint32_t cts = tstamp2l(rstr);
-          if (cts > tsto) break;
+          if (cts > tsto) {
+            // end of range must seek back to last LF, for next scan
+            glob_script_mem.files[fref].seek(lastpos, SeekSet);
+            break;
+          }
           if (cts >= tsfrom && cts <= tsto) {
             // we want this range
             range = 1;
@@ -1502,7 +1508,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
             if (colpos >= coffs && curpos < numa) {
               if (a_len[curpos]) {
                 float fval = CharToFloat(rstr);
-                if (!mflg[curpos]) {
+                if (mflg[curpos] == 3) {
                   // absolute values, build diffs
                   float tmp = fval;
                   fval -= lastv[curpos];
@@ -1513,11 +1519,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
                 summs[curpos] += fval;
                 accnt[curpos] += 1;
                 if (accnt[curpos] == accum) {
-                  if (dflg) {
-                    *a_ptr[curpos]++ = summs[curpos] / accum;
-                  } else {
-                    *a_ptr[curpos]++ = summs[curpos];
-                  }
+                  *a_ptr[curpos]++ = summs[curpos] / accum;
                   summs[curpos] = 0;
                   accnt[curpos] = 0;
                   a_len[curpos]--;
@@ -1531,8 +1533,9 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
       }
       colpos++;
       if (iob == '\n' || iob == '\r') {
-          colpos = 0;
-          lines ++;
+        lastpos = glob_script_mem.files[fref].position();
+        colpos = 0;
+        lines ++;
       }
     }
     rstr[sindex] = iob;
@@ -2385,7 +2388,7 @@ chknext:
           fvar = 0;
           goto nfuncexit;
         }
-        if (!strncmp(vname, "fw(", 3)) {
+        if (!strncmp(lp, "fw(", 3)) {
           char str[SCRIPT_MAXSSIZE];
           lp = ForceStringVar(lp + 3, str);
           while (*lp==' ') lp++;
