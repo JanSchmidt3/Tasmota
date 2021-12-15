@@ -625,7 +625,6 @@ private:
   uint32_t ss_bstart;
   uint32_t ss_index;
   uint32_t m_bit_time;
-  uint32_t m_bit_start_time;
   uint16_t m_in_pos;
   uint16_t m_out_pos;
   uint16_t serial_buffer_size;
@@ -655,9 +654,6 @@ SML_ESP32_SERIAL::~SML_ESP32_SERIAL(void) {
 
 void SML_ESP32_SERIAL::setbaud(uint32_t speed) {
   m_bit_time = ESP.getCpuFreqMHz() * 1000000 / speed;
-  m_bit_start_time = m_bit_time + m_bit_time/3 - (ESP.getCpuFreqMHz() > 120 ? 700 : 500); // pre-compute first wait
-  m_bit_time = ESP.getCpuFreqMHz() * 1000000 / speed;
-  m_bit_start_time = m_bit_time + m_bit_time/3 - 500; // pre-compute first wait
 }
 
 
@@ -750,15 +746,12 @@ void SML_ESP32_SERIAL::updateBaudRate(uint32_t baud) {
   }
 }
 
-// no wait mode only 8N1 or 7Ex
+// no wait mode only 8N1  (or 7X1, obis only, ignoring parity)
 void IRAM_ATTR SML_ESP32_SERIAL::rxRead(void) {
   uint32_t diff;
   uint32_t level;
 
 #define SML_LASTBIT 9
-
-  // clr level change irq
-//  GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, 1 << m_rx_pin);
 
   level = digitalRead(m_rx_pin);
 
