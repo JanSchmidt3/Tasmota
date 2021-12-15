@@ -645,11 +645,14 @@ SML_ESP32_SERIAL::SML_ESP32_SERIAL(uint32_t index) {
 }
 
 SML_ESP32_SERIAL::~SML_ESP32_SERIAL(void) {
-  detachInterrupt(m_rx_pin);
-  if (m_buffer) {
-    free(m_buffer);
+  if (hws) {
+    hws->end();
+  } else {
+    detachInterrupt(m_rx_pin);
+    if (m_buffer) {
+      free(m_buffer);
+    }
   }
-  if (hws) hws->end();
 }
 
 void SML_ESP32_SERIAL::setbaud(uint32_t speed) {
@@ -668,7 +671,6 @@ bool SML_ESP32_SERIAL::begin(uint32_t speed, uint32_t smode, int32_t recpin, int
     setbaud(speed);
     m_rx_pin = -recpin;
     serial_buffer_size = ESP32_SWS_BUFFER_SIZE;
-    m_rx_pin = recpin;
     m_buffer = (uint8_t*)malloc(serial_buffer_size);
     if (m_buffer == NULL) return false;
     pinMode(m_rx_pin, INPUT);
@@ -733,7 +735,7 @@ size_t SML_ESP32_SERIAL::write(uint8_t byte) {
 
 void SML_ESP32_SERIAL::setRxBufferSize(uint32_t size) {
   if (hws) {
-    setRxBufferSize(size);
+    hws->setRxBufferSize(size);
   } else {
     if (m_buffer) {
         free(m_buffer);
@@ -2843,13 +2845,19 @@ init10:
         // use hardware serial
 #ifdef USE_ESP32_SW_SERIAL
         meter_ss[meters] = new SML_ESP32_SERIAL(uart_index);
+        if (meter_desc_p[meters].srcpin >= 0) {
+          if (uart_index == 0) { ClaimSerial(); }
+          uart_index--;
+          if (uart_index < 0) uart_index = 0;
+        }
 #else
         meter_ss[meters] = new HardwareSerial(uart_index);
-#endif // USE_ESP32_SW_SERIAL
         if (uart_index == 0) { ClaimSerial(); }
         uart_index--;
         if (uart_index < 0) uart_index = 0;
         meter_ss[meters]->setRxBufferSize(TMSBSIZ);
+#endif // USE_ESP32_SW_SERIAL
+
 #endif  // ESP32
 #endif // SPECIAL_SS
 
@@ -2896,6 +2904,7 @@ init10:
 #endif  // ESP8266
 #ifdef ESP32
         meter_ss[meters]->begin(meter_desc_p[meters].params, smode, meter_desc_p[meters].srcpin, meter_desc_p[meters].trxpin);
+        //meter_ss[meters]->setRxBufferSize(TMSBSIZ);
 #endif  // ESP32
     }
   }
