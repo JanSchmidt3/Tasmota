@@ -1313,7 +1313,7 @@ struct FE_TM {
 };
 
 // timestamp math add days
-int32_t tso(char *src, int32_t days) {
+int32_t tso(char *src, int32_t days, int32_t flg) {
 struct tm tmx;
 struct tm *tmp;
 struct FE_TM tm;
@@ -1328,9 +1328,15 @@ struct FE_TM tm;
   time_t tmd = mktime(&tmx);
   tmd += days * (24 * 3600);
   tmp = gmtime(&tmd);
-  tm.secs = tmp->tm_sec;
-  tm.mins = tmp->tm_min;
-  tm.hour = tmp->tm_hour;
+  if (!flg) {
+    tm.secs = tmp->tm_sec;
+    tm.mins = tmp->tm_min;
+    tm.hour = tmp->tm_hour;
+  } else {
+    tm.secs = 0;
+    tm.mins = 0;
+    tm.hour = 0;
+  }
   tm.month = tmp->tm_mon + 1;
   tm.year  = tmp->tm_year - 100;
   tm.day = tmp->tm_mday;
@@ -3842,7 +3848,12 @@ chknext:
           SCRIPT_SKIP_SPACES
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
-          tso(str, fvar);
+          uint8_t flg = 0;
+          if (*lp =='0') {
+            lp++;
+            flg = 1;
+          }
+          tso(str, fvar, flg);
           if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
           lp++;
           len = 0;
