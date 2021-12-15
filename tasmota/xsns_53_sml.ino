@@ -599,8 +599,6 @@ double sml_median(struct SML_MEDIAN_FILTER* mf, double in) {
 #define ESP32_SWS_BUFFER_SIZE 256
 #endif
 
-#define ESP32_SWS_SERIAL_BAUDRATE 9600
-
 
 class SML_ESP32_SERIAL : public Stream {
 public:
@@ -628,9 +626,9 @@ private:
   uint32_t ss_index;
   uint32_t m_bit_time;
   uint32_t m_bit_start_time;
-  uint32_t m_in_pos;
-  uint32_t m_out_pos;
-  uint32_t serial_buffer_size;
+  uint16_t m_in_pos;
+  uint16_t m_out_pos;
+  uint16_t serial_buffer_size;
   bool m_valid;
   uint8_t *m_buffer;
   HardwareSerial *hws;
@@ -658,7 +656,7 @@ SML_ESP32_SERIAL::~SML_ESP32_SERIAL(void) {
 void SML_ESP32_SERIAL::setbaud(uint32_t speed) {
   m_bit_time = ESP.getCpuFreqMHz() * 1000000 / speed;
   m_bit_start_time = m_bit_time + m_bit_time/3 - (ESP.getCpuFreqMHz() > 120 ? 700 : 500); // pre-compute first wait
-  m_bit_time = ESP.getCpuFreqMHz() * 1000000 / ESP32_SWS_SERIAL_BAUDRATE;
+  m_bit_time = ESP.getCpuFreqMHz() * 1000000 / speed;
   m_bit_start_time = m_bit_time + m_bit_time/3 - 500; // pre-compute first wait
 }
 
