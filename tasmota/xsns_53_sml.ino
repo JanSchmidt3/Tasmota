@@ -625,8 +625,8 @@ private:
   uint32_t ss_bstart;
   uint32_t ss_index;
   uint32_t m_bit_time;
-  uint16_t m_in_pos;
-  uint16_t m_out_pos;
+  uint32_t m_in_pos;
+  uint32_t m_out_pos;
   uint16_t serial_buffer_size;
   bool m_valid;
   uint8_t *m_buffer;
@@ -669,6 +669,7 @@ bool SML_ESP32_SERIAL::begin(uint32_t speed, uint32_t smode, int32_t recpin, int
     if (m_buffer == NULL) return false;
     pinMode(m_rx_pin, INPUT);
     attachInterruptArg(m_rx_pin, sml_callRxRead, this, CHANGE);
+    m_in_pos = m_out_pos = 0;
     hws = nullptr;
   } else {
     cfgmode = smode;
@@ -1618,12 +1619,12 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
 void SML_Poll(void) {
 uint32_t meters;
 
-    for (meters=0; meters<meters_used; meters++) {
-      if (meter_desc_p[meters].type!='c') {
+    for (meters = 0; meters < meters_used; meters++) {
+      if (meter_desc_p[meters].type != 'c') {
         // poll for serial input
         if (!meter_ss[meters]) continue;
         while (meter_ss[meters]->available()) {
-          sml_shift_in(meters,0);
+          sml_shift_in(meters, 0);
         }
       }
     }
@@ -2701,7 +2702,6 @@ dddef_exit:
           if (*lp == SCRIPT_EOL) lp--;
           goto next_line;
         }
-
 #ifdef SML_REPLACE_VARS
         char dstbuf[SML_SRCBSIZE*2];
         Replace_Cmd_Vars(lp, 1, dstbuf,sizeof(dstbuf));
@@ -2790,13 +2790,13 @@ init10:
   uint8_t cindex=0;
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
-      RtcSettings.pulse_counter[i]=Settings->pulse_counter[i];
+      RtcSettings.pulse_counter[i] = Settings->pulse_counter[i];
       sml_counters[i].sml_cnt_last_ts=millis();
   }
-  uint32_t uart_index=2;
-  for (uint8_t meters=0; meters<meters_used; meters++) {
-    if (meter_desc_p[meters].type=='c') {
-        if (meter_desc_p[meters].flag&2) {
+  uint32_t uart_index = 2;
+  for (uint8_t meters = 0; meters < meters_used; meters++) {
+    if (meter_desc_p[meters].type == 'c') {
+        if (meter_desc_p[meters].flag & 2) {
           // analog mode
 #ifdef ANALOG_OPTO_SENSOR
           ADS1115_init();
@@ -2899,7 +2899,6 @@ init10:
 #endif  // ESP32
     }
   }
-
 }
 
 
@@ -2917,7 +2916,7 @@ uint32_t sml_getv(uint32_t sel) {
   return sel;
 }
 uint32_t SML_SetBaud(uint32_t meter, uint32_t br) {
-  if (meter<1 || meter>meters_used) return 0;
+  if (meter < 1 || meter > meters_used) return 0;
   meter--;
   if (!meter_ss[meter]) return 0;
 #ifdef ESP8266
@@ -3327,7 +3326,9 @@ bool Xsns53(byte function) {
       case FUNC_LOOP:
         SML_Counter_Poll();
         if (dump2log) Dump2log();
-        else SML_Poll();
+        else {
+          SML_Poll();
+        }
         break;
     //  case FUNC_EVERY_50_MSECOND:
     //    if (dump2log) Dump2log();
