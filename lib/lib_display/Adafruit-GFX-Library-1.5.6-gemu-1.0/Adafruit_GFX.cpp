@@ -31,7 +31,9 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef ESP32
 #define USE_UFILESYS
+#endif
 
 #include "Adafruit_GFX.h"
 #include "glcdfont.c"
