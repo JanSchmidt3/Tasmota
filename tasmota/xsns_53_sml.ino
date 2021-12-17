@@ -2993,10 +2993,14 @@ uint8_t hflg=0;
 }
 
 float SML_GetVal(uint32_t index) {
-  if (index<1 && index>SML_MAX_VARS) { index = 1;}
+  if (index < 1 || index > SML_MAX_VARS) { index = 1;}
   return meter_vars[index-1];
 }
 
+char *SML_GetSVal(uint32_t index) {
+  if (index < 1 || index > MAX_METERS) { index = 1;}
+  return &meter_id[index - 1][0];
+}
 #endif // USE_SML_SCRIPT_CMD
 
 

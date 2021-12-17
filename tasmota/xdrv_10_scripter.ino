@@ -3526,11 +3526,21 @@ chknext:
 #endif //USE_ANGLE_FUNC
 
 #if defined(USE_SML_M) && defined (USE_SML_SCRIPT_CMD)
+extern char *SML_GetSVal(uint32_t index);
+
         if (!strncmp(lp, "sml[", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
           fvar = SML_GetVal(fvar);
           goto nfuncexit;
+        }
+        if (!strncmp(lp, "smls[", 5)) {
+          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          lp++;
+          len = 0;
+          if (sp) strlcpy(sp, SML_GetSVal(fvar), glob_script_mem.max_ssize);
+          goto strexit;;
         }
         if (!strncmp(lp, "sml(", 4)) {
           float fvar1;
