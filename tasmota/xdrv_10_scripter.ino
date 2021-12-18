@@ -1014,7 +1014,10 @@ void Script_PollUdp(void) {
   if (TasmotaGlobal.global_state.network_down) return;
   if (!glob_script_mem.udp_flags.udp_used) return;
   if (glob_script_mem.udp_flags.udp_connected ) {
+    uint32_t timeout = millis();
     while (glob_script_mem.Script_PortUdp.parsePacket()) {
+      // not more then 500 ms
+      if (millis() - timeout > 500) { break;}
       char packet_buffer[SCRIPT_UDP_BUFFER_SIZE];
       int32_t len = glob_script_mem.Script_PortUdp.read(packet_buffer, SCRIPT_UDP_BUFFER_SIZE - 1);
       packet_buffer[len] = 0;
