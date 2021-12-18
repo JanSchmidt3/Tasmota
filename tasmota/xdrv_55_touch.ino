@@ -26,7 +26,6 @@
 #endif
 
 #include <renderer.h>
-extern Renderer *renderer;
 
 #define XDRV_55             55
 
