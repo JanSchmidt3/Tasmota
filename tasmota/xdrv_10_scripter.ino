@@ -431,8 +431,9 @@ struct SCRIPT_MEM {
     IPAddress script_udp_remote_ip;
 #endif // USE_SCRIPT_GLOBVARS
     char web_mode;
-    uint8_t glob_script = 0;
-    uint8_t fast_script = 0;
+    char *glob_script = 0;
+    char *fast_script = 0;
+    char *web_pages[5];
     uint32_t script_lastmillis;
     bool event_handeled = false;
 #ifdef USE_BUTTON_EVENT
@@ -967,7 +968,7 @@ char *script;
 #ifdef USE_SCRIPT_GLOBVARS
     if (glob_script_mem.udp_flags.udp_used) {
       Script_Init_UDP();
-      glob_script_mem.glob_script = Run_Scripter(">G", -2, 0);
+      if (Run_Scripter(">G", -2, 0) == 99) {glob_script_mem.glob_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.glob_script = 0;}
     }
 #endif //USE_SCRIPT_GLOBVARS
 
@@ -981,6 +982,8 @@ char *script;
 #ifdef USE_SCRIPT_GLOBVARS
 #define SCRIPT_UDP_BUFFER_SIZE 128
 #define SCRIPT_UDP_PORT 1999
+
+//#define SCRIPT_DEBUG_UDP
 
 void Restart_globvars(void) {
   Script_Stop_UDP();
@@ -1002,13 +1005,19 @@ void Script_Init_UDP() {
   if (glob_script_mem.udp_flags.udp_connected) return;
 
   if (glob_script_mem.Script_PortUdp.beginMulticast(WiFi.localIP(), IPAddress(239,255,255,250), SCRIPT_UDP_PORT)) {
+#ifdef SCRIPT_DEBUG_UDP
     AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_UPNP "SCRIPT UDP started"));
+#endif
     glob_script_mem.udp_flags.udp_connected = 1;
   } else {
+#ifdef SCRIPT_DEBUG_UDP
     AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_UPNP "SCRIPT UDP failed"));
+#endif
     glob_script_mem.udp_flags.udp_connected  = 0;
   }
 }
+
+
 
 void Script_PollUdp(void) {
   if (TasmotaGlobal.global_state.network_down) return;
@@ -1022,8 +1031,10 @@ void Script_PollUdp(void) {
       int32_t len = glob_script_mem.Script_PortUdp.read(packet_buffer, SCRIPT_UDP_BUFFER_SIZE - 1);
       packet_buffer[len] = 0;
       glob_script_mem.script_udp_remote_ip = glob_script_mem.Script_PortUdp.remoteIP();
+#ifdef SCRIPT_DEBUG_UDP
       //AddLog(LOG_LEVEL_DEBUG, PSTR("UDP: Packet %s - %d - %s"), packet_buffer, len, script_udp_remote_ip.toString().c_str());
       AddLog(LOG_LEVEL_DEBUG, PSTR("UDP: Packet %s - %d - %_I"), packet_buffer, len, (uint32_t)glob_script_mem.script_udp_remote_ip);
+#endif
       char *lp=packet_buffer;
       if (!strncmp(lp,"=>", 2)) {
         lp += 2;
@@ -1042,10 +1053,14 @@ void Script_PollUdp(void) {
           uint32_t index;
           uint32_t res = match_vars(vnam, &fp, &sp, &index);
           if (res == NUM_RES) {
+#ifdef SCRIPT_DEBUG_UDP
             AddLog(LOG_LEVEL_DEBUG, PSTR("num var found - %s - %d - %d"), vnam, res, index);
+#endif
             *fp=CharToFloat(cp + 1);
           } else if (res == STR_RES) {
+#ifdef SCRIPT_DEBUG_UDP
             AddLog(LOG_LEVEL_DEBUG, PSTR("string var found - %s - %d - %d"), vnam, res, index);
+#endif
             strlcpy(sp, cp + 1, SCRIPT_MAXSSIZE);
           } else {
             // error var not found
@@ -1054,8 +1069,8 @@ void Script_PollUdp(void) {
             // mark changed
             glob_script_mem.last_udp_ip = glob_script_mem.Script_PortUdp.remoteIP();
             SetChanged(index);
-            if (glob_script_mem.glob_script == 99) {
-              Run_Scripter(">G", 2, 0);
+            if (glob_script_mem.glob_script) {
+              Run_Scripter(glob_script_mem.glob_script, 0, 0);
             }
           }
         }
@@ -1079,10 +1094,14 @@ void script_udp_sendvar(char *vname,float *fp,char *sp) {
     char flstr[16];
     dtostrfd(*fp, 8, flstr);
     strcat(sbuf, flstr);
+#ifdef SCRIPT_DEBUG_UDP
     AddLog(LOG_LEVEL_DEBUG, PSTR("num var updated - %s"), sbuf);
+#endif
   } else {
     strcat(sbuf, sp);
+#ifdef SCRIPT_DEBUG_UDP
     AddLog(LOG_LEVEL_DEBUG, PSTR("string var updated - %s"), sbuf);
+#endif
   }
   glob_script_mem.Script_PortUdp.beginPacket(IPAddress(239, 255, 255, 250), SCRIPT_UDP_PORT);
   //  Udp.print(String("RET UC: ") + String(recv_Packet));
@@ -4814,27 +4833,34 @@ int16_t retval;
 }
 
 int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
-    uint8_t vtype=0,sindex,xflg,floop=0,globvindex,fromscriptcmd=0;
+    uint8_t vtype = 0, sindex, xflg, floop = 0, globvindex, fromscriptcmd = 0;
     char *lp_next;
-    int16_t globaindex,saindex;
+    int16_t globaindex, saindex;
     struct T_INDEX ind;
-    uint8_t operand,lastop,numeric = 1,if_state[IF_NEST],if_exe[IF_NEST],if_result[IF_NEST],and_or,ifstck = 0;
+    uint8_t operand, lastop, numeric = 1, if_state[IF_NEST], if_exe[IF_NEST], if_result[IF_NEST], and_or, ifstck = 0;
     if_state[ifstck] = 0;
     if_result[ifstck] = 0;
     if_exe[ifstck] = 1;
     char cmpstr[SCRIPT_MAXSSIZE];
+    float *dfvar, *cv_count, cv_max, cv_inc;
+    char *cv_ptr;
+    float fvar = 0, fvar1, sysvar, swvar;
+    uint8_t section = 0, sysv_type = 0, swflg = 0;
+
+    char *lp;
+    if (tlen == 0) {
+        section = 1;
+        lp = (char*)type;
+    } else {
+        lp = glob_script_mem.scriptptr;
+    }
+
     uint8_t check = 0;
     if (tlen<0) {
       tlen = abs(tlen);
       check = 1;
     }
 
-    float *dfvar,*cv_count,cv_max,cv_inc;
-    char *cv_ptr;
-    float fvar = 0,fvar1,sysvar,swvar;
-    uint8_t section = 0,sysv_type = 0,swflg = 0;
-
-    char *lp = glob_script_mem.scriptptr;
 
     while (1) {
         // check line
@@ -5633,7 +5659,7 @@ void ScripterEvery100ms(void) {
     }
   }
   if (bitRead(Settings->rule_enabled, 0)) {
-    if (glob_script_mem.fast_script == 99) Run_Scripter(">F", 2, 0);
+    if (glob_script_mem.fast_script) Run_Scripter(glob_script_mem.fast_script, 0, 0);
   }
 }
 
@@ -6106,8 +6132,20 @@ void SaveScriptEnd(void) {
     Run_Scripter(">B\n", 3, 0);
     Run_Scripter(">BS", 3, 0);
 
-    glob_script_mem.fast_script = Run_Scripter(">F", -2, 0);
+    //glob_script_mem.fast_script = Run_Scripter(">F", -2, 0);
+    if (Run_Scripter(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
+
+    script_set_web_pages();
+
   }
+}
+
+void script_set_web_pages(void) {
+  if (Run_Scripter(">W", -2, 0) == 99) {glob_script_mem.web_pages[0] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[0] = 0;}
+  if (Run_Scripter(">w ", -3, 0) == 99) {glob_script_mem.web_pages[1] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[1] = 0;}
+  if (Run_Scripter(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[2] = 0;}
+  if (Run_Scripter(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[3] = 0;}
+  if (Run_Scripter(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[4] = 0;}
 }
 
 #endif // USE_WEBSERVER
@@ -7264,7 +7302,7 @@ char buff[512];
 
 #ifdef SCRIPT_FULL_WEBPAGE
 const char HTTP_WEB_FULL_DISPLAY[] PROGMEM =
-  "<p><form action='" "sfd" "' method='get'><button>" "%s" "</button></form></p>";
+  "<p><form action='" "%s" "' method='get'><button>" "%s" "</button></form></p>";
 
 const char HTTP_SCRIPT_FULLPAGE1[] PROGMEM =
   "<!DOCTYPE html><html lang=\"" D_HTML_LANGUAGE "\" class=\"\">"
@@ -7300,7 +7338,7 @@ const char HTTP_SCRIPT_FULLPAGE1[] PROGMEM =
         "}"
       "};"
       "if (rfsh) {"
-        "x.open('GET','./sfd?m=1'+a,true);"       // ?m related to Webserver->hasArg("m")
+        "x.open('GET','./sfd%1d?m=1'+a,true);"       // ?m related to Webserver->hasArg("m")
         "x.send();"
         "lt=setTimeout(la,%d);"               // Settings->web_refresh
       "}"
@@ -7326,9 +7364,21 @@ const char HTTP_SCRIPT_FULLPAGE2[] PROGMEM =
     "}"
     "</script>";
 
+void ScriptFullWebpage0(void) {
+  ScriptFullWebpage(1);
+}
+void ScriptFullWebpage1(void) {
+  ScriptFullWebpage(2);
+}
+void ScriptFullWebpage2(void) {
+  ScriptFullWebpage(3);
+}
+void ScriptFullWebpage3(void) {
+  ScriptFullWebpage(4);
+}
 
-void ScriptFullWebpage(void) {
-  uint32_t fullpage_refresh=10000;
+void ScriptFullWebpage(uint8_t page) {
+  uint32_t fullpage_refresh = 10000;
   if (!HttpCheckPriviledgedAccess()) { return; }
 
   String stmp = Webserver->uri();
@@ -7338,7 +7388,7 @@ void ScriptFullWebpage(void) {
       Script_Check_HTML_Setvars();
     }
       WSContentBegin(200, CT_HTML);
-      ScriptWebShow('w');
+      ScriptWebShow('w', page);
       WSContentEnd();
       //Serial.printf("fwp update sv %s\n",stmp.c_str() );
       return; //goto redraw;
@@ -7353,7 +7403,7 @@ void ScriptFullWebpage(void) {
 
   WSContentBegin(200, CT_HTML);
   const char *title = "Full Screen";
-  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, SettingsText(SET_DEVICENAME), title, fullpage_refresh);
+  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, SettingsText(SET_DEVICENAME), title, page , fullpage_refresh);
   WSContentSend_P(HTTP_SCRIPT_FULLPAGE2, fullpage_refresh);
   //WSContentSend_P(PSTR("<div id='l1' name='l1'></div>"));
 
@@ -7361,10 +7411,10 @@ void ScriptFullWebpage(void) {
 
 
   WSContentSend_P(PSTR("<div id='l1' name='l1'>"));
-  ScriptWebShow('w');
+  ScriptWebShow('w', page);
   WSContentSend_P(PSTR("</div>"));
 
-  ScriptWebShow('x');
+  ScriptWebShow('x', page);
 
   WSContentStop();
 }
@@ -7601,19 +7651,22 @@ uint32_t cnt;
   nbuf[cnt] = 0;
 }
 
-void ScriptWebShow(char mc) {
+void ScriptWebShow(char mc, uint8_t page) {
   uint8_t web_script;
   glob_script_mem.web_mode = mc;
   if (mc=='w' || mc=='x') {
     if (mc=='x') {
       mc='$';
     }
-    web_script = Run_Scripter(">w", -2, 0);
+    //web_script = Run_Scripter(">w", -2, 0);
+    glob_script_mem.section_ptr = glob_script_mem.web_pages[page];
   } else {
-    web_script = Run_Scripter(">W", -2, 0);
+    //web_script = Run_Scripter(">W", -2, 0);
+    glob_script_mem.section_ptr = glob_script_mem.web_pages[0];
   }
 
-  if (web_script==99) {
+  //if (web_script==99) {
+  if (glob_script_mem.section_ptr) {
     char tmp[256];
     uint8_t optflg = 0;
     uint8_t chartindex = 1;
@@ -9116,6 +9169,37 @@ int32_t retval = 0;
 
 #endif
 
+#ifdef SCRIPT_FULL_WEBPAGE
+void script_add_subpage(uint8_t num) {
+  //uint8_t web_script = Run_Scripter(code, -strlen(code), 0);
+  if (glob_script_mem.web_pages[num]) {
+      char bname[48];
+      cpy2lf(bname, sizeof(bname), glob_script_mem.web_pages[num] + 3);
+
+      void (*wptr)(void);
+
+      char id[8];
+      switch (num) {
+        case 1:
+          wptr = ScriptFullWebpage0;
+          break;
+        case 2:
+          wptr = ScriptFullWebpage1;
+          break;
+        case 3:
+          wptr = ScriptFullWebpage2;
+          break;
+        case 4:
+          wptr = ScriptFullWebpage3;
+          break;
+      }
+      sprintf(id, "/sfd%1d", num);
+      Webserver->on(id, wptr);
+      WSContentSend_PD(HTTP_WEB_FULL_DISPLAY, id, bname);
+  }
+}
+#endif // SCRIPT_FULL_WEBPAGE
+
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
@@ -9278,7 +9362,8 @@ bool Xdrv10(uint8_t function)
     //case FUNC_INIT:
       if (bitRead(Settings->rule_enabled, 0)) {
         Run_Scripter(">B\n", 3, 0);
-        glob_script_mem.fast_script = Run_Scripter(">F", -2, 0);
+        if (Run_Scripter(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
+        script_set_web_pages();
 #if defined(USE_SCRIPT_HUE) && defined(USE_WEBSERVER) && defined(USE_EMULATION) && defined(USE_EMULATION_HUE) && defined(USE_LIGHT)
         Script_Check_Hue(0);
 #endif //USE_SCRIPT_HUE
@@ -9337,15 +9422,12 @@ bool Xdrv10(uint8_t function)
 #ifdef USE_SCRIPT_WEB_DISPLAY
     case FUNC_WEB_ADD_MAIN_BUTTON:
       if (bitRead(Settings->rule_enabled, 0)) {
-        ScriptWebShow('$');
+        ScriptWebShow('$', 0);
 #ifdef SCRIPT_FULL_WEBPAGE
-        uint8_t web_script = Run_Scripter(">w", -2, 0);
-        if (web_script==99) {
-            char bname[48];
-            cpy2lf(bname, sizeof(bname), glob_script_mem.section_ptr + 3);
-            WSContentSend_PD(HTTP_WEB_FULL_DISPLAY, bname);
-            Webserver->on("/sfd", ScriptFullWebpage);
-        }
+        script_add_subpage(1);
+        script_add_subpage(2);
+        script_add_subpage(3);
+        script_add_subpage(4);
 #endif // SCRIPT_FULL_WEBPAGE
 
 #ifdef USE_UFILESYS
@@ -9381,7 +9463,7 @@ bool Xdrv10(uint8_t function)
 #ifdef USE_SCRIPT_WEB_DISPLAY
     case FUNC_WEB_SENSOR:
       if (bitRead(Settings->rule_enabled, 0)) {
-        ScriptWebShow(0);
+        ScriptWebShow(0, 0);
       }
       break;
 #endif //USE_SCRIPT_WEB_DISPLAY
