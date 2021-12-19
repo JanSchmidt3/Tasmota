@@ -7302,7 +7302,7 @@ char buff[512];
 
 #ifdef SCRIPT_FULL_WEBPAGE
 const char HTTP_WEB_FULL_DISPLAY[] PROGMEM =
-  "<p><form action='" "%s" "' method='get'><button>" "%s" "</button></form></p>";
+  "<p><form action='" "sfd%1d" "' method='get'><button>" "%s" "</button></form></p>";
 
 const char HTTP_SCRIPT_FULLPAGE1[] PROGMEM =
   "<!DOCTYPE html><html lang=\"" D_HTML_LANGUAGE "\" class=\"\">"
@@ -7364,16 +7364,16 @@ const char HTTP_SCRIPT_FULLPAGE2[] PROGMEM =
     "}"
     "</script>";
 
-void ScriptFullWebpage0(void) {
+void ScriptFullWebpage1(void) {
   ScriptFullWebpage(1);
 }
-void ScriptFullWebpage1(void) {
+void ScriptFullWebpage2(void) {
   ScriptFullWebpage(2);
 }
-void ScriptFullWebpage2(void) {
+void ScriptFullWebpage3(void) {
   ScriptFullWebpage(3);
 }
-void ScriptFullWebpage3(void) {
+void ScriptFullWebpage4(void) {
   ScriptFullWebpage(4);
 }
 
@@ -9181,21 +9181,21 @@ void script_add_subpage(uint8_t num) {
       char id[8];
       switch (num) {
         case 1:
-          wptr = ScriptFullWebpage0;
-          break;
-        case 2:
           wptr = ScriptFullWebpage1;
           break;
-        case 3:
+        case 2:
           wptr = ScriptFullWebpage2;
           break;
-        case 4:
+        case 3:
           wptr = ScriptFullWebpage3;
           break;
+        case 4:
+          wptr = ScriptFullWebpage4;
+          break;
       }
-      sprintf(id, "/sfd%1d", num);
+      sprintf_P(id, PSTR("/sfd%1d"), num);
       Webserver->on(id, wptr);
-      WSContentSend_PD(HTTP_WEB_FULL_DISPLAY, id, bname);
+      WSContentSend_PD(HTTP_WEB_FULL_DISPLAY, num, bname);
   }
 }
 #endif // SCRIPT_FULL_WEBPAGE
