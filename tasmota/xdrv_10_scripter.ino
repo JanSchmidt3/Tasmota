@@ -2072,13 +2072,13 @@ chknext:
       case 'a':
 #ifdef USE_ANGLE_FUNC
         if (!strncmp(lp, "acos(", 5)) {
-          lp=GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
+          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
           fvar = acosf(fvar);
           goto nfuncexit;
         }
 #endif
         if (!strncmp(lp, "abs(", 4)) {
-          lp=GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           fvar = fabs(fvar);
           goto nfuncexit;
         }
@@ -2150,13 +2150,12 @@ chknext:
 #ifdef USE_BUTTON_EVENT
         if (!strncmp(lp, "bt[", 3)) {
           // tasmota button state
-          GetNumericArgument(lp + 3, OPER_EQU, &fvar, gv);
+          lp = GetNumericArgument(lp + 3, OPER_EQU, &fvar, gv);
           uint32_t index = fvar;
           if (index<1 || index>MAX_KEYS) index = 1;
           fvar = glob_script_mem.script_button[index - 1];
           glob_script_mem.script_button[index - 1] |= 0x80;
-          len++;
-          goto exit;
+          goto nfuncexit;
         }
 #endif //USE_BUTTON_EVENT
         break;
@@ -2165,19 +2164,17 @@ chknext:
           // var changed
           struct T_INDEX ind;
           uint8_t vtype;
-          isvar(lp + 4, &vtype, &ind, 0, 0, gv);
+          lp = isvar(lp + 4, &vtype, &ind, 0, 0, gv);
           if (!ind.bits.constant) {
             uint8_t index = glob_script_mem.type[ind.index].index;
             if (glob_script_mem.fvars[index] != glob_script_mem.s_fvars[index]) {
               // var has changed
               glob_script_mem.s_fvars[index] = glob_script_mem.fvars[index];
               fvar = 1;
-              len++;
-              goto exit;
+              goto nfuncexit;
             } else {
               fvar = 0;
-              len++;
-              goto exit;
+              goto nfuncexit;
             }
           }
         }
@@ -7151,6 +7148,7 @@ void ScriptGetSDCard(void) {
 }
 
 extern uint8_t *buffer;
+bool script_download_busy;
 
 void SendFile(char *fname) {
 char buff[512];
@@ -7295,10 +7293,11 @@ char buff[512];
       siz -= len;
     }
     file.close();
+    Webserver->client().stop();
   }
-  Webserver->client().stop();
 }
 #endif // USE_UFILESYS
+
 
 #ifdef SCRIPT_FULL_WEBPAGE
 const char HTTP_WEB_FULL_DISPLAY[] PROGMEM =
@@ -8421,25 +8420,28 @@ void script_task1(void *arg) {
     //time=esp32_tasks[0].task_timer-time;
     //if (time<esp32_tasks[1].task_timer) {delay(time); }
     //if (time<=esp32_tasks[0].task_timer) {vTaskDelay( pdMS_TO_TICKS( time ) ); }
-    delay(esp32_tasks[0].task_timer);
     if (bitRead(Settings->rule_enabled, 0)) {
       Run_Scripter(">t1", 3, 0);
+    }
+    if (esp32_tasks[0].task_timer) {
+      delay(esp32_tasks[0].task_timer);
+    } else {
+      esp32_tasks[0].task_t = 0;
+      vTaskDelete( NULL );
     }
   }
 }
 
 void script_task2(void *arg) {
-  //uint32_t lastms=millis();
-  //uint32_t time;
   while (1) {
-    //time=millis()-lastms;
-    //lastms=millis();
-    //time=esp32_tasks[1].task_timer-time;
-    //if (time<esp32_tasks[1].task_timer) {delay(time); }
-    //if (time<=esp32_tasks[1].task_timer) {vTaskDelay( pdMS_TO_TICKS( time ) ); }
-    delay(esp32_tasks[1].task_timer);
     if (bitRead(Settings->rule_enabled, 0)) {
       Run_Scripter(">t2", 3, 0);
+    }
+    if (esp32_tasks[1].task_timer) {
+      delay(esp32_tasks[1].task_timer);
+    } else {
+      esp32_tasks[1].task_t = 0;
+      vTaskDelete( NULL );
     }
   }
 }
@@ -8455,8 +8457,12 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_
     esp32_tasks[num].task_t = 0;
   }
   if (prio >= 0) {
-    res = xTaskCreatePinnedToCore(script_task1, num==0?"T1":"T2", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
     esp32_tasks[num].task_timer = time;
+    if (!num) {
+      res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+    } else {
+      res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+    }
   }
   return res;
 }
@@ -8509,13 +8515,14 @@ int32_t url2file(uint8_t fref, char *url) {
   HTTPClient http;
   int32_t httpCode = 0;
   String weburl = "http://"+UrlEncode(url);
-  for (uint32_t retry = 0; retry < 15; retry++) {
+  //for (uint32_t retry = 0; retry < 15; retry++) {
     http.begin(http_client, weburl);
+    delay(100);
     httpCode = http.GET();
-    if (httpCode > 0) {
-      break;
-    }
-  }
+    //if (httpCode > 0) {
+    //  break;
+    //}
+  //}
   if (httpCode < 0) {
     AddLog(LOG_LEVEL_INFO,PSTR("HTTP error %d = %s"), httpCode, http.errorToString(httpCode).c_str());
   }
