@@ -718,7 +718,7 @@ char *script;
                       if (isdigit(*op)) {
                         // lenght define follows
                         uint16_t flen = atoi(op);
-                        if (flen>MAX_ARRAY_SIZE) {
+                        if (flen > MAX_ARRAY_SIZE) {
                           // limit array size
                           flen = MAX_ARRAY_SIZE;
                         }
@@ -1247,8 +1247,14 @@ void Set_MFVal(uint8_t index, uint16_t bind, float val) {
     if (count==index) {
         uint16_t maxind = mflp->numvals & AND_FILT_MASK;
         if (!bind) {
-          if (val < 0 || val >= maxind) val = 0;
-          mflp->index = val;
+
+          if (val < 0) {
+            // shift whole array by value
+          } else {
+            // set array index value
+            if (val < 0 || val >= maxind) val = 0;
+            mflp->index = val;
+          }
         } else {
           if (bind >= 1 && bind <= maxind) {
             mflp->rbuff[bind-1] = val;
@@ -1536,7 +1542,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
             if (colpos >= coffs && curpos < numa) {
               if (a_len[curpos]) {
                 float fval = CharToFloat(rstr);
-                if (mflg[curpos] == 3) {
+                if (mflg[curpos] == 1) {
                   // absolute values, build diffs
                   float tmp = fval;
                   fval -= lastv[curpos];
@@ -5441,7 +5447,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                       }
 #endif //USE_SCRIPT_GLOBVARS
                       if (glob_script_mem.type[globvindex].bits.is_filter) {
-                        if (globaindex>=0) {
+                        if (globaindex >= 0) {
                           Set_MFVal(glob_script_mem.type[globvindex].index, globaindex, *dfvar);
                         } else {
                           Set_MFilter(glob_script_mem.type[globvindex].index, *dfvar);
@@ -7580,15 +7586,15 @@ uint16 entries = 0;
 uint16_t cipos = 0;
 
   uint8_t anum = 0;
-  while (anum<MAX_GARRAY) {
-    if (*lp==')' || *lp==0) break;
+  while (anum < MAX_GARRAY) {
+    if (*lp == ')' || *lp == 0) break;
     char *lp1 = lp;
     float sysvar;
     lp=isvar(lp, &vtype, &ind, &sysvar, 0, 0);
-    if (vtype!=VAR_NV) {
+    if (vtype != VAR_NV) {
       SCRIPT_SKIP_SPACES
       uint8_t index = glob_script_mem.type[ind.index].index;
-      if ((vtype&STYPE)==0) {
+      if ((vtype&STYPE) == 0) {
         // numeric result
         //Serial.printf("numeric %d - %d \n",ind.index,index);
         if (glob_script_mem.type[ind.index].bits.is_filter) {
@@ -7596,7 +7602,7 @@ uint16_t cipos = 0;
           uint16_t len = 0;
           float *fa = Get_MFAddr(index, &len, &cipos);
           //Serial.printf(">> 2 %d\n",len);
-          if (fa && len>=entries) {
+          if (fa && len >= entries) {
             if (!entries) {
               entries = len;
             }
@@ -8167,6 +8173,11 @@ exgc:
                 lp = GetStringArgument(lp, OPER_EQU, label, 0);
                 SCRIPT_SKIP_SPACES
 
+                if (label[0] == '&') {
+                  ipos = 0;
+                  strcpy(label, &label[1]);
+                }
+
                 int16_t divflg = 1;
                 int16_t todflg = -1;
                 if (!strncmp(label, "cnt", 3)) {
@@ -8188,7 +8199,7 @@ exgc:
                   }
                   uint16 segments = 1;
                   for (uint32_t cnt = 0; cnt < strlen(lp); cnt++) {
-                    if (lp[cnt]=='|') {
+                    if (lp[cnt] == '|') {
                       segments++;
                     }
                   }
@@ -8196,18 +8207,18 @@ exgc:
                 }
 
                 uint32_t aind = ipos;
-                if (aind>=entries) aind = entries - 1;
+                if (aind >= entries) aind = entries - 1;
                 for (uint32_t cnt = 0; cnt < entries; cnt++) {
                   WSContentSend_PD("['");
                   char lbl[16];
-                  if (todflg>=0) {
+                  if (todflg >= 0) {
                     sprintf(lbl, "%d:%02d", todflg / divflg, (todflg % divflg) * (60 / divflg) );
                     todflg++;
                     if (todflg >= entries) {
                       todflg = 0;
                     }
                   } else {
-                    if (todflg==-1) {
+                    if (todflg == -1) {
                       GetTextIndexed(lbl, sizeof(lbl), aind / divflg, label);
                     } else {
                       // day,hours,mins
@@ -8222,12 +8233,12 @@ exgc:
                     float *fp = arrays[ind];
                     f2char(fp[aind], glob_script_mem.script_dprec, glob_script_mem.script_lzero, acbuff);
                     WSContentSend_PD("%s", acbuff);
-                    if (ind<anum - 1) { WSContentSend_PD(","); }
+                    if (ind < anum - 1) { WSContentSend_PD(","); }
                   }
                   WSContentSend_PD("]");
-                  if (cnt<entries - 1) { WSContentSend_PD(","); }
+                  if (cnt < entries - 1) { WSContentSend_PD(","); }
                   aind++;
-                  if (aind>=entries) {
+                  if (aind >= entries) {
                     aind = 0;
                   }
                 }
