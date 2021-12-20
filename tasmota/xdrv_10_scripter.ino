@@ -8403,11 +8403,10 @@ bool RulesProcessEvent(const char *json_event) {
 #define STASK_STACK 8192-2048
 #endif
 
-#if 1
-
 struct ESP32_Task {
   uint16_t task_timer;
   TaskHandle_t task_t;
+  char *tstart;
 } esp32_tasks[2];
 
 
@@ -8421,7 +8420,7 @@ void script_task1(void *arg) {
     //if (time<esp32_tasks[1].task_timer) {delay(time); }
     //if (time<=esp32_tasks[0].task_timer) {vTaskDelay( pdMS_TO_TICKS( time ) ); }
     if (bitRead(Settings->rule_enabled, 0)) {
-      Run_Scripter(">t1", 3, 0);
+      if (esp32_tasks[0].tstart) Run_Scripter(esp32_tasks[0].tstart, 0, 0);
     }
     if (esp32_tasks[0].task_timer) {
       delay(esp32_tasks[0].task_timer);
@@ -8435,7 +8434,7 @@ void script_task1(void *arg) {
 void script_task2(void *arg) {
   while (1) {
     if (bitRead(Settings->rule_enabled, 0)) {
-      Run_Scripter(">t2", 3, 0);
+      if (esp32_tasks[1].tstart) Run_Scripter(esp32_tasks[1].tstart, 0, 0);
     }
     if (esp32_tasks[1].task_timer) {
       delay(esp32_tasks[1].task_timer);
@@ -8457,53 +8456,23 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_
     esp32_tasks[num].task_t = 0;
   }
   if (prio >= 0) {
+    char *sp = 0;
     esp32_tasks[num].task_timer = time;
     if (!num) {
-      res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+      if (Run_Scripter(">t1", -3, 0) == 99) {
+        sp = glob_script_mem.section_ptr + 2;
+        res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+      }
     } else {
-      res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+      if (Run_Scripter(">t2", -3, 0) == 99) {
+        sp = glob_script_mem.section_ptr + 2;
+        res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+      }
     }
+    esp32_tasks[num].tstart = sp;
   }
   return res;
 }
-#else
-
-uint16_t task_timer1;
-uint16_t task_timer2;
-TaskHandle_t task_t1;
-TaskHandle_t task_t2;
-
-void script_task1(void *arg) {
-  while (1) {
-    delay(task_timer1);
-    Run_Scripter(">t1", 3, 0);
-  }
-}
-
-void script_task2(void *arg) {
-  while (1) {
-    delay(task_timer2);
-    Run_Scripter(">t2", 3, 0);
-  }
-}
-
-uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_t prio) {
-  //return 0;
-  BaseType_t res = 0;
-  if (core > 1) { core = 1; }
-  if (num == 1) {
-    if (task_t1) { vTaskDelete(task_t1); }
-    res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &task_t1, core);
-    task_timer1 = time;
-  } else {
-    if (task_t2) { vTaskDelete(task_t2); }
-    res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &task_t2, core);
-    task_timer2 = time;
-  }
-  return res;
-}
-#endif
-
 #endif // USE_SCRIPT_TASK
 #endif // ESP32
 
