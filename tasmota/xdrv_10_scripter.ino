@@ -1543,20 +1543,22 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
               if (a_len[curpos]) {
                 float fval = CharToFloat(rstr);
                 uint8_t flg = 1;
-                if ((mflg[curpos] & 3) == 1) {
+                if ((mflg[curpos] & 1) == 1) {
                   // absolute values, build diffs
                   if (!(mflg[curpos] & 0x80)) {
                     lastv[curpos] = fval;
                     mflg[curpos] |= 0x80;
                     flg = 0;
                   } else {
-                    float tmp = fval;
-                    fval -= lastv[curpos];
-                    lastv[curpos] = tmp;
+                    if (!(mflg[curpos] & 2)) {
+                       float tmp = fval;
+                       fval -= lastv[curpos];
+                       lastv[curpos] = tmp;
+                    }
                   }
                 }
                 // average values
-                //AddLog(LOG_LEVEL_INFO, PSTR("cpos %d colp %d numa %d - %s %d"),curpos, colpos, a_len[curpos], rstr, (uint32_t)fval);
+                //AddLog(LOG_LEVEL_INFO, PSTR("cpos %d colp %d numa %d - %s %d - %d"),curpos, colpos, a_len[curpos], rstr, (uint32_t)fval, flg);
                 if (flg) {
                   summs[curpos] += fval;
                   accnt[curpos] += 1;
