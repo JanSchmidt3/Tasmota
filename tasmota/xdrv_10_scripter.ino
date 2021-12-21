@@ -2692,25 +2692,29 @@ chknext:
 
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
-          uint8_t coffs = fvar;
-
-          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-          SCRIPT_SKIP_SPACES
-          int16_t accum = fvar;
-
-          uint16_t a_len[MAX_EXT_ARRAYS];
-          float *a_ptr[MAX_EXT_ARRAYS];
-
-          uint8_t index = 0;
-          while (index < MAX_EXT_ARRAYS) {
-            lp = get_array_by_name(lp, &a_ptr[index], &a_len[index]);
+          int8_t coffs = fvar;
+          if (coffs >= 0) {
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
             SCRIPT_SKIP_SPACES
-            index++;
-            if (*lp == ')' || *lp == '\n') {
-              break;
+            int16_t accum = fvar;
+
+            uint16_t a_len[MAX_EXT_ARRAYS];
+            float *a_ptr[MAX_EXT_ARRAYS];
+
+            uint8_t index = 0;
+            while (index < MAX_EXT_ARRAYS) {
+              lp = get_array_by_name(lp, &a_ptr[index], &a_len[index]);
+              SCRIPT_SKIP_SPACES
+              index++;
+              if (*lp == ')' || *lp == '\n') {
+                break;
+              }
             }
+            fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index, accum);
+          } else {
+            fvar = extract_from_file(fref,  ts_from, ts_to, coffs, 0, 0, 0, 0);
           }
-          fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index, accum);
+
           goto nfuncexit;
         }
 #endif // USE_FEXTRACT
