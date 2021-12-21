@@ -8177,9 +8177,10 @@ exgc:
                 lp = GetStringArgument(lp, OPER_EQU, label, 0);
                 SCRIPT_SKIP_SPACES
 
+                uint8_t asflg = 1;
                 if (label[0] == '&') {
-                  ipos = 0;
                   strcpy(label, &label[1]);
+                  asflg = 0;
                 }
 
                 int16_t divflg = 1;
@@ -8235,7 +8236,13 @@ exgc:
                   for (uint32_t ind = 0; ind < anum; ind++) {
                     char acbuff[32];
                     float *fp = arrays[ind];
-                    f2char(fp[aind], glob_script_mem.script_dprec, glob_script_mem.script_lzero, acbuff);
+                    float fval;
+                    if (asflg) {
+                      fval = fp[aind];
+                    } else {
+                      fval = fp[cnt];
+                    }
+                    f2char(fval, glob_script_mem.script_dprec, glob_script_mem.script_lzero, acbuff);
                     WSContentSend_PD("%s", acbuff);
                     if (ind < anum - 1) { WSContentSend_PD(","); }
                   }
