@@ -1542,21 +1542,30 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
             if (colpos >= coffs && curpos < numa) {
               if (a_len[curpos]) {
                 float fval = CharToFloat(rstr);
-                if (mflg[curpos] == 1) {
+                uint8_t flg = 1;
+                if ((mflg[curpos] & 3) == 1) {
                   // absolute values, build diffs
-                  float tmp = fval;
-                  fval -= lastv[curpos];
-                  lastv[curpos] = tmp;
+                  if (!(mflg[curpos] & 0x80)) {
+                    lastv[curpos] = fval;
+                    mflg[curpos] |= 0x80;
+                    flg = 0;
+                  } else {
+                    float tmp = fval;
+                    fval -= lastv[curpos];
+                    lastv[curpos] = tmp;
+                  }
                 }
                 // average values
                 //AddLog(LOG_LEVEL_INFO, PSTR("cpos %d colp %d numa %d - %s %d"),curpos, colpos, a_len[curpos], rstr, (uint32_t)fval);
-                summs[curpos] += fval;
-                accnt[curpos] += 1;
-                if (accnt[curpos] == accum) {
-                  *a_ptr[curpos]++ = summs[curpos] / accum;
-                  summs[curpos] = 0;
-                  accnt[curpos] = 0;
-                  a_len[curpos]--;
+                if (flg) {
+                  summs[curpos] += fval;
+                  accnt[curpos] += 1;
+                  if (accnt[curpos] == accum) {
+                    *a_ptr[curpos]++ = summs[curpos] / accum;
+                    summs[curpos] = 0;
+                    accnt[curpos] = 0;
+                    a_len[curpos]--;
+                  }
                 }
               } else {
                 break;
@@ -7160,7 +7169,41 @@ void ScriptGetSDCard(void) {
 extern uint8_t *buffer;
 bool script_download_busy;
 
+//#define USE_DLTASK
+
 void SendFile(char *fname) {
+
+#ifdef ESP8266
+  SendFile_sub(fname);
+#endif // ESP8266
+
+#ifdef ESP32
+#ifdef USE_DLTASK
+  if (script_download_busy == true) {
+    AddLog(LOG_LEVEL_INFO, PSTR("UFS: Download is busy"));
+    return;
+  }
+  script_download_busy = true;
+  char *path = (char*)malloc(128);
+  strcpy(path, fname);
+  xTaskCreatePinnedToCore(script_download_task, "DT", 6000, (void*)path, 3, NULL, 1);
+#else
+  SendFile_sub(fname);
+#endif
+
+#endif // ESP32
+}
+
+#ifdef USE_DLTASK
+void script_download_task(void *path) {
+  SendFile_sub((char*) path);
+  free(path);
+  script_download_busy = false;
+  vTaskDelete( NULL );
+}
+#endif // USE_DLTASK
+
+void SendFile_sub(char *fname) {
 char buff[512];
   const char *mime = 0;
   uint8_t sflg = 0;
@@ -7191,7 +7234,6 @@ char buff[512];
   }
 
   if (!mime) return;
-
 
   WSContentSend_P(HTTP_SCRIPT_MIMES, fname, mime);
 
@@ -7293,11 +7335,11 @@ char buff[512];
     }
 #endif // USE_DISPLAY_DUMP
   } else {
-    File file = ufsp->open(fname,FS_FILE_READ);
+    File file = ufsp->open(fname, FS_FILE_READ);
     uint32_t siz = file.size();
     uint32_t len = sizeof(buff);
     while (siz > 0) {
-      if (len>siz) len = siz;
+      if (len > siz) len = siz;
       file.read((uint8_t *)buff, len);
       Webserver->client().write((const char*)buff, len);
       siz -= len;
