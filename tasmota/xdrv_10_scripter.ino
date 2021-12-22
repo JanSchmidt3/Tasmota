@@ -574,6 +574,16 @@ char *script;
     float fvalues[MAXVARS];
     struct T_INDEX vtypes[MAXVARS];
 
+
+    //char strings[MAXSVARS*SCRIPT_MAXSSIZE];
+    //char *strings_p = strings;
+    char *strings_op = (char*)calloc(MAXSVARS*SCRIPT_MAXSSIZE, 1);
+    char *strings_p = strings_op;
+    if (!strings_op) {
+      free(imemptr);
+      return -7;
+    }
+
 /*
     uint32_t imemp = (uint32_t)imemptr;
     imemp += (MAXVARS*10);
@@ -599,12 +609,9 @@ char *script;
     char *vnames_p = vnames;
     char **vnp_p = vnp;
 
-    char strings[MAXSVARS*SCRIPT_MAXSSIZE];
     char *snp[MAXSVARS];
 
     struct M_FILT mfilt[MAXFILT];
-
-    char *strings_p = strings;
 
     char **snp_p = snp;
     uint8_t numperm = 0;
@@ -682,6 +689,7 @@ char *script;
                     numflt++;
                     if (numflt>MAXFILT) {
                       if (imemptr) free(imemptr);
+                      if (strings_p) free(strings_p);
                       return -6;
                     }
                 } else {
@@ -708,6 +716,7 @@ char *script;
                     nvars++;
                     if (nvars>MAXNVARS) {
                       if (imemptr) free(imemptr);
+                      if (strings_p) free(strings_p);
                       return -1;
                     }
                     if (vtypes[vars].bits.is_filter) {
@@ -741,12 +750,14 @@ char *script;
                     svars++;
                     if (svars>MAXSVARS) {
                       if (imemptr) free(imemptr);
+                      if (strings_p) free(strings_p);
                       return -2;
                     }
                 }
                 vars++;
                 if (vars>MAXVARS) {
                   if (imemptr) free(imemptr);
+                  if (strings_p) free(strings_p);
                   return -3;
                 }
             }
@@ -798,6 +809,7 @@ char *script;
     script_mem = (uint8_t*)special_malloc(script_mem_size);
     if (!script_mem) {
       if (imemptr) free(imemptr);
+      if (strings_p) free(strings_p);
       return -4;
     }
 
@@ -879,6 +891,7 @@ char *script;
         if (index > MAXVNSIZ) {
           free(glob_script_mem.script_mem);
           if (imemptr) free(imemptr);
+          if (strings_p) free(strings_p);
           return -5;
         }
     }
@@ -888,7 +901,9 @@ char *script;
 
     // copy string variables
     char *cp1 = glob_script_mem.glob_snp;
-    char *sp = strings;
+    //char *sp = strings;
+    char *sp = strings_op;
+
     for (count = 0; count<svars; count++) {
         strcpy(cp1,sp);
         sp += strlen(sp) + 1;
@@ -974,6 +989,7 @@ char *script;
 
     if (imemptr) {
       free(imemptr);
+      if (strings_p) free(strings_p);
     }
     return err;
 }
@@ -1476,6 +1492,8 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
     }
     return cpos;
   }
+  uint32_t ipos = glob_script_mem.files[fref].position();
+  glob_script_mem.files[fref].seek(0, SeekSet);
   uint32_t tsfrom = tstamp2l(ts_from);
   uint32_t tsto = tstamp2l(ts_to);
   uint16_t lines = 0;
@@ -1581,6 +1599,11 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
         lastpos = glob_script_mem.files[fref].position();
         colpos = 0;
         lines ++;
+        if (lines == 1) {
+          if (ipos) {
+            glob_script_mem.files[fref].seek(ipos, SeekSet);
+          }
+        }
       }
     }
     rstr[sindex] = iob;
@@ -2146,12 +2169,11 @@ chknext:
           float *fps;
           lp = get_array_by_name(lp, &fps, &alens);
           SCRIPT_SKIP_SPACES
-          if (alend != alens) {
-            fvar = -1;
-          } else {
-            memcpy(fpd, fps, alend * sizeof(float));
-            fvar = 0;
+          if (alens < alend) {
+            alend = alens;
           }
+          memcpy(fpd, fps, alend * sizeof(float));
+          fvar = alend;
           goto nfuncexit;
         }
         break;
@@ -2682,6 +2704,19 @@ chknext:
         if (!strncmp(lp, "fsi(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           fvar = UfsInfo(fvar, 0);
+          goto nfuncexit;
+        }
+        if (!strncmp(lp, "frn(", 4)) {
+          // rename a file
+          char fn_from[glob_script_mem.max_ssize + 1];
+          lp = GetStringArgument(lp + 4, OPER_EQU, fn_from, 0);
+          SCRIPT_SKIP_SPACES
+
+          char fn_to[glob_script_mem.max_ssize + 1];
+          lp = GetStringArgument(lp, OPER_EQU, fn_to, 0);
+          SCRIPT_SKIP_SPACES
+
+          fvar = ufsp->rename(fn_from, fn_to);
           goto nfuncexit;
         }
 
