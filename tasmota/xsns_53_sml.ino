@@ -1976,7 +1976,7 @@ void SML_Decode(uint8_t index) {
                   } else {
                     // low word
                     if (usign) ebus_dval = vbus_get_septet(cp) & 0xffff;
-                    else (int16_t)(vbus_get_septet(cp) & 0xffff);
+                    else ebus_dval = (int16_t)(vbus_get_septet(cp) & 0xffff);
                   }
                   break;
                 case 'b':
