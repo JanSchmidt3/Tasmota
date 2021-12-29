@@ -1569,9 +1569,13 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
                     flg = 0;
                   } else {
                     if (!(mflg[curpos] & 2)) {
-                       float tmp = fval;
-                       fval -= lastv[curpos];
-                       lastv[curpos] = tmp;
+                      float tmp = fval;
+                      fval -= lastv[curpos];
+                       // must be positive value
+#ifndef EXTRACT_DIFF_NOCHK
+                      if (fval < 0) fval = 0;
+#endif
+                      lastv[curpos] = tmp;
                     }
                   }
                 }
