@@ -2791,7 +2791,7 @@ chknext:
             for (uint32_t cnt = 0; cnt < alen; cnt++) {
               dtostrfd(*fa, glob_script_mem.script_dprec, dstr);
               fa++;
-              if (cnt < (len - 1)) {
+              if (cnt < (alen - 1)) {
                 strcat(dstr,"\t");
               } else {
                 if (!append) {
