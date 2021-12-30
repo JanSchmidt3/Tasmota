@@ -999,7 +999,7 @@ char *script;
 #define SCRIPT_UDP_BUFFER_SIZE 128
 #define SCRIPT_UDP_PORT 1999
 
-//#define SCRIPT_DEBUG_UDP
+#define SCRIPT_DEBUG_UDP
 
 void Restart_globvars(void) {
   Script_Stop_UDP();
