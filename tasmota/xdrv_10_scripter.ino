@@ -1098,7 +1098,7 @@ void Script_PollUdp(void) {
   }
 }
 
-#define SCRIPT_DEBUG_UDP_SEND
+//#define SCRIPT_DEBUG_UDP_SEND
 
 void script_udp_sendvar(char *vname,float *fp,char *sp) {
   if (!glob_script_mem.udp_flags.udp_used) return;
