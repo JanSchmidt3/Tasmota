@@ -999,7 +999,7 @@ char *script;
 #define SCRIPT_UDP_BUFFER_SIZE 128
 #define SCRIPT_UDP_PORT 1999
 
-#define SCRIPT_DEBUG_UDP
+//#define SCRIPT_DEBUG_UDP
 
 void Restart_globvars(void) {
   Script_Stop_UDP();
@@ -1098,6 +1098,8 @@ void Script_PollUdp(void) {
   }
 }
 
+#define SCRIPT_DEBUG_UDP_SEND
+
 void script_udp_sendvar(char *vname,float *fp,char *sp) {
   if (!glob_script_mem.udp_flags.udp_used) return;
   if (!glob_script_mem.udp_flags.udp_connected) return;
@@ -1110,12 +1112,12 @@ void script_udp_sendvar(char *vname,float *fp,char *sp) {
     char flstr[16];
     dtostrfd(*fp, 8, flstr);
     strcat(sbuf, flstr);
-#ifdef SCRIPT_DEBUG_UDP
+#ifdef SCRIPT_DEBUG_UDP_SEND
     AddLog(LOG_LEVEL_DEBUG, PSTR("num var updated - %s"), sbuf);
 #endif
   } else {
     strcat(sbuf, sp);
-#ifdef SCRIPT_DEBUG_UDP
+#ifdef SCRIPT_DEBUG_UDP_SEND
     AddLog(LOG_LEVEL_DEBUG, PSTR("string var updated - %s"), sbuf);
 #endif
   }
