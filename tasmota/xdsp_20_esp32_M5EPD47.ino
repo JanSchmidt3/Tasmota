@@ -1,5 +1,5 @@
 /*
-  xdsp_19_esp32_M5EPD47.ino - M5Stack e-paper 4.7 inch support for Tasmota
+  xdsp_20_esp32_M5EPD47.ino - M5Stack e-paper 4.7 inch support for Tasmota
 
   Copyright (C) 2021  Theo Arends, Gerhard Mutz and M5Stack
 
@@ -21,7 +21,7 @@
 #ifdef USE_DISPLAY
 #ifdef USE_M5EPD47
 
-#define XDSP_19               19
+#define XDSP_20               20
 
 #define M5EPD47_BLACK  0
 #define M5EPD47_WHITE 15
@@ -42,7 +42,7 @@ void M5EpdInitDriver47(void) {
   if (PinUsed(GPIO_EPD_DATA)) {
   //  if (1) {
 
-    Settings->display_model = XDSP_19;
+    Settings->display_model = XDSP_20;
 
     if (Settings->display_width != M5EPD47_WIDTH) {
       Settings->display_width = M5EPD47_WIDTH;
@@ -168,14 +168,14 @@ void M5EPD47_CheckTouch(void) {
  * Interface
 \*********************************************************************************************/
 
-bool Xdsp19(uint8_t function)
+bool Xdsp20(uint8_t function)
 {
   bool result = false;
 
   if (FUNC_DISPLAY_INIT_DRIVER == function) {
     M5EpdInitDriver47();
   }
-  else if (m5epd47_init_done && (XDSP_19 == Settings->display_model)) {
+  else if (m5epd47_init_done && (XDSP_20 == Settings->display_model)) {
     switch (function) {
       case FUNC_DISPLAY_MODEL:
         result = true;

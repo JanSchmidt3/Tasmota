@@ -110,6 +110,10 @@ void BM8563Detect(void) {
   InitTimeFromRTC();
 }
 
+BM8563 *Get_BM8563(void) {
+  return &bm8563_driver.Rtc;
+}
+
 void BM8563EverySecond(void) {
   if (!bm8563_driver.ntp_time_ok && (Rtc.utc_time > START_VALID_TIME) && abs((int32_t)Rtc.utc_time - (int32_t)BM8563GetUtc()) > 3) {
     BM8563SetUtc(Rtc.utc_time);
