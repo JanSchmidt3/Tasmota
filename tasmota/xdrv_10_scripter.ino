@@ -1408,7 +1408,7 @@ uint32_t ts2ts(struct FE_TM *tm, char *ts) {
     tm->secs = strtol(ts, &ts, 10);
     return 0;
   } else {
-    // german excel fromat 16.12.20 15:36
+    // german excel format 16.12.20 15:36
     tm->day = strtol(ts, &ts, 10);
     ts++;
     tm->month = strtol(ts, &ts, 10);
@@ -1444,10 +1444,18 @@ struct FE_TM tm;
 // convert tasmota time stamp to ul seconds
 uint32_t tstamp2l(char *ts) {
 struct FE_TM tm;
+struct tm tmx;
+  uint8_t mode = ts2ts(&tm, ts);
 
-  ts2ts(&tm, ts);
+  tmx.tm_sec = tm.secs;
+  tmx.tm_min = tm.mins;
+  tmx.tm_hour = tm.hour;
+  tmx.tm_mon = tm.month - 1;
+  tmx.tm_year = tm.year + 100;
+  tmx.tm_mday = tm.day;
+  time_t tmd = mktime(&tmx);
 
-  return (tm.year*365*86400)+(tm.month*31*86400)+(tm.day*86400)+(tm.hour*3600)+(tm.mins*60)+tm.secs;
+  return tmd;
 }
 
 // assume 1. entry is timestamp, others are tab delimited values until LF
@@ -1496,6 +1504,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
   glob_script_mem.files[fref].seek(0, SeekSet);
   uint32_t tsfrom = tstamp2l(ts_from);
   uint32_t tsto = tstamp2l(ts_to);
+  //AddLog(LOG_LEVEL_INFO, PSTR("from: %d  to: %d"),tsfrom,  tsto);
   uint16_t lines = 0;
   uint16_t rlines = 0;
   float summs[numa];
