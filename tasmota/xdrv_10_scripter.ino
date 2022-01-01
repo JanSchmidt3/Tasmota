@@ -1098,8 +1098,6 @@ void Script_PollUdp(void) {
   }
 }
 
-//#define SCRIPT_DEBUG_UDP_SEND
-
 void script_udp_sendvar(char *vname,float *fp,char *sp) {
   if (!glob_script_mem.udp_flags.udp_used) return;
   if (!glob_script_mem.udp_flags.udp_connected) return;
@@ -1112,12 +1110,12 @@ void script_udp_sendvar(char *vname,float *fp,char *sp) {
     char flstr[16];
     dtostrfd(*fp, 8, flstr);
     strcat(sbuf, flstr);
-#ifdef SCRIPT_DEBUG_UDP_SEND
+#ifdef SCRIPT_DEBUG_UDP
     AddLog(LOG_LEVEL_DEBUG, PSTR("num var updated - %s"), sbuf);
 #endif
   } else {
     strcat(sbuf, sp);
-#ifdef SCRIPT_DEBUG_UDP_SEND
+#ifdef SCRIPT_DEBUG_UDP
     AddLog(LOG_LEVEL_DEBUG, PSTR("string var updated - %s"), sbuf);
 #endif
   }
@@ -3711,15 +3709,7 @@ extern char *SML_GetSVal(uint32_t index);
             glob_script_mem.sp = new TasmotaSerial(rxpin, txpin, 1, 0, rxbsiz);
 
             if (glob_script_mem.sp) {
-              uint32_t config;
-#ifdef ESP8266
-              config = pgm_read_byte(kTasmotaSerialConfig + sconfig);
-#endif  // ESP8266
-
-#ifdef ESP32
-              config = pgm_read_dword(kTasmotaSerialConfig + sconfig);
-#endif // ESP32
-              fvar = glob_script_mem.sp->begin(br, config);
+              fvar = glob_script_mem.sp->begin(br, ConvertSerialConfig(sconfig));
               uint32_t savc = Settings->serial_config;
               //setRxBufferSize(TMSBSIZ);
 
