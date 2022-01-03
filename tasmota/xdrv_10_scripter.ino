@@ -7643,7 +7643,7 @@ const char SCRIPT_MSG_GOPT2[] PROGMEM =
 "showRowNumber:true,sort:'disable',allowHtml:true,width:'100%%',height:'100%%',cssClassNames:cssc";
 
 const char SCRIPT_MSG_GOPT3[] PROGMEM =
-"title:'%s',isStacked:false,vAxes:{0:{maxValue:%d},1:{maxValue:%d}},series:{0:{targetAxisIndex:0},1:{targetAxisIndex:1}}%s";
+"title:'%s',isStacked:false,vAxes:{0:{maxValue:%s},1:{maxValue:%s}},series:{0:{targetAxisIndex:0},1:{targetAxisIndex:1}}%s";
 
 const char SCRIPT_MSG_GOPT4[] PROGMEM =
 //"hAxis:{minValue:new Date(0,1,1,0,0),maxValue:new Date(0,1,2,0,0),format:'HH:mm'}";
@@ -7653,7 +7653,7 @@ const char SCRIPT_MSG_GOPT5[] PROGMEM =
 "new Date(0,0,0,%d,%d)";
 
 const char SCRIPT_MSG_GOPT6[] PROGMEM =
-"title:'%s',isStacked:false,vAxis:{viewWindow:{min:%d,max:%d}}%s";
+"title:'%s',isStacked:false,vAxis:{viewWindow:{min:%s,max:%s}}%s";
 
 const char SCRIPT_MSG_GTE1[] PROGMEM = "'%s'";
 
@@ -8365,7 +8365,12 @@ exgc:
                   float max2;
                   lp = GetNumericArgument(lp, OPER_EQU, &max2, 0);
                   SCRIPT_SKIP_SPACES
-                  snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, (uint32_t)max1, (uint32_t)max2, func);
+                  char maxstr1[24];
+                  dtostrfd(max1, 3, maxstr1);
+                  char maxstr2[24];
+                  dtostrfd(max2, 3, maxstr2);
+                  //snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, (uint32_t)max1, (uint32_t)max2, func);
+                  snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, maxstr1, maxstr2, func);
                 } else {
                   SCRIPT_SKIP_SPACES
                   if (ctype!='g') {
@@ -8376,7 +8381,12 @@ exgc:
                       float max2;
                       lp = GetNumericArgument(lp, OPER_EQU, &max2, 0);
                       SCRIPT_SKIP_SPACES
-                      snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, (uint32_t)max1, (uint32_t)max2, func);
+                      char maxstr1[24];
+                      dtostrfd(max1, 3, maxstr1);
+                      char maxstr2[24];
+                      dtostrfd(max2, 3, maxstr2);
+                      //nprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, (uint32_t)max1, (uint32_t)max2, func);
+                      snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, maxstr1, maxstr2, func);
                     }
                   }
                 }
