@@ -8365,9 +8365,9 @@ exgc:
                   float max2;
                   lp = GetNumericArgument(lp, OPER_EQU, &max2, 0);
                   SCRIPT_SKIP_SPACES
-                  char maxstr1[24];
+                  char maxstr1[16];
                   dtostrfd(max1, 3, maxstr1);
-                  char maxstr2[24];
+                  char maxstr2[16];
                   dtostrfd(max2, 3, maxstr2);
                   //snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, (uint32_t)max1, (uint32_t)max2, func);
                   snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, maxstr1, maxstr2, func);
@@ -8381,9 +8381,9 @@ exgc:
                       float max2;
                       lp = GetNumericArgument(lp, OPER_EQU, &max2, 0);
                       SCRIPT_SKIP_SPACES
-                      char maxstr1[24];
+                      char maxstr1[16];
                       dtostrfd(max1, 3, maxstr1);
-                      char maxstr2[24];
+                      char maxstr2[16];
                       dtostrfd(max2, 3, maxstr2);
                       //nprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, (uint32_t)max1, (uint32_t)max2, func);
                       snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, maxstr1, maxstr2, func);
