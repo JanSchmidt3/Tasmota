@@ -689,7 +689,7 @@ char *script;
                     numflt++;
                     if (numflt>MAXFILT) {
                       if (imemptr) free(imemptr);
-                      if (strings_p) free(strings_p);
+                      if (strings_op) free(strings_op);
                       return -6;
                     }
                 } else {
@@ -716,7 +716,7 @@ char *script;
                     nvars++;
                     if (nvars>MAXNVARS) {
                       if (imemptr) free(imemptr);
-                      if (strings_p) free(strings_p);
+                      if (strings_op) free(strings_op);
                       return -1;
                     }
                     if (vtypes[vars].bits.is_filter) {
@@ -750,14 +750,14 @@ char *script;
                     svars++;
                     if (svars>MAXSVARS) {
                       if (imemptr) free(imemptr);
-                      if (strings_p) free(strings_p);
+                      if (strings_op) free(strings_op);
                       return -2;
                     }
                 }
                 vars++;
                 if (vars>MAXVARS) {
                   if (imemptr) free(imemptr);
-                  if (strings_p) free(strings_p);
+                  if (strings_op) free(strings_op);
                   return -3;
                 }
             }
@@ -809,7 +809,7 @@ char *script;
     script_mem = (uint8_t*)special_malloc(script_mem_size);
     if (!script_mem) {
       if (imemptr) free(imemptr);
-      if (strings_p) free(strings_p);
+      if (strings_op) free(strings_op);
       return -4;
     }
 
@@ -891,7 +891,7 @@ char *script;
         if (index > MAXVNSIZ) {
           free(glob_script_mem.script_mem);
           if (imemptr) free(imemptr);
-          if (strings_p) free(strings_p);
+          if (strings_op) free(strings_op);
           return -5;
         }
     }
@@ -989,7 +989,7 @@ char *script;
 
     if (imemptr) {
       free(imemptr);
-      if (strings_p) free(strings_p);
+      if (strings_op) free(strings_op);
     }
     return err;
 }
@@ -9359,13 +9359,13 @@ bool Xdrv10(uint8_t function)
       if (EEP_INIT(EEP_SCRIPT_SIZE)) {
           // found 32kb eeprom,
           char *script;
-          if (EEP_SCRIPT_SIZE!=SPECIAL_EEPMODE_SIZE) {
+          if (EEP_SCRIPT_SIZE != SPECIAL_EEPMODE_SIZE) {
             script = (char*)calloc(EEP_SCRIPT_SIZE + 4, 1);
             if (!script) break;
             glob_script_mem.script_ram = script;
             glob_script_mem.script_size = EEP_SCRIPT_SIZE;
             EEP_READ(0, EEP_SCRIPT_SIZE, script);
-            if (*script==0xff) {
+            if (*script == 0xff) {
               memset(script, EEP_SCRIPT_SIZE, 0);
             }
             script[EEP_SCRIPT_SIZE - 1] = 0;
@@ -9374,7 +9374,7 @@ bool Xdrv10(uint8_t function)
             ucs = (uint8_t*)calloc(SPI_FLASH_SEC_SIZE + 4, 1);
             if (!ucs) break;
             alt_eeprom_readBytes(0, SPI_FLASH_SEC_SIZE, ucs);
-            if (*ucs==0xff) {
+            if (*ucs == 0xff) {
               memset(ucs, SPI_FLASH_SEC_SIZE, 0);
             }
             ucs[SPI_FLASH_SEC_SIZE - 1] = 0;
