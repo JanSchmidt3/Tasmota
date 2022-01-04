@@ -2798,7 +2798,8 @@ chknext:
           if (glob_script_mem.file_flags[index].is_open) {
             char dstr[24];
             for (uint32_t cnt = 0; cnt < alen; cnt++) {
-              dtostrfd(*fa, glob_script_mem.script_dprec, dstr);
+              //dtostrfd(*fa, glob_script_mem.script_dprec, dstr);
+              ext_snprintf_P(dstr, sizeof(dstr), PSTR("%*_f"), -glob_script_mem.script_dprec, fa);
               fa++;
               if (cnt < (alen - 1)) {
                 strcat(dstr,"\t");
