@@ -1459,7 +1459,7 @@ struct tm tmx;
 }
 
 // assume 1. entry is timestamp, others are tab delimited values until LF
-// file refernece, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
+// file reference, from timestamp, to timestampm, column offset, array pointers, array lenght, number of arrays
 int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coffs, float **a_ptr, uint16_t *a_len, uint8_t numa, int16_t accum) {
   if (!glob_script_mem.file_flags[fref].is_open) return -1;
   char rstr[32];
@@ -1486,7 +1486,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
         index--;
       }
       glob_script_mem.files[fref].seek(cpos, SeekSet);
-    } else {
+    } else if (coffs == -2) {
       // seek to line 2
       for (uint32_t cp = 0; cp < cpos; cp++) {
         uint8_t buff[2], iob;
@@ -1497,6 +1497,33 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
           break;
         }
       }
+    } else {
+      // seek to pos of ts_from
+      cpos = glob_script_mem.files[fref].position();
+      uint32_t tsfrom = tstamp2l(ts_from);
+      while (glob_script_mem.files[fref].available()) {
+        uint8_t buff[2], iob;
+        glob_script_mem.files[fref].read(buff, 1);
+        cpos++;
+        iob = buff[0];
+        if (iob == '\n' || iob == '\r') {
+          // read time stamp
+          char ts[22];
+          glob_script_mem.files[fref].read((uint8_t*)ts, sizeof(ts));
+          char *cp = strchr(ts, '\t');
+          if (cp) {
+            *cp = 0;
+            uint32_t tstc = tstamp2l(ts);
+            //Serial.printf(">>> %s - %d - %d\n",ts, tstc, cpos );
+            if (tsfrom == tstc) {
+              glob_script_mem.files[fref].seek(cpos, SeekSet);
+              return cpos;
+            }
+          }
+          cpos += sizeof(ts);
+        }
+      }
+      return -1;
     }
     return cpos;
   }
@@ -3949,6 +3976,12 @@ extern char *SML_GetSVal(uint32_t index);
           lp++;
           len = 0;
           goto strexit;
+        }
+        if (!strncmp(lp, "tsn(", 4)) {
+          char str[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
+          fvar = tstamp2l(str);
+          goto nfuncexit;
         }
 #endif
         break;
