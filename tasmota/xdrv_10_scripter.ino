@@ -7427,9 +7427,10 @@ char buff[512];
 #endif // USE_UFILESYS
 
 
-#ifdef SCRIPT_FULL_WEBPAGE
+/*
 const char HTTP_WEB_FULL_DISPLAY[] PROGMEM =
   "<p><form action='" "sfd%1d" "' method='get'><button>" "%s" "</button></form></p>";
+  "<p><form action='sfd%1d' method='get'><button>%s</button></form></p>";
 
 const char HTTP_SCRIPT_FULLPAGE1[] PROGMEM =
   "<!DOCTYPE html><html lang=\"" D_HTML_LANGUAGE "\" class=\"\">"
@@ -7448,6 +7449,26 @@ const char HTTP_SCRIPT_FULLPAGE1[] PROGMEM =
   "function wl(f){"                       // Execute multiple window.onload
     "window.addEventListener('load',f);"
   "}"
+    "var rfsh=1;"
+    "function la(p){"
+      "var a='';"
+@ -7530,7 +7514,8 @@ void ScriptFullWebpage(uint8_t page) {
+
+  WSContentBegin(200, CT_HTML);
+  const char *title = "Full Screen";
+  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, SettingsText(SET_DEVICENAME), title, page , fullpage_refresh);
+  WSContentSend_P(HTTP_HEADER1, PSTR(D_HTML_LANGUAGE), SettingsText(SET_DEVICENAME), title);
+  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, page , fullpage_refresh);
+  WSContentSend_P(HTTP_SCRIPT_FULLPAGE2, fullpage_refresh);
+  //WSContentSend_P(PSTR("<div id='l1' name='l1'></div>"));
+*/
+
+
+#ifdef SCRIPT_FULL_WEBPAGE
+const char HTTP_WEB_FULL_DISPLAY[] PROGMEM =
+  "<p><form action='sfd%1d' method='get'><button>%s</button></form></p>";
+
+const char HTTP_SCRIPT_FULLPAGE1[] PROGMEM =
     "var rfsh=1;"
     "function la(p){"
       "var a='';"
@@ -7530,7 +7551,8 @@ void ScriptFullWebpage(uint8_t page) {
 
   WSContentBegin(200, CT_HTML);
   const char *title = "Full Screen";
-  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, SettingsText(SET_DEVICENAME), title, page , fullpage_refresh);
+  WSContentSend_P(HTTP_HEADER1, PSTR(D_HTML_LANGUAGE), SettingsText(SET_DEVICENAME), title);
+  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, page , fullpage_refresh);
   WSContentSend_P(HTTP_SCRIPT_FULLPAGE2, fullpage_refresh);
   //WSContentSend_P(PSTR("<div id='l1' name='l1'></div>"));
 

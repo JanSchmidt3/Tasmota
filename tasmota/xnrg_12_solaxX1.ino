@@ -83,7 +83,7 @@ union {
   };
 } ErrCode;
 
-const char kSolaxMode[] PROGMEM = D_WAITING "|" D_CHECKING "|" D_WORKING "|" D_FAILURE;
+const char kSolaxMode[] PROGMEM = D_WAITING "|" D_CHECKING "|" D_WORKING "|" D_FAILURE "|" D_OFF;
 
 const char kSolaxError[] PROGMEM =
   D_SOLAX_ERROR_0 "|" D_SOLAX_ERROR_1 "|" D_SOLAX_ERROR_2 "|" D_SOLAX_ERROR_3 "|" D_SOLAX_ERROR_4 "|" D_SOLAX_ERROR_5 "|"
@@ -94,7 +94,7 @@ const char kSolaxError[] PROGMEM =
 TasmotaSerial *solaxX1Serial;
 
 struct SOLAXX1 {
-  float temperature = 0;
+  int16_t temperature = 0;
   float energy_today = 0;
   float dc1_voltage = 0;
   float dc2_voltage = 0;
@@ -155,10 +155,18 @@ void solaxX1_RS485Send(uint16_t msgLen)
     solaxX1Serial->read();
   }
 
+  if (PinUsed(GPIO_SOLAXX1_RTS)) {
+    digitalWrite(Pin(GPIO_SOLAXX1_RTS), HIGH);
+  }
   solaxX1Serial->flush();
   solaxX1Serial->write(message, msgLen);
   solaxX1Serial->write(highByte(crc));
   solaxX1Serial->write(lowByte(crc));
+  solaxX1Serial->flush();
+  if (PinUsed(GPIO_SOLAXX1_RTS)) {
+    digitalWrite(Pin(GPIO_SOLAXX1_RTS), LOW);
+  }
+
   AddLogBuffer(LOG_LEVEL_DEBUG_MORE, message, msgLen);
 }
 
@@ -260,7 +268,7 @@ void solaxX1250MSecond(void) // Every 250 milliseconds
         solaxX1_send_retry = 20;
         Energy.data_valid[0] = 0;
 
-        solaxX1.temperature =    (float)((value[9] << 8) | value[10]); // Temperature
+        solaxX1.temperature =    (value[9] << 8) | value[10]; // Temperature
         solaxX1.energy_today =   (float)((value[11] << 8) | value[12]) * 0.1f; // Energy Today
         solaxX1.dc1_voltage =    (float)((value[13] << 8) | value[14]) * 0.1f; // PV1 Voltage
         solaxX1.dc2_voltage =    (float)((value[15] << 8) | value[16]) * 0.1f; // PV2 Voltage
@@ -363,8 +371,8 @@ void solaxX1250MSecond(void) // Every 250 milliseconds
       Energy.data_valid[0] = ENERGY_WATCHDOG;
 
       solaxX1.temperature = solaxX1.dc1_voltage = solaxX1.dc2_voltage = solaxX1.dc1_current = solaxX1.dc2_current = solaxX1.dc1_power = 0;
-      solaxX1.dc2_power = solaxX1.status = Energy.current[0] = Energy.voltage[0] = Energy.frequency[0] = Energy.active_power[0] = 0;
-      //solaxX1.energy_today = solaxX1.runtime_total = 0;
+      solaxX1.dc2_power = Energy.current[0] = Energy.voltage[0] = Energy.frequency[0] = Energy.active_power[0] = 0;
+      solaxX1.status = 4; // off(line)
     } else {
       if (protocolStatus.queryOfflineSend) {
         protocolStatus.status = 0b00001000; // queryOffline
@@ -380,7 +388,8 @@ void solaxX1250MSecond(void) // Every 250 milliseconds
 void solaxX1SnsInit(void)
 {
   AddLog(LOG_LEVEL_DEBUG, PSTR("SX1: Solax X1 Inverter Init"));
-  DEBUG_SENSOR_LOG(PSTR("SX1: RX pin: %d, TX pin: %d"), Pin(GPIO_SOLAXX1_RX), Pin(GPIO_SOLAXX1_TX));
+  AddLog(LOG_LEVEL_DEBUG, PSTR("SX1: RX-pin: %d, TX-pin: %d, RTS-pin: %d"), Pin(GPIO_SOLAXX1_RX), Pin(GPIO_SOLAXX1_TX), Pin(GPIO_SOLAXX1_RTS));
+//  DEBUG_SENSOR_LOG(PSTR("SX1: RX pin: %d, TX pin: %d"), Pin(GPIO_SOLAXX1_RX), Pin(GPIO_SOLAXX1_TX));
   protocolStatus.status = 0b00100000; // hasAddress
 
   solaxX1Serial = new TasmotaSerial(Pin(GPIO_SOLAXX1_RX), Pin(GPIO_SOLAXX1_TX), 1);
@@ -388,6 +397,9 @@ void solaxX1SnsInit(void)
     if (solaxX1Serial->hardwareSerial()) { ClaimSerial(); }
   } else {
     TasmotaGlobal.energy_driver = ENERGY_NONE;
+  }
+  if (PinUsed(GPIO_SOLAXX1_RTS)) {
+    pinMode(Pin(GPIO_SOLAXX1_RTS), OUTPUT);
   }
 }
 
@@ -447,12 +459,12 @@ void solaxX1Show(bool json)
     ResponseAppend_P(PSTR(",\"" D_JSON_PV2_VOLTAGE "\":%s,\"" D_JSON_PV2_CURRENT "\":%s,\"" D_JSON_PV2_POWER "\":%s"),
                                 pv2_voltage, pv2_current, pv2_power);
 #endif
-    ResponseAppend_P(PSTR(",\"" D_JSON_TEMPERATURE "\":%*_f,\"" D_JSON_RUNTIME "\":%s,\"" D_JSON_STATUS "\":\"%s\",\"" D_JSON_ERROR "\":%d"),
-                                Settings->flag2.temperature_resolution, &solaxX1.temperature, runtime, status, solaxX1.errorCode);
+    ResponseAppend_P(PSTR(",\"" D_JSON_TEMPERATURE "\":%d,\"" D_JSON_RUNTIME "\":%s,\"" D_JSON_STATUS "\":\"%s\",\"" D_JSON_ERROR "\":%d"),
+                                solaxX1.temperature, runtime, status, solaxX1.errorCode);
 
 #ifdef USE_DOMOTICZ
     // Avoid bad temperature report at beginning of the day (spikes of 1200 celsius degrees)
-    if (0 == TasmotaGlobal.tele_period && solaxX1.temperature < 100) { DomoticzFloatSensor(DZ_TEMP, solaxX1.temperature); }
+    if (0 == TasmotaGlobal.tele_period && solaxX1.temperature < 100) { DomoticzSensor(DZ_TEMP, solaxX1.temperature); }
 #endif // USE_DOMOTICZ
 
 #ifdef USE_WEBSERVER

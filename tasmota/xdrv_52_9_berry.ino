@@ -23,6 +23,7 @@
 #define XDRV_52             52
 
 #include <berry.h>
+#include "berry_tasmota.h"
 #include "be_vm.h"
 #include "ZipReadFS.h"
 
@@ -82,6 +83,29 @@ extern "C" {
     return calloc(num, size);
   }
 #endif // USE_BERRY_PSRAM
+
+
+  void *berry_malloc32(uint32_t size) {
+  #ifdef USE_BERRY_IRAM
+    return special_malloc32(size);
+  #else
+    return special_malloc(size);
+  #endif
+  }
+  void *berry_realloc32(void *ptr, size_t size) {
+  #ifdef USE_BERRY_IRAM
+    return special_realloc32(ptr, size);
+  #else
+    return special_realloc(ptr, size);
+  #endif
+  }
+  void *berry_calloc32(size_t num, size_t size) {
+  #ifdef USE_BERRY_IRAM
+    return special_calloc32(num, size);
+  #else
+    return special_calloc(num, size);
+  #endif
+  }
 
   void berry_free(void *ptr) {
     free(ptr);
@@ -738,7 +762,7 @@ bool Xdrv52(uint8_t function)
       break;
     case FUNC_MQTT_DATA:
       result = callBerryEventDispatcher(PSTR("mqtt_data"), XdrvMailbox.topic, 0, XdrvMailbox.data, XdrvMailbox.data_len);
-      break;
+     break;
     case FUNC_COMMAND:
       result = DecodeCommand(kBrCommands, BerryCommand);
       if (!result) {
