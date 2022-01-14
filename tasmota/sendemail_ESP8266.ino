@@ -3,7 +3,7 @@
 #include "sendemail_ESP8266.h"
 
 // enable serial debugging
-#define DEBUG_EMAIL_PORT
+//#define DEBUG_EMAIL_PORT
 
 // sendmail works only with server port 465 SSL and doesnt support STARTTLS (not supported in Arduino)
 // only a couple of mailservers support this (e.g. gmail,gmx,yahoo,freenetmail)
