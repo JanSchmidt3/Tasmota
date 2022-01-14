@@ -3,7 +3,7 @@
 #include "sendemail_ESP8266.h"
 
 // enable serial debugging
-//#define DEBUG_EMAIL_PORT
+#define DEBUG_EMAIL_PORT
 
 // sendmail works only with server port 465 SSL and doesnt support STARTTLS (not supported in Arduino)
 // only a couple of mailservers support this (e.g. gmail,gmx,yahoo,freenetmail)
@@ -162,7 +162,7 @@ uint16_t SendMail(char *buffer) {
 #endif
 
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s - %s - %s - %s"),from,to,subject,cmd);
+  AddLog(LOG_LEVEL_INFO, PSTR("%s - %s - %s - %s"),from,to,subject,cmd);
 #endif
 
   if (mail) {
@@ -179,7 +179,8 @@ exit:
 
 WiFiClient *g_client;
 SendEmail::SendEmail(const String& host, const int port, const String& user, const String& passwd, const int timeout, const int auth_used) :
-    host(host), port(port), user(user), passwd(passwd), timeout(timeout), ssl(ssl), auth_used(auth_used), client(new BearSSL::WiFiClientSecure_light(1024,1024)) {
+    //host(host), port(port), user(user), passwd(passwd), timeout(timeout), ssl(ssl), auth_used(auth_used), client(new BearSSL::WiFiClientSecure_light(1024,1024)) {
+        host(host), port(port), user(user), passwd(passwd), timeout(timeout), ssl(ssl), auth_used(auth_used), client(new BearSSL::WiFiClientSecure_light(2048,2048)) {
 }
 
 String SendEmail::readClient() {
@@ -217,7 +218,7 @@ String buffer;
 
   buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   if (!buffer.startsWith(F("220"))) {
     goto exit;
@@ -228,11 +229,11 @@ String buffer;
 
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   if (!buffer.startsWith(F("250"))) {
     goto exit;
@@ -242,11 +243,11 @@ String buffer;
     buffer = F("AUTH LOGIN");
     client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-    AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+    AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
     buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-    AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+    AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
     if (!buffer.startsWith(F("334")))
     {
@@ -257,11 +258,11 @@ String buffer;
 
     client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
     buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
     if (!buffer.startsWith(F("334"))) {
       goto exit;
@@ -269,11 +270,11 @@ String buffer;
     buffer = b.encode(passwd);
     client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
     buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
     if (!buffer.startsWith(F("235"))) {
       goto exit;
@@ -285,11 +286,11 @@ String buffer;
   buffer += from;
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   if (!buffer.startsWith(F("250"))) {
     goto exit;
@@ -298,11 +299,11 @@ String buffer;
   buffer += to;
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   if (!buffer.startsWith(F("250"))) {
     goto exit;
@@ -311,11 +312,11 @@ String buffer;
   buffer = F("DATA");
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   buffer = readClient();
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   if (!buffer.startsWith(F("354"))) {
     goto exit;
@@ -325,19 +326,19 @@ String buffer;
   buffer += from;
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   buffer = F("To: ");
   buffer += to;
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
   buffer = F("Subject: ");
   buffer += subject;
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
 
 #ifdef USE_SCRIPT
@@ -359,13 +360,13 @@ String buffer;
 #endif
   client->println('.');
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
 
   buffer = F("QUIT");
   client->println(buffer);
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),buffer.c_str());
 #endif
 
   status=true;
@@ -378,7 +379,7 @@ exit:
 void xsend_message_txt(char *msg) {
 
 #ifdef DEBUG_EMAIL_PORT
-  AddLog_P(LOG_LEVEL_INFO, PSTR("%s"),msg);
+  AddLog(LOG_LEVEL_INFO, PSTR("%s"),msg);
 #endif
 
 #ifdef USE_UFILESYS
