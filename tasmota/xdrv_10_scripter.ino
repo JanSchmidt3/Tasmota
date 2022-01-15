@@ -447,6 +447,7 @@ struct SCRIPT_MEM {
 #ifdef USE_SCRIPT_SERIAL
     TasmotaSerial *sp;
 #endif
+    float retval;
 } glob_script_mem;
 
 
@@ -478,7 +479,7 @@ void f2char(float num, uint32_t dprec, uint32_t lzeros, char *nbuff) {
 }
 
 
-
+char *scripter_sub(char *lp, uint8_t fromscriptcmd);
 char *GetNumericArgument(char *lp,uint8_t lastop,float *fp, struct GVARS *gv);
 char *GetStringArgument(char *lp,uint8_t lastop,char *cp, struct GVARS *gv);
 char *ForceStringVar(char *lp,char *dstr);
@@ -4160,6 +4161,18 @@ extern char *SML_GetSVal(uint32_t index);
           goto exit;
         }
         break;
+      case '#':
+        { char sub[128];
+          // subroutine
+          sub[0] = '=';
+          strncpy(sub + 1, lp, sizeof(sub) - 1);
+          char *xp = scripter_sub(sub, 0);
+          lp += (uint32_t)xp - (uint32_t)sub - 1;
+          fvar = glob_script_mem.retval;
+          goto exit;
+        }
+        break;
+
       default:
         break;
     }
@@ -5201,7 +5214,13 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             toLogEOL(tbuff, lp);
 #endif //IFTHEN_DEBUG
 
-            if (!strncmp(lp, "break", 5)) {
+            if (!strncmp(lp, "return", 6)) {
+              lp += 6;
+              SCRIPT_SKIP_SPACES
+              lp = GetNumericArgument(lp, OPER_EQU, &glob_script_mem.retval, 0);
+              section = 0;
+              goto next_line;
+            } else if (!strncmp(lp, "break", 5)) {
               lp += 5;
               if (floop) {
                 // should break loop
