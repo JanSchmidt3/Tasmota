@@ -3536,12 +3536,13 @@ chknext:
         if (!strncmp(lp, "st(", 3)) {
           char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
-          while (*lp==' ') lp++;
+          SCRIPT_SKIP_SPACES
           char token[2];
           token[0] = *lp++;
           token[1] = 0;
-          while (*lp==' ') lp++;
+          SCRIPT_SKIP_SPACES
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
           // skip ) bracket
           lp++;
           len = 0;
@@ -3551,15 +3552,36 @@ chknext:
             if (!st) {
               *sp = 0;
             } else {
-              for (uint8_t cnt = 1; cnt<=fvar; cnt++) {
-                if (cnt==fvar) {
-                  strcpy(sp, st);
-                  break;
+              if (fvar > 0) {
+                for (uint8_t cnt = 1; cnt <= fvar; cnt++) {
+                  if (cnt == fvar) {
+                    strcpy(sp, st);
+                    break;
+                  }
+                  st = strtok(NULL, token);
+                  if (!st) {
+                    *sp = 0;
+                    break;
+                  }
                 }
-                st = strtok(NULL, token);
-                if (!st) {
-                  *sp = 0;
-                  break;
+              } else {
+                // get string before token
+                fvar = -fvar;
+                char cstr[SCRIPT_MAXSSIZE];
+                strcpy(cstr, str);
+                for (uint8_t cnt = 1; cnt <= fvar; cnt++) {
+                  if (cnt == fvar - 1) {
+                    *st = 0;
+                    strcpy(sp, cstr);
+                    break;
+                  }
+                  st = strtok(NULL, token);
+                  if (!st) {
+                    *sp = 0;
+                    break;
+                  }
+                  strcat(cstr, token);
+                  strcat(cstr, st);
                 }
               }
             }
