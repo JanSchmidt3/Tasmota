@@ -3591,13 +3591,21 @@ chknext:
         if (!strncmp(lp, "s(", 2)) {
           lp += 2;
           uint8_t dprec = glob_script_mem.script_dprec;
+          uint8_t lzero = glob_script_mem.script_lzero;
           if (isdigit(*lp)) {
-            dprec = *lp & 0xf;
-            lp++;
+            if (*(lp + 1) == ':') {
+              lzero = *lp & 0xf;
+              lp+=2;
+              dprec = *lp & 0xf;
+              lp++;
+            } else {
+              dprec = *lp & 0xf;
+              lp++;
+            }
           }
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           char str[glob_script_mem.max_ssize + 1];
-          f2char(fvar, dprec, glob_script_mem.script_lzero, str);
+          f2char(fvar, dprec, lzero, str);
           if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
           lp++;
           len = 0;
