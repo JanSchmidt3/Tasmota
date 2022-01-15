@@ -3589,9 +3589,15 @@ chknext:
           goto strexit;
         }
         if (!strncmp(lp, "s(", 2)) {
-          lp = GetNumericArgument(lp + 2, OPER_EQU, &fvar, gv);
+          lp += 2;
+          uint8_t dprec = glob_script_mem.script_dprec;
+          if (isdigit(*lp)) {
+            dprec = *lp & 0xf;
+            lp++;
+          }
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           char str[glob_script_mem.max_ssize + 1];
-          f2char(fvar, glob_script_mem.script_dprec, glob_script_mem.script_lzero, str);
+          f2char(fvar, dprec, glob_script_mem.script_lzero, str);
           if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
           lp++;
           len = 0;
