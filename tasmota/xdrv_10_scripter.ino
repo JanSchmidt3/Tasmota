@@ -448,6 +448,7 @@ struct SCRIPT_MEM {
     TasmotaSerial *sp;
 #endif
     float retval;
+    char *retstr;
 } glob_script_mem;
 
 
@@ -4168,8 +4169,15 @@ extern char *SML_GetSVal(uint32_t index);
           strncpy(sub + 1, lp, sizeof(sub) - 1);
           char *xp = scripter_sub(sub, 0);
           lp += (uint32_t)xp - (uint32_t)sub - 1;
-          fvar = glob_script_mem.retval;
-          goto exit;
+
+          if (glob_script_mem.retstr) {
+            if (sp) strlcpy(sp, glob_script_mem.retstr, glob_script_mem.max_ssize);
+            free (glob_script_mem.retstr);
+            goto strexit;
+          } else {
+            fvar = glob_script_mem.retval;
+            goto exit;
+          }
         }
         break;
 
@@ -5217,7 +5225,20 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             if (!strncmp(lp, "return", 6)) {
               lp += 6;
               SCRIPT_SKIP_SPACES
+              glob_script_mem.glob_error = 0;
+              char *slp = lp;
               lp = GetNumericArgument(lp, OPER_EQU, &glob_script_mem.retval, 0);
+              if (glob_script_mem.glob_error == 1) {
+                // mismatch was string, not number
+                lp = slp;
+                glob_script_mem.glob_error = 0;
+                glob_script_mem.retstr = (char*)calloc(SCRIPT_MAXSSIZE, 1);
+                if (glob_script_mem.retstr) {
+                  lp = GetStringArgument(lp, OPER_EQU, glob_script_mem.retstr, 0);
+                }
+              } else {
+                glob_script_mem.retstr = 0;
+              }
               section = 0;
               goto next_line;
             } else if (!strncmp(lp, "break", 5)) {
