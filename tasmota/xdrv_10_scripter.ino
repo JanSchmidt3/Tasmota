@@ -3593,9 +3593,9 @@ chknext:
           uint8_t dprec = glob_script_mem.script_dprec;
           uint8_t lzero = glob_script_mem.script_lzero;
           if (isdigit(*lp)) {
-            if (*(lp + 1) == ':') {
+            if (*(lp + 1) == '.') {
               lzero = *lp & 0xf;
-              lp+=2;
+              lp += 2;
               dprec = *lp & 0xf;
               lp++;
             } else {
