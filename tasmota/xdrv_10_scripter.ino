@@ -4632,10 +4632,17 @@ void Replace_Cmd_Vars(char *srcbuf, uint32_t srcsize, char *dstbuf, uint32_t dst
               if (*cp=='(') {
                 // math expression
                 cp++;
+                glob_script_mem.glob_error = 0;
+                char *slp = cp;
                 cp = GetNumericArgument(cp, OPER_EQU, &fvar, 0);
-                f2char(fvar, dprec, lzero, string);
+                if (glob_script_mem.glob_error == 1) {
+                  glob_script_mem.glob_error = 0;
+                  cp = GetStringArgument(slp, OPER_EQU, string, 0);
+                } else {
+                  f2char(fvar, dprec, lzero, string);
+                }
                 uint8_t slen = strlen(string);
-                if (count + slen<dstsize - 1) {
+                if (count + slen < dstsize - 1) {
                   strcpy(&dstbuf[count], string);
                   count += slen - 1;
                 }
@@ -5225,6 +5232,9 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             if (!strncmp(lp, "return", 6)) {
               lp += 6;
               SCRIPT_SKIP_SPACES
+              if (*lp == SCRIPT_EOL) {
+                goto next_line;
+              }
               glob_script_mem.glob_error = 0;
               char *slp = lp;
               lp = GetNumericArgument(lp, OPER_EQU, &glob_script_mem.retval, 0);
