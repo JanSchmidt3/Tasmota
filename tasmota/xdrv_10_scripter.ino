@@ -1022,7 +1022,14 @@ void Script_Init_UDP() {
   if (!glob_script_mem.udp_flags.udp_used) return;
   if (glob_script_mem.udp_flags.udp_connected) return;
 
+  //if (glob_script_mem.Script_PortUdp.beginMulticast(WiFi.localIP(), IPAddress(239,255,255,250), SCRIPT_UDP_PORT)) {
+#ifdef ESP8266
   if (glob_script_mem.Script_PortUdp.beginMulticast(WiFi.localIP(), IPAddress(239,255,255,250), SCRIPT_UDP_PORT)) {
+#else
+  if (glob_script_mem.Script_PortUdp.beginMulticast(IPAddress(239,255,255,250), SCRIPT_UDP_PORT)) {
+#endif
+
+
 #ifdef SCRIPT_DEBUG_UDP
     AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_UPNP "SCRIPT UDP started"));
 #endif
@@ -7511,43 +7518,6 @@ char buff[512];
   }
 }
 #endif // USE_UFILESYS
-
-
-/*
-const char HTTP_WEB_FULL_DISPLAY[] PROGMEM =
-  "<p><form action='" "sfd%1d" "' method='get'><button>" "%s" "</button></form></p>";
-  "<p><form action='sfd%1d' method='get'><button>%s</button></form></p>";
-
-const char HTTP_SCRIPT_FULLPAGE1[] PROGMEM =
-  "<!DOCTYPE html><html lang=\"" D_HTML_LANGUAGE "\" class=\"\">"
-  "<head>"
-  "<meta charset='utf-8'>"
-  "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,user-scalable=no\"/>"
-  "<title>%s - %s</title>"
-  "<script>"
-  "var x=null,lt,to,tp,pc='';"            // x=null allow for abortion
-  "function eb(s){"
-    "return document.getElementById(s);"  // Alias to save code space
-  "}"
-  "function qs(s){"                       // Alias to save code space
-    "return document.querySelector(s);"
-  "}"
-  "function wl(f){"                       // Execute multiple window.onload
-    "window.addEventListener('load',f);"
-  "}"
-    "var rfsh=1;"
-    "function la(p){"
-      "var a='';"
-@ -7530,7 +7514,8 @@ void ScriptFullWebpage(uint8_t page) {
-
-  WSContentBegin(200, CT_HTML);
-  const char *title = "Full Screen";
-  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, SettingsText(SET_DEVICENAME), title, page , fullpage_refresh);
-  WSContentSend_P(HTTP_HEADER1, PSTR(D_HTML_LANGUAGE), SettingsText(SET_DEVICENAME), title);
-  WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, page , fullpage_refresh);
-  WSContentSend_P(HTTP_SCRIPT_FULLPAGE2, fullpage_refresh);
-  //WSContentSend_P(PSTR("<div id='l1' name='l1'></div>"));
-*/
 
 
 #ifdef SCRIPT_FULL_WEBPAGE

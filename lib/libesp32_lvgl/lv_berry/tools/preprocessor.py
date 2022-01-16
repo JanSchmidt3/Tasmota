@@ -50,6 +50,7 @@ def clean_source(raw):
 
 lv_src_prefix = "../../lvgl/src/"
 lv_fun_globs = [ 
+                  "lv_api*.h",
                   "widgets/*.h",   # all widgets
                   # "extra/widgets/*/*.h",
                   "extra/widgets/chart/*.h",
@@ -66,6 +67,7 @@ lv_fun_globs = [
                   "core/*.h",
                   "draw/*.h",
                   "misc/lv_style_gen.h",
+                  "misc/lv_color.h",
                   #"misc/lv_area.h",
                   #"**/*.h",
               ]
