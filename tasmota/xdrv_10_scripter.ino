@@ -486,6 +486,7 @@ char *GetStringArgument(char *lp,uint8_t lastop,char *cp, struct GVARS *gv);
 char *ForceStringVar(char *lp,char *dstr);
 void send_download(void);
 uint8_t UfsReject(char *name);
+void fread_str(uint8_t fref, char *sp, uint16_t slen);
 
 void ScriptEverySecond(void) {
 
@@ -1353,6 +1354,22 @@ float DoMedian5(uint8_t index, float in) {
   return median_array(mf->buffer, MEDIAN_SIZE);
 }
 
+
+void fread_str(uint8_t fref, char *sp, uint16_t slen) {
+  uint16_t index = 0;
+  while (glob_script_mem.files[fref].available()) {
+    uint8_t buf[1];
+    glob_script_mem.files[fref].read(buf,1);
+    if (buf[0]=='\t' || buf[0]==',' || buf[0]=='\n' || buf[0]=='\r') {
+      break;
+    } else {
+      *sp++ = buf[0];
+      index++;
+      if (index >= slen) break;
+    }
+  }
+  *sp = 0;
+}
 
 #ifdef USE_FEXTRACT
 
@@ -2770,9 +2787,20 @@ chknext:
         }
 
 #ifdef USE_FEXTRACT
-        if (!strncmp(lp, "fxt(", 4)) {
+        if (!strncmp(lp, "fxt", 3)) {
+          lp += 3;
+          uint8_t oflg = 0;
+          if (*lp == 'o') {
+            oflg = 1;
+            lp++;
+          }
+          if (*lp == '(') {
+            lp++;
+          } else {
+            break;
+          }
           // extract from file
-          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
           uint8_t fref = fvar;
 
@@ -2805,7 +2833,31 @@ chknext:
                 break;
               }
             }
-            fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index, accum);
+            if (oflg) {
+              // optimized access
+              // seek to start
+              int16_t fres = extract_from_file(fref,  ts_from, ts_to, -2, 0, 0, 0, 0);
+              char tsf[32];
+              fread_str(fref, tsf, sizeof(tsf));
+              uint32_t ltsf = tstamp2l(tsf);
+              fres = extract_from_file(fref,  ts_from, ts_to, -1, 0, 0, 0, 0);
+              fread_str(fref, tsf, sizeof(tsf));
+              uint32_t tssiz = tstamp2l(tsf) - ltsf;
+              uint32_t tspos = tstamp2l(ts_from) - ltsf;
+              float perc =  (float)tspos / (float)tssiz * 0.95;
+              float fsize = glob_script_mem.files[fref].size();
+              uint32_t spos = perc * fsize;
+              glob_script_mem.files[fref].seek(spos, SeekSet);
+              fres = extract_from_file(fref,  ts_from, ts_to, -3, 0, 0, 0, 0);
+              if (fres > 0) {
+                fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index, accum);
+              } else {
+                // fatal error
+                fvar = -2;
+              }
+            } else {
+              fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index, accum);
+            }
           } else {
             fvar = extract_from_file(fref,  ts_from, ts_to, coffs, 0, 0, 0, 0);
           }
