@@ -1358,14 +1358,15 @@ float DoMedian5(uint8_t index, float in) {
 void fread_str(uint8_t fref, char *sp, uint16_t slen) {
   uint16_t index = 0;
   while (glob_script_mem.files[fref].available()) {
-    uint8_t buf[1];
+    uint8_t buf[1], iob;
     glob_script_mem.files[fref].read(buf,1);
-    if (buf[0]=='\t' || buf[0]==',' || buf[0]=='\n' || buf[0]=='\r') {
+    iob = buf[0];
+    if (iob == '\t' || iob == ',' || iob == '\n' || iob == '\r') {
       break;
     } else {
-      *sp++ = buf[0];
+      *sp++ = iob;
       index++;
-      if (index >= slen) break;
+      if (index >= slen - 1) break;
     }
   }
   *sp = 0;
@@ -1541,7 +1542,7 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
             *cp = 0;
             uint32_t tstc = tstamp2l(ts);
             //Serial.printf(">>> %s - %d - %d\n",ts, tstc, cpos );
-            if (tsfrom == tstc) {
+            if (tstc >= tsfrom) {
               glob_script_mem.files[fref].seek(cpos, SeekSet);
               return cpos;
             }
@@ -2799,6 +2800,12 @@ chknext:
           } else {
             break;
           }
+          /*
+          if (oflg) {
+            lp = GetNumericArgument(lp, OPER_EQU, &pfac, gv);
+            SCRIPT_SKIP_SPACES
+          }*/
+
           // extract from file
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
@@ -2836,7 +2843,7 @@ chknext:
             if (oflg) {
               // optimized access
               // seek to start
-              int16_t fres = extract_from_file(fref,  ts_from, ts_to, -2, 0, 0, 0, 0);
+              uint32_t fres = extract_from_file(fref,  ts_from, ts_to, -2, 0, 0, 0, 0);
               char tsf[32];
               fread_str(fref, tsf, sizeof(tsf));
               uint32_t ltsf = tstamp2l(tsf);
@@ -2844,15 +2851,19 @@ chknext:
               fread_str(fref, tsf, sizeof(tsf));
               uint32_t tssiz = tstamp2l(tsf) - ltsf;
               uint32_t tspos = tstamp2l(ts_from) - ltsf;
-              float perc =  (float)tspos / (float)tssiz * 0.95;
+              float perc =  (float)tspos / (float)tssiz * 0.9;
+              if (perc < 0) perc = 0;
+              if (perc > 1) perc = 1;
               float fsize = glob_script_mem.files[fref].size();
               uint32_t spos = perc * fsize;
+              //AddLog(LOG_LEVEL_INFO,PSTR(">>> 1 %d, %d"), (uint32_t)perc, spos);
               glob_script_mem.files[fref].seek(spos, SeekSet);
               fres = extract_from_file(fref,  ts_from, ts_to, -3, 0, 0, 0, 0);
+              //AddLog(LOG_LEVEL_INFO,PSTR(">>> 2 %s - %d - %d"), ts_from, fres, (uint32_t)(perc*100));
               if (fres > 0) {
                 fvar = extract_from_file(fref,  ts_from, ts_to, coffs, a_ptr, a_len, index, accum);
               } else {
-                // fatal error
+                // fatal error time stamp out of range
                 fvar = -2;
               }
             } else {
