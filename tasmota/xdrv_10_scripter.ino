@@ -8889,8 +8889,8 @@ uint32_t call2https(const char *host, const char *path) {
   uint32_t status = 0;
 
 #ifdef TESLA_POWERWALL
-  authCookie = powerwall.getAuthCookie();
-  return 0;
+//  authCookie = powerwall.getAuthCookie();
+//  return 0;
 #endif
 
 #ifdef ESP32
