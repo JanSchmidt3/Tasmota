@@ -190,7 +190,7 @@ void EthernetConfigChange(void) {
 #define D_CMND_ETHGATEWAY   D_JSON_GATEWAY
 #define D_CMND_ETHNETMASK   D_JSON_SUBNETMASK
 #define D_CMND_ETHDNS       D_JSON_DNSSERVER
-
+ 
 const char kEthernetCommands[] PROGMEM = "Eth|"  // Prefix
   "ernet|" D_CMND_ETHADDRESS "|" D_CMND_ETHTYPE "|" D_CMND_ETHCLOCKMODE "|"
   D_CMND_ETHIPADDRESS "|" D_CMND_ETHGATEWAY "|" D_CMND_ETHNETMASK "|" D_CMND_ETHDNS ;
