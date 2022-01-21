@@ -8886,7 +8886,7 @@ String authCookie   = "";
 
 // get tesla powerwall info page json string
 uint32_t call2https(const char *host, const char *path) {
-  if (TasmotaGlobal.global_state.wifi_down) return 1;
+  //if (TasmotaGlobal.global_state.wifi_down) return 1;
   uint32_t status = 0;
 
 #ifdef TESLA_POWERWALL
@@ -8925,12 +8925,15 @@ uint32_t call2https(const char *host, const char *path) {
   }
 #endif
 
+
+  AddLog(LOG_LEVEL_INFO,PSTR(">>> host %s"),host);
+
   uint32_t retry = 0;
-  while ((!httpsClient->connect(host, 443)) && (retry < 5)) {
+  while ((!httpsClient->connect(host, 443)) && (retry < 10)) {
     delay(100);
     retry++;
   }
-  if (retry == 5) {
+  if (retry == 10) {
     return 2;
   }
   AddLog(LOG_LEVEL_INFO,PSTR("connected"));
