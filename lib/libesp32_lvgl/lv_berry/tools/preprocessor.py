@@ -133,6 +133,8 @@ for header_name in headers_names:
     for fun in fun_defs:
       # remove LV_ATTRIBUTE_FAST_MEM 
       fun = re.sub('LV_ATTRIBUTE_FAST_MEM ', '', fun)
+      # remove LV_ATTRIBUTE_TIMER_HANDLER 
+      fun = re.sub('LV_ATTRIBUTE_TIMER_HANDLER ', '', fun)
       exclude = False
       for exclude_prefix in ["typedef", "_LV_", "LV_"]:
         if fun.startswith(exclude_prefix): exclude = True
@@ -215,6 +217,11 @@ COLOR_BLUE=0x0000FF
 COLOR_NAVY=0x000080
 COLOR_MAGENTA=0xFF00FF
 COLOR_PURPLE=0x800080
+
+// Freetype
+FT_FONT_STYLE_NORMAL=FT_FONT_STYLE_NORMAL
+FT_FONT_STYLE_ITALIC=FT_FONT_STYLE_ITALIC
+FT_FONT_STYLE_BOLD=FT_FONT_STYLE_BOLD
 
 // following are #define, not enum
 LV_RADIUS_CIRCLE

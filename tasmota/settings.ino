@@ -1032,6 +1032,7 @@ void SettingsDefaultSet2(void) {
   flag.ir_receive_decimal |= IR_DATA_RADIX;
   flag3.receive_raw |= IR_ADD_RAW_DATA;
   Settings->param[P_IR_UNKNOW_THRESHOLD] = IR_RCV_MIN_UNKNOWN_SIZE;
+  Settings->param[P_IR_TOLERANCE] = IR_RCV_TOLERANCE;
 
   // RF Bridge
   flag.rf_receive_decimal |= RF_DATA_RADIX;
@@ -1474,6 +1475,10 @@ void SettingsDelta(void) {
     }
     if (Settings->version < 0x0A010003) {
       Settings->sserial_config = Settings->serial_config;
+    }
+    if (Settings->version < 0x14160103) {
+      Settings->web_time_start = 0;
+      Settings->web_time_end = 0;
     }
 
     Settings->version = VERSION;
