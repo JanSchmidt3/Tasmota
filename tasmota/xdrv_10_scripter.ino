@@ -7754,21 +7754,21 @@ const char SCRIPT_MSG_CHKBOX[] PROGMEM =
   "<div><center><label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_PULLDOWNa[] PROGMEM =
-  "<div><center><label for=\'pu_%s\'>%s:</label><select style='width:200px' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
+  "<div><center><label for=\'pu_%s\'>%s:</label><select style='width:%dpx' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
 const char SCRIPT_MSG_PULLDOWNb[] PROGMEM =
   "<option %s value='%d'>%s</option>";
 const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
   "</select></div>";
 
 const char SCRIPT_MSG_TEXTINP[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_TEXTINP_U[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:200px'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div><center><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
-  "<div><center><label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:200px' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div><center><label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:%dpx' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 
 #ifdef USE_GOOGLE_CHARTS
@@ -7927,38 +7927,36 @@ void ScriptWebShow(char mc, uint8_t page) {
     if (mc=='x') {
       mc='$';
     }
-    //web_script = Run_Scripter(">w", -2, 0);
     glob_script_mem.section_ptr = glob_script_mem.web_pages[page];
   } else {
-    //web_script = Run_Scripter(">W", -2, 0);
     glob_script_mem.section_ptr = glob_script_mem.web_pages[0];
   }
 
-  //if (web_script==99) {
   if (glob_script_mem.section_ptr) {
     char tmp[256];
     uint8_t optflg = 0;
     uint8_t chartindex = 1;
     uint8_t google_libs = 0;
     char *lp = glob_script_mem.section_ptr + 2;
-    if (mc=='w') {
+    if (mc == 'w') {
       while (*lp) {
-        if (*lp=='\n') break;
+        if (*lp == '\n') break;
         lp++;
       }
     }
     char *cv_ptr;
-    float cv_max=0;
-    float cv_inc=0;
-    float *cv_count=0;
+    float cv_max = 0;
+    float cv_inc = 0;
+    float *cv_count = 0;
     while (lp) {
-      while (*lp==SCRIPT_EOL) {
+      while (*lp == SCRIPT_EOL) {
        lp++;
       }
       if (!*lp || *lp=='#' || *lp=='>') {
           break;
       }
-      if (*lp!=';') {
+      if (*lp != ';') {
+
         // send this line to web
         SCRIPT_SKIP_SPACES
         if (!strncmp(lp, "%for ", 5)) {
@@ -7966,7 +7964,7 @@ void ScriptWebShow(char mc, uint8_t page) {
           struct T_INDEX ind;
           uint8_t vtype;
           lp = isvar(lp + 5, &vtype, &ind, 0, 0, 0);
-          if ((vtype!=VAR_NV) && (vtype&STYPE)==0) {
+          if ((vtype != VAR_NV) && (vtype&STYPE) == 0) {
             uint16_t index = glob_script_mem.type[ind.index].index;
             cv_count = &glob_script_mem.fvars[index];
             SCRIPT_SKIP_SPACES
@@ -7984,7 +7982,7 @@ void ScriptWebShow(char mc, uint8_t page) {
           if (cv_count) {
             // for next loop
             *cv_count += cv_inc;
-            if (*cv_count<=cv_max) {
+            if (*cv_count <= cv_max) {
               lp = cv_ptr;
             } else {
               cv_count = 0;
@@ -7998,6 +7996,8 @@ void ScriptWebShow(char mc, uint8_t page) {
           lp = scripter_sub(lp + 1, 0);
           goto nextwebline;
         }
+
+        // this section should be in subroutine
 
         Replace_Cmd_Vars(lp, 1, tmp, sizeof(tmp));
         char *lin = tmp;
@@ -8061,6 +8061,7 @@ void ScriptWebShow(char mc, uint8_t page) {
             SCRIPT_SKIP_SPACES
 
             WSContentSend_PD(SCRIPT_MSG_SLIDER, left,mid, right, (uint32_t)min, (uint32_t)max, (uint32_t)val, vname);
+            lp++;
 
           } else if (!strncmp(lin, "ck(", 3)) {
             char *lp = lin + 3;
@@ -8084,6 +8085,7 @@ void ScriptWebShow(char mc, uint8_t page) {
               uval = 1;
             }
             WSContentSend_PD(SCRIPT_MSG_CHKBOX, label, (char*)cp, uval, vname);
+            lp++;
           } else if (!strncmp(lin, "pd(", 3)) {
             // pull down
             char *lp = lin + 3;
@@ -8098,8 +8100,20 @@ void ScriptWebShow(char mc, uint8_t page) {
             SCRIPT_SKIP_SPACES
             char pulabel[SCRIPT_MAXSSIZE];
             lp = GetStringArgument(lp, OPER_EQU, pulabel, 0);
+            SCRIPT_SKIP_SPACES
 
-            WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, vname, pulabel, 1, vname, vname);
+            glob_script_mem.glob_error = 0;
+            uint16_t tsiz = 200;
+            float fvar;
+            char *slp1 = lp;
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
+            if (!glob_script_mem.glob_error) {
+              tsiz = fvar;
+            } else {
+              lp = slp1;
+            }
+
+            WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, vname, pulabel, tsiz, 1, vname, vname);
 
             // get pu labels
             uint8_t index = 1;
@@ -8182,7 +8196,7 @@ void ScriptWebShow(char mc, uint8_t page) {
                 cp = offtxt;
                 uval = 1;
               }
-              if (bcnt>1 && cnt==bcnt-1) {
+              if (bcnt > 1 && cnt == bcnt - 1) {
                 if (!optflg) proz += 2;
               }
               if (!optflg) {
@@ -8190,7 +8204,7 @@ void ScriptWebShow(char mc, uint8_t page) {
               } else {
                 WSContentSend_PD(SCRIPT_MSG_BUTTONa_TBL, proz, uval, vname, cp);
               }
-              if (bcnt>1 && cnt<bcnt-1) {
+              if (bcnt > 1 && cnt < bcnt - 1) {
                 if (!optflg) WSContentSend_PD(SCRIPT_MSG_BUTTONb, 2);
               }
               lp += 4;
@@ -8209,20 +8223,37 @@ void ScriptWebShow(char mc, uint8_t page) {
             char vname[16];
             ScriptGetVarname(vname, slp, sizeof(vname));
             SCRIPT_SKIP_SPACES
+
+            uint16_t tsiz = 200;
             if (*lp != ')') {
-              char type[SCRIPT_MAXSSIZE];
-              lp = GetStringArgument(lp, OPER_EQU, type, 0);
+              glob_script_mem.glob_error = 0;
+              float fvar;
+              char *slp1 = lp;
+              lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
               SCRIPT_SKIP_SPACES
-              // also requires min max values
-              char min[SCRIPT_MAXSSIZE];
-              lp = GetStringArgument(lp, OPER_EQU, min, 0);
-              SCRIPT_SKIP_SPACES
-              char max[SCRIPT_MAXSSIZE];
-              lp = GetStringArgument(lp, OPER_EQU, max, 0);
-              SCRIPT_SKIP_SPACES
-              WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, label, type, str, min, max, vname);
+              if (!glob_script_mem.glob_error) {
+                tsiz = fvar;
+              } else {
+                lp = slp1;
+              }
+
+              if (*lp != ')') {
+                char type[SCRIPT_MAXSSIZE];
+                lp = GetStringArgument(lp, OPER_EQU, type, 0);
+                SCRIPT_SKIP_SPACES
+                // also requires min max values
+                char min[SCRIPT_MAXSSIZE];
+                lp = GetStringArgument(lp, OPER_EQU, min, 0);
+                SCRIPT_SKIP_SPACES
+                char max[SCRIPT_MAXSSIZE];
+                lp = GetStringArgument(lp, OPER_EQU, max, 0);
+                SCRIPT_SKIP_SPACES
+                WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, label, type, str, min, max, tsiz, vname);
+              } else {
+                WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, tsiz, vname);
+              }
             } else {
-              WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, vname);
+              WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, tsiz, vname);
             }
             lp++;
             //goto restart;
@@ -8247,13 +8278,21 @@ void ScriptWebShow(char mc, uint8_t page) {
 
             char label[SCRIPT_MAXSSIZE];
             lp = GetStringArgument(lp, OPER_EQU, label, 0);
+            SCRIPT_SKIP_SPACES
+            uint16_t tsiz = 200;
+            if (*lp != ')') {
+              float val;
+              lp = GetNumericArgument(lp, OPER_EQU, &val, 0);
+              tsiz = val;
+            }
 
             char vstr[16],minstr[16],maxstr[16],stepstr[16];
             dtostrfd(val, 4, vstr);
             dtostrfd(min, 4, minstr);
             dtostrfd(max, 4, maxstr);
             dtostrfd(step, 4, stepstr);
-            WSContentSend_PD(SCRIPT_MSG_NUMINP, label, minstr, maxstr, stepstr, vstr, vname);
+            WSContentSend_PD(SCRIPT_MSG_NUMINP, label, minstr, maxstr, stepstr, vstr, tsiz, vname);
+            lp++;
 
           } else {
             if (mc=='w') {
@@ -8269,7 +8308,7 @@ void ScriptWebShow(char mc, uint8_t page) {
           // end standard web interface
         } else {
           //  main section interface
-          if (*lin==mc) {
+          if (*lin == mc) {
 
 #ifdef USE_GOOGLE_CHARTS
             lin++;
