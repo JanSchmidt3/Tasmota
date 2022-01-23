@@ -20,7 +20,7 @@
 #include <Arduino.h>
 #include "uDisplay.h"
 
- #define UDSP_DEBUG
+// #define UDSP_DEBUG
 
 const uint16_t udisp_colors[]={UDISP_BLACK,UDISP_WHITE,UDISP_RED,UDISP_GREEN,UDISP_BLUE,UDISP_CYAN,UDISP_MAGENTA,\
   UDISP_YELLOW,UDISP_NAVY,UDISP_DARKGREEN,UDISP_DARKCYAN,UDISP_MAROON,UDISP_PURPLE,UDISP_OLIVE,\
@@ -1354,7 +1354,6 @@ void uDisplay::DisplayOnff(int8_t on) {
       if (bpanel >= 0) {
 #ifdef ESP32
         ledcWrite(ESP32_PWM_CHANNEL, dimmer8_gamma);
-        Serial.printf("dimmer %d\n", dimmer8_gamma);
 #else
         digitalWrite(bpanel, HIGH);
 #endif
@@ -1413,7 +1412,6 @@ void uDisplay::dim8(uint8_t dim, uint8_t dim_gamma) {           // dimmer with 8
 #ifdef ESP32              // TODO should we also add a ESP8266 version for bpanel?
   if (bpanel >= 0) {      // is the BaclPanel GPIO configured
     ledcWrite(ESP32_PWM_CHANNEL, dimmer8_gamma);
-    Serial.printf("dimmer %d\n", dimmer8_gamma);
   } else if (dim_cbp) {
     dim_cbp(dim);
   }
