@@ -7761,7 +7761,7 @@ const char SCRIPT_MSG_CHKBOX[] PROGMEM =
   "%s<label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label>";
 
 const char SCRIPT_MSG_PULLDOWNa[] PROGMEM =
-  "%s<label for=\'pu_%s\'>%s:</label><select style='width:%dpx' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
+  "%s<label for=\'pu_%s\'>%s</label><select style='width:%dpx' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
 const char SCRIPT_MSG_PULLDOWNb[] PROGMEM =
   "<option %s value='%d'>%s</option>";
 const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
