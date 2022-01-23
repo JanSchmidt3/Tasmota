@@ -4757,6 +4757,8 @@ void Replace_Cmd_Vars(char *srcbuf, uint32_t srcsize, char *dstbuf, uint32_t dst
                 dstbuf[count] = '\r';
               } else if (*cp=='\\') {
                 dstbuf[count] = '\\';
+              } else if (*cp=='#') {
+                dstbuf[count] = '#';
               } else {
                 dstbuf[count] = *cp;
               }
@@ -7751,24 +7753,24 @@ const char SCRIPT_MSG_SLIDER[] PROGMEM =
   "<div><input type='range' min='%d' max='%d' value='%d' onchange='seva(value,\"%s\")'></div>";
 
 const char SCRIPT_MSG_CHKBOX[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label></div>";
+  "<div>%s<label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_PULLDOWNa[] PROGMEM =
-  "<div><center><label for=\'pu_%s\'>%s:</label><select style='width:%dpx' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
+  "<div>%s<label for=\'pu_%s\'>%s:</label><select style='width:%dpx' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
 const char SCRIPT_MSG_PULLDOWNb[] PROGMEM =
   "<option %s value='%d'>%s</option>";
 const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
   "</select></div>";
 
 const char SCRIPT_MSG_TEXTINP[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='text'  value='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div>%s<label><b>%s</b><input type='text'  value='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 const char SCRIPT_MSG_TEXTINP_U[] PROGMEM =
-  "<div><center><label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div>%s<label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
-  "<div><center><label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:%dpx' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "<div>%s<label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:%dpx' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
 
 
 #ifdef USE_GOOGLE_CHARTS
@@ -7948,6 +7950,8 @@ void ScriptWebShow(char mc, uint8_t page) {
     float cv_max = 0;
     float cv_inc = 0;
     float *cv_count = 0;
+    char center[10];
+    strcpy_P(center, PSTR("<center>"));
     while (lp) {
       while (*lp == SCRIPT_EOL) {
        lp++;
@@ -8032,7 +8036,19 @@ void ScriptWebShow(char mc, uint8_t page) {
             }
           }*/
 
-          if (!strncmp(lin, "sl(", 3)) {
+          if (!strncmp(lin, "sc(", 3)) {
+            // set center mode
+            char *lp = lin;
+            float var;
+            lp = GetNumericArgument(lp + 3, OPER_EQU, &var, 0);
+            SCRIPT_SKIP_SPACES
+            lp++;
+            if (var > 0) {
+              strcpy_P(center, PSTR("<center>"));
+            } else {
+              center[0] = 0;
+            }
+          } else if (!strncmp(lin, "sl(", 3)) {
             // insert slider sl(min max var left mid right)
             char *lp = lin;
             float min;
@@ -8084,7 +8100,7 @@ void ScriptWebShow(char mc, uint8_t page) {
               cp = "";
               uval = 1;
             }
-            WSContentSend_PD(SCRIPT_MSG_CHKBOX, label, (char*)cp, uval, vname);
+            WSContentSend_PD(SCRIPT_MSG_CHKBOX, center, label, (char*)cp, uval, vname);
             lp++;
           } else if (!strncmp(lin, "pd(", 3)) {
             // pull down
@@ -8113,7 +8129,7 @@ void ScriptWebShow(char mc, uint8_t page) {
               lp = slp1;
             }
 
-            WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, vname, pulabel, tsiz, 1, vname, vname);
+            WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, center, vname, pulabel, tsiz, 1, vname, vname);
 
             // get pu labels
             uint8_t index = 1;
@@ -8248,12 +8264,12 @@ void ScriptWebShow(char mc, uint8_t page) {
                 char max[SCRIPT_MAXSSIZE];
                 lp = GetStringArgument(lp, OPER_EQU, max, 0);
                 SCRIPT_SKIP_SPACES
-                WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, label, type, str, min, max, tsiz, vname);
+                WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, center, label, type, str, min, max, tsiz, vname);
               } else {
-                WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, tsiz, vname);
+                WSContentSend_PD(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
               }
             } else {
-              WSContentSend_PD(SCRIPT_MSG_TEXTINP, label, str, tsiz, vname);
+              WSContentSend_PD(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
             }
             lp++;
             //goto restart;
@@ -8291,7 +8307,7 @@ void ScriptWebShow(char mc, uint8_t page) {
             dtostrfd(min, 4, minstr);
             dtostrfd(max, 4, maxstr);
             dtostrfd(step, 4, stepstr);
-            WSContentSend_PD(SCRIPT_MSG_NUMINP, label, minstr, maxstr, stepstr, vstr, tsiz, vname);
+            WSContentSend_PD(SCRIPT_MSG_NUMINP, center, label, minstr, maxstr, stepstr, vstr, tsiz, vname);
             lp++;
 
           } else {
