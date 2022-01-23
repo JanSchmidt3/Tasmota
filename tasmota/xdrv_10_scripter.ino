@@ -7753,24 +7753,24 @@ const char SCRIPT_MSG_SLIDER[] PROGMEM =
   "<div><input type='range' min='%d' max='%d' value='%d' onchange='seva(value,\"%s\")'></div>";
 
 const char SCRIPT_MSG_CHKBOX[] PROGMEM =
-  "<div>%s<label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label></div>";
+  "%s<label><b>%s</b><input type='checkbox' %s onchange='seva(%d,\"%s\")'></label>";
 
 const char SCRIPT_MSG_PULLDOWNa[] PROGMEM =
-  "<div>%s<label for=\'pu_%s\'>%s:</label><select style='width:%dpx' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
+  "%s<label for=\'pu_%s\'>%s:</label><select style='width:%dpx' name='pu%d' id='pu_%s' onchange='seva(value,\"%s\")'>";
 const char SCRIPT_MSG_PULLDOWNb[] PROGMEM =
   "<option %s value='%d'>%s</option>";
 const char SCRIPT_MSG_PULLDOWNc[] PROGMEM =
-  "</select></div>";
+  "</select>";
 
 const char SCRIPT_MSG_TEXTINP[] PROGMEM =
-  "<div>%s<label><b>%s</b><input type='text'  value='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "%s<label><b>%s</b><input type='text'  value='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label>";
 
 const char SCRIPT_MSG_TEXTINP_U[] PROGMEM =
-  "<div>%s<label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "%s<label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label>";
 
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
-  "<div>%s<label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:%dpx' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label></div>";
+  "%s<label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:%dpx' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label>";
 
 
 #ifdef USE_GOOGLE_CHARTS
@@ -7922,6 +7922,21 @@ uint32_t cnt;
   nbuf[cnt] = 0;
 }
 
+#define WSO_NOCENTER 1
+#define WSO_NODIV 2
+#define WSO_FORCEPLAIN 4
+#define WSO_STOP_DIV 0x80
+
+void WCS_DIV(uint8_t flag) {
+  if (flag & WSO_NODIV) return;
+  if (flag & WSO_STOP_DIV) {
+    WSContentSend_PD(SCRIPT_MSG_BUT_STOP);
+  } else {
+    WSContentSend_PD(SCRIPT_MSG_BUT_START);
+  }
+}
+
+
 void ScriptWebShow(char mc, uint8_t page) {
   uint8_t web_script;
   glob_script_mem.web_mode = mc;
@@ -7951,6 +7966,7 @@ void ScriptWebShow(char mc, uint8_t page) {
     float cv_inc = 0;
     float *cv_count = 0;
     char center[10];
+    uint8_t specopt = 0;
     strcpy_P(center, PSTR("<center>"));
     while (lp) {
       while (*lp == SCRIPT_EOL) {
@@ -8036,17 +8052,19 @@ void ScriptWebShow(char mc, uint8_t page) {
             }
           }*/
 
-          if (!strncmp(lin, "sc(", 3)) {
-            // set center mode
+          if (!strncmp(lin, "so(", 3)) {
+            // set options
             char *lp = lin;
             float var;
             lp = GetNumericArgument(lp + 3, OPER_EQU, &var, 0);
             SCRIPT_SKIP_SPACES
             lp++;
-            if (var > 0) {
-              strcpy_P(center, PSTR("<center>"));
-            } else {
+            specopt = var;
+            // bit 0 = center mode
+            if (specopt & WSO_NOCENTER) {
               center[0] = 0;
+            } else {
+              strcpy_P(center, PSTR("<center>"));
             }
           } else if (!strncmp(lin, "sl(", 3)) {
             // insert slider sl(min max var left mid right)
@@ -8100,7 +8118,9 @@ void ScriptWebShow(char mc, uint8_t page) {
               cp = "";
               uval = 1;
             }
+            WCS_DIV(specopt);
             WSContentSend_PD(SCRIPT_MSG_CHKBOX, center, label, (char*)cp, uval, vname);
+            WCS_DIV(specopt | WSO_STOP_DIV);
             lp++;
           } else if (!strncmp(lin, "pd(", 3)) {
             // pull down
@@ -8128,7 +8148,7 @@ void ScriptWebShow(char mc, uint8_t page) {
             } else {
               lp = slp1;
             }
-
+            WCS_DIV(specopt);
             WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, center, vname, pulabel, tsiz, 1, vname, vname);
 
             // get pu labels
@@ -8173,6 +8193,7 @@ void ScriptWebShow(char mc, uint8_t page) {
               index++;
             }
             WSContentSend_PD(SCRIPT_MSG_PULLDOWNc);
+            WCS_DIV(specopt | WSO_STOP_DIV);
           } else if (!strncmp(lin, "bu(", 3)) {
             char *lp = lin + 3;
             uint8_t bcnt = 0;
@@ -8264,12 +8285,18 @@ void ScriptWebShow(char mc, uint8_t page) {
                 char max[SCRIPT_MAXSSIZE];
                 lp = GetStringArgument(lp, OPER_EQU, max, 0);
                 SCRIPT_SKIP_SPACES
+                WCS_DIV(specopt);
                 WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, center, label, type, str, min, max, tsiz, vname);
+                WCS_DIV(specopt | WSO_STOP_DIV);
               } else {
+                WCS_DIV(specopt);
                 WSContentSend_PD(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
+                WCS_DIV(specopt | WSO_STOP_DIV);
               }
             } else {
+              WCS_DIV(specopt);
               WSContentSend_PD(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
+              WCS_DIV(specopt | WSO_STOP_DIV);
             }
             lp++;
             //goto restart;
@@ -8296,22 +8323,30 @@ void ScriptWebShow(char mc, uint8_t page) {
             lp = GetStringArgument(lp, OPER_EQU, label, 0);
             SCRIPT_SKIP_SPACES
             uint16_t tsiz = 200;
+            uint8_t dprec = 1;
             if (*lp != ')') {
               float val;
               lp = GetNumericArgument(lp, OPER_EQU, &val, 0);
+              SCRIPT_SKIP_SPACES
               tsiz = val;
+              if (*lp != ')') {
+                lp = GetNumericArgument(lp, OPER_EQU, &val, 0);
+                dprec = val;
+              }
             }
 
             char vstr[16],minstr[16],maxstr[16],stepstr[16];
-            dtostrfd(val, 4, vstr);
-            dtostrfd(min, 4, minstr);
-            dtostrfd(max, 4, maxstr);
-            dtostrfd(step, 4, stepstr);
+            dtostrfd(val, dprec, vstr);
+            dtostrfd(min, dprec, minstr);
+            dtostrfd(max, dprec, maxstr);
+            dtostrfd(step, dprec, stepstr);
+            WCS_DIV(specopt);
             WSContentSend_PD(SCRIPT_MSG_NUMINP, center, label, minstr, maxstr, stepstr, vstr, tsiz, vname);
+            WCS_DIV(specopt | WSO_STOP_DIV);
             lp++;
 
           } else {
-            if (mc=='w') {
+            if (mc == 'w' || (specopt & WSO_FORCEPLAIN)) {
               WSContentSend_PD(PSTR("%s"), lin);
             } else {
               if (optflg) {
