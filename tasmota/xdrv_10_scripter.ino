@@ -7914,6 +7914,32 @@ char *gc_send_labels(char *lp,uint32_t anum) {
   return lp;
 }
 
+const char *GC_type(uint8_t type) {
+  switch (type) {
+    case 'l':
+      return PSTR("LineChart");
+    case 'b':
+      return PSTR("BarChart");
+    case 'p':
+      return PSTR("PieChart");
+    case 'g':
+      return PSTR("Gauge");
+    case 't':
+      return PSTR("Table");
+    case 'T':
+      return PSTR("Timeline");
+    case 'h':
+      return PSTR("Histogram");
+    case 'c':
+      return PSTR("ColumnChart");
+    case 'C':
+      return PSTR("ComboChart");
+    default:
+      return PSTR("*");
+  }
+}
+
+
 #endif // USE_GOOGLE_CHARTS
 
 void ScriptGetVarname(char *nbuf,char *sp, uint32_t blen) {
@@ -7941,12 +7967,12 @@ void WCS_DIV(uint8_t flag) {
   }
 }
 
+
 uint8_t specopt;
 uint8_t chartindex;
 uint8_t google_libs;
 #ifdef USE_GOOGLE_CHARTS
 char gs_ctype;
-char gs_type[14];
 #endif
 
 void ScriptWebShow(char mc, uint8_t page) {
@@ -8049,7 +8075,7 @@ char *web_send_line(char mc, char *lp1) {
 char tmp[256];
 char center[10];
 uint8_t optflg = 0;
-
+const char *gc_str;
 
   Replace_Cmd_Vars(lp1, 1, tmp, sizeof(tmp));
 
@@ -8392,64 +8418,45 @@ exgc:
         uint8_t nanum = MAX_GARRAY;
         uint8_t y2f = 0;
         uint8_t tonly = 0;
-        gs_ctype = *lp;
+        char type = *lp;
+        if (type != 'e') {
+          gs_ctype = type;
+        }
         lp++;
         if (!(google_libs & GLIBS_MAIN)) {
           google_libs |= GLIBS_MAIN;
           WSContentSend_PD(SCRIPT_MSG_GTABLE);
         }
+
+        gc_str = GC_type(gs_ctype);
+
         switch (gs_ctype) {
-          case 'l':
-            strcpy_P(gs_type, PSTR("LineChart"));
-            break;
-          case 'b':
-            strcpy_P(gs_type, PSTR("BarChart"));
-            break;
-          case 'p':
-            strcpy_P(gs_type, PSTR("PieChart"));
-            break;
           case 'g':
-            strcpy_P(gs_type, PSTR("Gauge"));
             if (!(google_libs & GLIBS_GAUGE)) {
               google_libs |= GLIBS_GAUGE;
               WSContentSend_PD(SCRIPT_MSG_GAUGE);
             }
             break;
           case 't':
-            strcpy_P(gs_type, PSTR("Table"));
             if (!(google_libs & GLIBS_TABLE)) {
               google_libs |= GLIBS_TABLE;
               WSContentSend_PD(SCRIPT_MSG_TABLE);
             }
             break;
           case 'T':
-            strcpy_P(gs_type, PSTR("Timeline"));
             if (!(google_libs & GLIBS_TIMELINE)) {
               google_libs |= GLIBS_TIMELINE;
               WSContentSend_PD(SCRIPT_MSG_TIMELINE);
             }
             break;
-          case 'h':
-            strcpy_P(gs_type, PSTR("Histogram"));
-            break;
-          case 'c':
-            strcpy_P(gs_type, PSTR("ColumnChart"));
-            break;
-          case 'C':
-            strcpy_P(gs_type, PSTR("ComboChart"));
-            break;
-          case 'e':
-            WSContentSend_PD(SCRIPT_MSG_GTABLEbx, gs_type, chartindex);
-            chartindex++;
-            return lp1;
-            //goto nextwebline;
-            break;
-          default:
-            // error
-            return lp1;
-            //goto nextwebline;
-            break;
         }
+        if (type == 'e') {
+          WSContentSend_PD(SCRIPT_MSG_GTABLEbx, gc_str, chartindex);
+          chartindex++;
+          return lp1;
+        }
+
+
         if (gs_ctype=='l' && *lp=='f') {
           lp++;
           func = PSTR(",curveType:'function'");
@@ -8694,7 +8701,7 @@ exgc:
           }
         }
         WSContentSend_PD(SCRIPT_MSG_GTABLEb, options);
-        WSContentSend_PD(SCRIPT_MSG_GTABLEbx, gs_type, chartindex);
+        WSContentSend_PD(SCRIPT_MSG_GTABLEbx, gc_str, chartindex);
         chartindex++;
       } else {
         WSContentSend_PD(PSTR("%s"), lin);
