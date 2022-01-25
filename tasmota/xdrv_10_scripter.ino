@@ -434,6 +434,7 @@ struct SCRIPT_MEM {
     char web_mode;
     char *glob_script = 0;
     char *fast_script = 0;
+    char *event_script = 0;
     char *web_pages[5];
     uint32_t script_lastmillis;
     bool event_handeled = false;
@@ -6390,6 +6391,7 @@ void SaveScriptEnd(void) {
 
     //glob_script_mem.fast_script = Run_Scripter(">F", -2, 0);
     if (Run_Scripter(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
+    if (Run_Scripter(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
 
     script_set_web_pages();
 
@@ -6882,7 +6884,8 @@ void Script_Handle_Hue(String *path) {
   AddLog(LOG_LEVEL_DEBUG_MORE, PSTR(D_LOG_HTTP D_HUE " Result (%s)"), response.c_str());
   WSSend(code, CT_APP_JSON, response);
   if (resp) {
-    Run_Scripter(">E", 2, 0);
+    //Run_Scripter(">E", 2, 0);
+    if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, 0);
   }
 }
 #endif  // hue interface
@@ -7628,6 +7631,13 @@ const char HTTP_SCRIPT_FULLPAGE2[] PROGMEM =
       "la('&sv='+ivar+'_'+par);"
       "rfsh=0;"
     "}"
+    "function sivat(par,ivar){"
+      "rfsh=1;"
+      // remove : from time string
+      "par = par.slice(0, 2) + par.slice(3);"
+      "la('&sv='+ivar+'_'+par);"
+      "rfsh=0;"
+    "}"
     "function pr(f){"
       "if (f) {"
         "lt=setTimeout(la,%d);"
@@ -7677,14 +7687,12 @@ void ScriptFullWebpage(uint8_t page) {
   }
 
   WSContentBegin(200, CT_HTML);
-  const char *title = "Full Screen";
-  WSContentSend_P(HTTP_HEADER1, PSTR(D_HTML_LANGUAGE), SettingsText(SET_DEVICENAME), title);
+  WSContentSend_P(HTTP_HEADER1, PSTR(D_HTML_LANGUAGE), SettingsText(SET_DEVICENAME), PSTR("Full Screen"));
   WSContentSend_P(HTTP_SCRIPT_FULLPAGE1, page , fullpage_refresh);
   WSContentSend_P(HTTP_SCRIPT_FULLPAGE2, fullpage_refresh);
   //WSContentSend_P(PSTR("<div id='l1' name='l1'></div>"));
 
   //WSContentSendStyle();
-
 
   WSContentSend_P(PSTR("<div id='l1' name='l1'>"));
   ScriptWebShow('w', page);
@@ -7729,7 +7737,9 @@ void Script_Check_HTML_Setvars(void) {
 
     //toLog(cmdbuf);
     execute_script(cmdbuf);
-    Run_Scripter(">E", 2, 0);
+    //Run_Scripter(">E", 2, 0);
+    if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, 0);
+
   }
 }
 
@@ -7771,8 +7781,7 @@ const char SCRIPT_MSG_TEXTINP[] PROGMEM =
   "%s<label><b>%s</b><input type='text'  value='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label>";
 
 const char SCRIPT_MSG_TEXTINP_U[] PROGMEM =
-  "%s<label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label>";
-
+  "%s<label><b>%s</b><input type='%s'  value='%s' min='%s' max='%s' style='width:%dpx'  onfocusin='pr(0)' onfocusout='pr(1)' onchange='%s(value,\"%s\")'></label>";
 
 const char SCRIPT_MSG_NUMINP[] PROGMEM =
   "%s<label><b>%s</b><input  min='%s' max='%s' step='%s' value='%s' type='number' style='width:%dpx' onfocusin='pr(0)' onfocusout='pr(1)' onchange='siva(value,\"%s\")'></label>";
@@ -8292,7 +8301,38 @@ const char *gc_str;
       if (optflg) WSContentSend_PD(SCRIPT_MSG_BUT_STOP_TBL);
       else WSContentSend_PD(SCRIPT_MSG_BUT_STOP);
 
-    } else if (!strncmp(lin, "tx(", 3)) {
+    }  else if (!strncmp(lin, "tm(", 3)) {
+      // time only HH:MM
+      float val;
+      char *lp = lin + 3;
+      char *slp = lp;
+      lp = GetNumericArgument(lp, OPER_EQU, &val, 0);
+      SCRIPT_SKIP_SPACES
+      char vname[16];
+      ScriptGetVarname(vname, slp, sizeof(vname));
+      SCRIPT_SKIP_SPACES
+      char label[SCRIPT_MAXSSIZE];
+      lp = GetStringArgument(lp, OPER_EQU, label, 0);
+      SCRIPT_SKIP_SPACES
+      uint16_t tsiz = 70;
+      if (*lp != ')') {
+        float fvar;
+        lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
+        tsiz = fvar;
+      }
+      lp++;
+      char vstr[16];
+      uint32_t tv = val;
+      sprintf_P(vstr,PSTR("%02d:%02d"),tv / 100, tv % 100);
+      const char *type = PSTR("time");
+      const char *min = PSTR("00:00");
+      const char *max = PSTR("23:59");
+      const char *styp = PSTR("sivat");
+      WCS_DIV(specopt);
+      WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, center, label, type, vstr, min, max, tsiz, styp, vname);
+      WCS_DIV(specopt | WSO_STOP_DIV);
+    }  else if (!strncmp(lin, "tx(", 3)) {
+      // text
       char *lp = lin + 3;
       char *slp = lp;
       char str[SCRIPT_MAXSSIZE];
@@ -8329,7 +8369,8 @@ const char *gc_str;
           lp = GetStringArgument(lp, OPER_EQU, max, 0);
           SCRIPT_SKIP_SPACES
           WCS_DIV(specopt);
-          WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, center, label, type, str, min, max, tsiz, vname);
+          const char *styp = PSTR("siva");
+          WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, center, label, type, str, min, max, tsiz, styp, vname);
           WCS_DIV(specopt | WSO_STOP_DIV);
         } else {
           WCS_DIV(specopt);
@@ -8792,7 +8833,10 @@ void ScriptJsonAppend(void) {
 
 
 bool RulesProcessEvent(const char *json_event) {
-  if (bitRead(Settings->rule_enabled, 0)) Run_Scripter(">E", 2, json_event);
+  if (bitRead(Settings->rule_enabled, 0)) {
+    //Run_Scripter(">E", 2, json_event);
+    if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, json_event);
+  }
   return true;
 }
 
@@ -8968,7 +9012,9 @@ int32_t http_req(char *host, char *request) {
 
 //  AddLog(LOG_LEVEL_INFO, PSTR("JSON %s"), wd_jstr);
 //  TasmotaGlobal.mqtt_data = wd_jstr;
-  Run_Scripter(">E", 2, ResponseData());
+  //Run_Scripter(">E", 2, ResponseData());
+  if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, ResponseData());
+
 
   glob_script_mem.glob_error = 0;
 #endif
@@ -9742,6 +9788,7 @@ bool Xdrv10(uint8_t function)
       if (bitRead(Settings->rule_enabled, 0)) {
         Run_Scripter(">B\n", 3, 0);
         if (Run_Scripter(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
+        if (Run_Scripter(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
         script_set_web_pages();
 #if defined(USE_SCRIPT_HUE) && defined(USE_WEBSERVER) && defined(USE_EMULATION) && defined(USE_EMULATION_HUE) && defined(USE_LIGHT)
         Script_Check_Hue(0);
@@ -9763,7 +9810,8 @@ bool Xdrv10(uint8_t function)
       if (bitRead(Settings->rule_enabled, 0)) Run_Scripter(">P", 2, 0);
 #else
       if (bitRead(Settings->rule_enabled, 0)) {
-        Run_Scripter(">E", 2, 0);
+        //Run_Scripter(">E", 2, 0);
+        if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, 0);
         result = glob_script_mem.event_handeled;
       }
 #endif //SCRIPT_POWER_SECTION
@@ -9774,10 +9822,12 @@ bool Xdrv10(uint8_t function)
         if (!strncmp_P(ResponseData(), PSTR("{\"Status"), 8)) {
           Run_Scripter(">U", 2, ResponseData());
         } else {
-          Run_Scripter(">E", 2, ResponseData());
+          //Run_Scripter(">E", 2, ResponseData());
+          if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, ResponseData());
         }
 #else
-        Run_Scripter(">E", 2, ResponseData());
+        //Run_Scripter(">E", 2, ResponseData());
+        if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, ResponseData());
 #endif
 
         result = glob_script_mem.event_handeled;
