@@ -134,19 +134,19 @@ Ticker Script_ticker4;
 
 void Script_ticker1_end(void) {
   Script_ticker1.detach();
-  Run_Scripter(">ti1", 4, 0);
+  Run_Scripter1(">ti1", 4, 0);
 }
 void Script_ticker2_end(void) {
   Script_ticker2.detach();
-  Run_Scripter(">ti2", 4, 0);
+  Run_Scripter1(">ti2", 4, 0);
 }
 void Script_ticker3_end(void) {
   Script_ticker3.detach();
-  Run_Scripter(">ti3", 4, 0);
+  Run_Scripter1(">ti3", 4, 0);
 }
 void Script_ticker4_end(void) {
   Script_ticker4.detach();
-  Run_Scripter(">ti4", 4, 0);
+  Run_Scripter1(">ti4", 4, 0);
 }
 #endif
 
@@ -514,11 +514,11 @@ void ScriptEverySecond(void) {
         }
       }
     }
-    Run_Scripter(">S", 2, 0);
+    Run_Scripter1(">S", 2, 0);
 
 #ifdef USE_HOMEKIT
     if (glob_script_mem.homekit_running == false) {
-      uint8_t homekit_found = Run_Scripter(">h", -2, 0);
+      uint8_t homekit_found = Run_Scripter1(">h", -2, 0);
       if (homekit_found == 99) {
         if (!TasmotaGlobal.global_state.wifi_down) {
           homekit_main(glob_script_mem.section_ptr, 0);
@@ -988,7 +988,7 @@ char *script;
 #ifdef USE_SCRIPT_GLOBVARS
     if (glob_script_mem.udp_flags.udp_used) {
       Script_Init_UDP();
-      if (Run_Scripter(">G", -2, 0) == 99) {glob_script_mem.glob_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.glob_script = 0;}
+      if (Run_Scripter1(">G", -2, 0) == 99) {glob_script_mem.glob_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.glob_script = 0;}
     }
 #endif //USE_SCRIPT_GLOBVARS
 
@@ -1098,7 +1098,7 @@ void Script_PollUdp(void) {
             glob_script_mem.last_udp_ip = glob_script_mem.Script_PortUdp.remoteIP();
             SetChanged(index);
             if (glob_script_mem.glob_script) {
-              Run_Scripter(glob_script_mem.glob_script, 0, 0);
+              Run_Scripter1(glob_script_mem.glob_script, 0, 0);
             }
           }
         }
@@ -4240,9 +4240,12 @@ extern char *SML_GetSVal(uint32_t index);
           // subroutine
           sub[0] = '=';
           strncpy(sub + 1, lp, sizeof(sub) - 1);
-          char *xp = scripter_sub(sub, 0);
-          lp += (uint32_t)xp - (uint32_t)sub - 1;
-
+          scripter_sub(sub, 0);
+          char *cp = strchr(lp, ')');
+          if (cp) {
+            lp = cp + 1;
+          }
+          len = 0;
           if (glob_script_mem.retstr) {
             if (sp) strlcpy(sp, glob_script_mem.retstr, glob_script_mem.max_ssize);
             free (glob_script_mem.retstr);
@@ -5023,10 +5026,10 @@ char *scripter_sub(char *lp, uint8_t fromscriptcmd) {
   if (fromscriptcmd) {
     char *sp = glob_script_mem.scriptptr;
     glob_script_mem.scriptptr = glob_script_mem.scriptptr_bu;
-    Run_Scripter(slp, plen, 0);
+    Run_Scripter1(slp, plen, 0);
     glob_script_mem.scriptptr = sp;
   } else {
-    Run_Scripter(slp, plen, 0);
+    Run_Scripter1(slp, plen, 0);
   }
   lp = slp;
   return lp;
@@ -5035,6 +5038,19 @@ char *scripter_sub(char *lp, uint8_t fromscriptcmd) {
 int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv);
 
 #define IF_NEST 8
+
+int16_t Run_Scripter1(const char *type, int8_t tlen, const char *js) {
+int16_t retval;
+  if (!glob_script_mem.scriptptr) {
+    return -99;
+  }
+  if (tasm_cmd_activ && tlen > 0) return 0;
+  struct GVARS gv;
+  gv.jo = 0;
+  retval = Run_script_sub(type, tlen, &gv);
+  return retval;
+}
+
 // execute section of scripter
 int16_t Run_Scripter(const char *type, int8_t tlen, const char *js) {
 int16_t retval;
@@ -5802,15 +5818,14 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                 }
                 // check for subroutine
                 char *ctype = (char*)type;
-                if (*ctype=='#') {
+                if (*ctype == '#') {
                   // check for parameter
                   ctype += tlen;
                   char nxttok = '(';
-                  char *argptr = ctype+tlen;
-
+                  char *argptr = ctype + tlen;
                   lp += tlen;
                   do {
-                    if (*ctype==nxttok && *lp==nxttok) {
+                    if (*ctype == nxttok && *lp == nxttok) {
                       float fparam;
                       numeric = 1;
                       glob_script_mem.glob_error = 0;
@@ -5821,14 +5836,14 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                         // get the string
                         argptr = GetStringArgument((char*)ctype + 1, OPER_EQU, cmpstr, 0);
                       }
-                      if (*lp==nxttok) {
+                      if (*lp == nxttok) {
                         // fetch destination
                         lp++;
                         lp = isvar(lp, &vtype, &ind, 0, 0, gv);
-                        if (vtype!=VAR_NV) {
+                        if (vtype != VAR_NV) {
                           // found variable as result
                           uint8_t index = glob_script_mem.type[ind.index].index;
-                          if ((vtype&STYPE)==0) {
+                          if ((vtype & STYPE) == 0) {
                               // numeric result
                               dfvar = &glob_script_mem.fvars[index];
                               if (numeric) {
@@ -5850,14 +5865,14 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                         }
                       }
                     } else {
-                      if (*ctype==nxttok || (*lp!=SCRIPT_EOL && *lp!='?')) {
+                      if (*ctype == nxttok || (*lp != SCRIPT_EOL && *lp != '?')) {
                         // revert
                         section = 0;
                       }
                     }
                     nxttok = ' ';
                     ctype = argptr;
-                  } while (*lp==' ' && (section == 1) );
+                  } while (*lp == ' ' && (section == 1) );
                 }
             }
         }
@@ -5916,7 +5931,7 @@ void ScripterEvery100ms(void) {
     }
   }
   if (bitRead(Settings->rule_enabled, 0)) {
-    if (glob_script_mem.fast_script) Run_Scripter(glob_script_mem.fast_script, 0, 0);
+    if (glob_script_mem.fast_script) Run_Scripter1(glob_script_mem.fast_script, 0, 0);
   }
 }
 
@@ -6386,12 +6401,12 @@ void SaveScriptEnd(void) {
     Script_Close_Serial();
 #endif
 
-    Run_Scripter(">B\n", 3, 0);
-    Run_Scripter(">BS", 3, 0);
+    Run_Scripter1(">B\n", 3, 0);
+    Run_Scripter1(">BS", 3, 0);
 
     //glob_script_mem.fast_script = Run_Scripter(">F", -2, 0);
-    if (Run_Scripter(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
-    if (Run_Scripter(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
+    if (Run_Scripter1(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
+    if (Run_Scripter1(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
 
     script_set_web_pages();
 
@@ -6399,11 +6414,11 @@ void SaveScriptEnd(void) {
 }
 
 void script_set_web_pages(void) {
-  if (Run_Scripter(">W", -2, 0) == 99) {glob_script_mem.web_pages[0] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[0] = 0;}
-  if (Run_Scripter(">w ", -3, 0) == 99) {glob_script_mem.web_pages[1] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[1] = 0;}
-  if (Run_Scripter(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[2] = 0;}
-  if (Run_Scripter(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[3] = 0;}
-  if (Run_Scripter(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[4] = 0;}
+  if (Run_Scripter1(">W", -2, 0) == 99) {glob_script_mem.web_pages[0] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[0] = 0;}
+  if (Run_Scripter1(">w ", -3, 0) == 99) {glob_script_mem.web_pages[1] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[1] = 0;}
+  if (Run_Scripter1(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[2] = 0;}
+  if (Run_Scripter1(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[3] = 0;}
+  if (Run_Scripter1(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[4] = 0;}
 }
 
 #endif // USE_WEBSERVER
@@ -6623,7 +6638,7 @@ void Script_HueStatus(String *response, uint16_t hue_devs) {
 void Script_Check_Hue(String *response) {
   if (!bitRead(Settings->rule_enabled, 0)) return;
 
-  uint8_t hue_script_found = Run_Scripter(">H", -2, 0);
+  uint8_t hue_script_found = Run_Scripter1(">H", -2, 0);
   if (hue_script_found!=99) return;
 
   char tmp[256];
@@ -6885,7 +6900,7 @@ void Script_Handle_Hue(String *path) {
   WSSend(code, CT_APP_JSON, response);
   if (resp) {
     //Run_Scripter(">E", 2, 0);
-    if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, 0);
+    if (glob_script_mem.event_script) Run_Scripter1(glob_script_mem.event_script, 0, 0);
   }
 }
 #endif  // hue interface
@@ -6923,7 +6938,7 @@ bool Script_SubCmd(void) {
     *cp = 0;
   }
   //toLog(cmdbuff);
-  uint32_t res = Run_Scripter(cmdbuff, tlen + 1, 0);
+  uint32_t res = Run_Scripter1(cmdbuff, tlen + 1, 0);
   //AddLog(LOG_LEVEL_INFO,">>%d",res);
   if (res) {
     return false;
@@ -6945,7 +6960,7 @@ void execute_script(char *script) {
   char *svd_sp = glob_script_mem.scriptptr;
   strcat(script, "\n#");
   glob_script_mem.scriptptr = script;
-  Run_Scripter(">", 1, 0);
+  Run_Scripter1(">", 1, 0);
   glob_script_mem.scriptptr = svd_sp;
 }
 #define D_CMND_SCRIPT "Script"
@@ -7738,7 +7753,7 @@ void Script_Check_HTML_Setvars(void) {
     //toLog(cmdbuf);
     execute_script(cmdbuf);
     //Run_Scripter(">E", 2, 0);
-    if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, 0);
+    if (glob_script_mem.event_script) Run_Scripter1(glob_script_mem.event_script, 0, 0);
 
   }
 }
@@ -8764,7 +8779,7 @@ exgc:
 #if defined(USE_SENDMAIL) || defined(USE_ESP32MAIL)
 
 void script_send_email_body(void(*func)(char *)) {
-uint8_t msect = Run_Scripter(">m", -2, 0);
+uint8_t msect = Run_Scripter1(">m", -2, 0);
   if (msect==99) {
     char tmp[256];
     char *lp = glob_script_mem.section_ptr + 2;
@@ -8798,7 +8813,7 @@ uint8_t msect = Run_Scripter(">m", -2, 0);
 
 #ifdef USE_SCRIPT_JSON_EXPORT
 void ScriptJsonAppend(void) {
-  uint8_t web_script = Run_Scripter(">J", -2, 0);
+  uint8_t web_script = Run_Scripter1(">J", -2, 0);
   if (web_script==99) {
     char tmp[256];
     char *lp = glob_script_mem.section_ptr + 2;
@@ -8864,7 +8879,7 @@ void script_task1(void *arg) {
     //if (time<esp32_tasks[1].task_timer) {delay(time); }
     //if (time<=esp32_tasks[0].task_timer) {vTaskDelay( pdMS_TO_TICKS( time ) ); }
     if (bitRead(Settings->rule_enabled, 0)) {
-      if (esp32_tasks[0].tstart) Run_Scripter(esp32_tasks[0].tstart, 0, 0);
+      if (esp32_tasks[0].tstart) Run_Scripter1(esp32_tasks[0].tstart, 0, 0);
     }
     if (esp32_tasks[0].task_timer) {
       delay(esp32_tasks[0].task_timer);
@@ -8878,7 +8893,7 @@ void script_task1(void *arg) {
 void script_task2(void *arg) {
   while (1) {
     if (bitRead(Settings->rule_enabled, 0)) {
-      if (esp32_tasks[1].tstart) Run_Scripter(esp32_tasks[1].tstart, 0, 0);
+      if (esp32_tasks[1].tstart) Run_Scripter1(esp32_tasks[1].tstart, 0, 0);
     }
     if (esp32_tasks[1].task_timer) {
       delay(esp32_tasks[1].task_timer);
@@ -8903,12 +8918,12 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_
     char *sp = 0;
     esp32_tasks[num].task_timer = time;
     if (!num) {
-      if (Run_Scripter(">t1", -3, 0) == 99) {
+      if (Run_Scripter1(">t1", -3, 0) == 99) {
         sp = glob_script_mem.section_ptr + 2;
         res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
       }
     } else {
-      if (Run_Scripter(">t2", -3, 0) == 99) {
+      if (Run_Scripter1(">t2", -3, 0) == 99) {
         sp = glob_script_mem.section_ptr + 2;
         res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
       }
@@ -9245,7 +9260,7 @@ void btn_event_cb(lv_event_t * e);
 void btn_event_cb(lv_event_t * e) {
   lvgl_set_last(e->target, e->code);
   if (e->code == LV_EVENT_CLICKED) {
-    Run_Scripter(">lvb", 4, 0);
+    Run_Scripter1(">lvb", 4, 0);
   }
 }
 
@@ -9254,7 +9269,7 @@ void slider_event_cb(lv_event_t * e) {
   lvgl_set_last(e->target, e->code);
   lvgl_last_slider = lv_slider_get_value(e->target);
   if (e->code == LV_EVENT_VALUE_CHANGED) {
-    Run_Scripter(">lvs", 4, 0);
+    Run_Scripter1(">lvs", 4, 0);
   }
 }
 
@@ -9786,9 +9801,9 @@ bool Xdrv10(uint8_t function)
     //  break;
     //case FUNC_INIT:
       if (bitRead(Settings->rule_enabled, 0)) {
-        Run_Scripter(">B\n", 3, 0);
-        if (Run_Scripter(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
-        if (Run_Scripter(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
+        Run_Scripter1(">B\n", 3, 0);
+        if (Run_Scripter1(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
+        if (Run_Scripter1(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
         script_set_web_pages();
 #if defined(USE_SCRIPT_HUE) && defined(USE_WEBSERVER) && defined(USE_EMULATION) && defined(USE_EMULATION_HUE) && defined(USE_LIGHT)
         Script_Check_Hue(0);
@@ -9807,11 +9822,11 @@ bool Xdrv10(uint8_t function)
       break;
     case FUNC_SET_POWER:
 #ifdef SCRIPT_POWER_SECTION
-      if (bitRead(Settings->rule_enabled, 0)) Run_Scripter(">P", 2, 0);
+      if (bitRead(Settings->rule_enabled, 0)) Run_Scripter1(">P", 2, 0);
 #else
       if (bitRead(Settings->rule_enabled, 0)) {
         //Run_Scripter(">E", 2, 0);
-        if (glob_script_mem.event_script) Run_Scripter(glob_script_mem.event_script, 0, 0);
+        if (glob_script_mem.event_script) Run_Scripter1(glob_script_mem.event_script, 0, 0);
         result = glob_script_mem.event_handeled;
       }
 #endif //SCRIPT_POWER_SECTION
@@ -9875,7 +9890,7 @@ bool Xdrv10(uint8_t function)
 
     case FUNC_SAVE_BEFORE_RESTART:
       if (bitRead(Settings->rule_enabled, 0)) {
-        Run_Scripter(">R", 2, 0);
+        Run_Scripter1(">R", 2, 0);
         Scripter_save_pvars();
       }
 #ifdef USE_SCRIPT_GLOBVARS
@@ -9910,7 +9925,7 @@ bool Xdrv10(uint8_t function)
       if (bitRead(Settings->rule_enabled, 0)) {
         if ((glob_script_mem.script_button[XdrvMailbox.index]&1)!=(XdrvMailbox.payload&1)) {
           glob_script_mem.script_button[XdrvMailbox.index] = XdrvMailbox.payload;
-          Run_Scripter(">b", 2, 0);
+          Run_Scripter1(">b", 2, 0);
         }
       }
       break;
