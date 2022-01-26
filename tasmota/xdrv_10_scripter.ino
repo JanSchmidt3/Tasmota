@@ -5705,12 +5705,10 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                       lp = getop(lp, &lastop);
 #ifdef SCRIPT_LM_SUB
                       if (*lp=='#') {
-#else
-                      if (0) {
-#endif
                         // subroutine
                         lp = eval_sub(lp, &fvar, 0);
                       } else {
+#endif
                         char *slp = lp;
                         glob_script_mem.glob_error = 0;
                         //Serial.printf("Stack 1: %d\n",GetStack());
@@ -5721,8 +5719,9 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                           lp = isvar(slp, &vtype, &ind, 0, cmpstr, gv);
                           fvar = CharToFloat(cmpstr);
                         }
-
+#ifdef SCRIPT_LM_SUB
                       }
+#endif
                       switch (lastop) {
                           case OPER_EQU:
                               if (glob_script_mem.var_not_found) {
@@ -5811,14 +5810,13 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                     saindex = gv->strind;
                     // string result
                     char str[SCRIPT_MAXSSIZE];
+                    lp = getop(lp, &lastop);
 #ifdef SCRIPT_LM_SUB
                     if (*lp=='#') {
-#else
-                    if (0) {
-#endif
                       // subroutine
                       lp = eval_sub(lp, 0, str);
                     } else {
+#endif
                       char *slp = lp;
                       glob_script_mem.glob_error = 0;
                       lp = GetStringArgument(lp, OPER_EQU, str, gv);
@@ -5828,7 +5826,9 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                         dtostrfd(fvar, 6, str);
                         glob_script_mem.glob_error = 0;
                       }
+#ifdef SCRIPT_LM_SUB
                     }
+#endif
                     if (!glob_script_mem.var_not_found) {
                       // var was changed
                       SetChanged(globvindex);
