@@ -435,6 +435,7 @@ struct SCRIPT_MEM {
     char *glob_script = 0;
     char *fast_script = 0;
     char *event_script = 0;
+    char *html_script = 0;
     char *web_pages[5];
     uint32_t script_lastmillis;
     bool event_handeled = false;
@@ -4236,15 +4237,24 @@ extern char *SML_GetSVal(uint32_t index);
         }
         break;
       case '#':
-        { char sub[128];
+        {
+#if 0
+          char sub[128];
           // subroutine
           sub[0] = '=';
           strncpy(sub + 1, lp, sizeof(sub) - 1);
           scripter_sub(sub, 0);
-          char *cp = strchr(lp, ')');
-          if (cp) {
-            lp = cp + 1;
+#else
+          scripter_sub(lp - 1, 0);
+#endif
+          while (1) {
+            if (*lp == ')' || *lp == SCRIPT_EOL) {
+              lp++;
+              break;
+            }
+            lp++;
           }
+
           len = 0;
           if (glob_script_mem.retstr) {
             if (sp) strlcpy(sp, glob_script_mem.retstr, glob_script_mem.max_ssize);
@@ -4284,8 +4294,6 @@ strexit:
     tind->bits.is_string = 1;
     return lp + len;
 }
-
-
 
 char *getop(char *lp, uint8_t *operand) {
     switch (*lp) {
@@ -6401,16 +6409,22 @@ void SaveScriptEnd(void) {
     Script_Close_Serial();
 #endif
 
+    set_callbacks();
+
     Run_Scripter1(">B\n", 3, 0);
     Run_Scripter1(">BS", 3, 0);
 
     //glob_script_mem.fast_script = Run_Scripter(">F", -2, 0);
-    if (Run_Scripter1(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
-    if (Run_Scripter1(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
 
     script_set_web_pages();
 
   }
+}
+
+void set_callbacks() {
+  if (Run_Scripter1(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
+  if (Run_Scripter1(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
+  if (Run_Scripter1(">HC", -3, 0) == 99) {glob_script_mem.html_script = glob_script_mem.section_ptr + 3;} else {glob_script_mem.html_script = 0;}
 }
 
 void script_set_web_pages(void) {
@@ -7749,12 +7763,14 @@ void Script_Check_HTML_Setvars(void) {
       *cp1 = '\"';
       *(cp1 + tlen +1 ) = '\"';
     }
-
     //toLog(cmdbuf);
     execute_script(cmdbuf);
-    //Run_Scripter(">E", 2, 0);
-    if (glob_script_mem.event_script) Run_Scripter1(glob_script_mem.event_script, 0, 0);
 
+#ifdef USE_HTML_CALLBACK
+    if (glob_script_mem.html_script) Run_Scripter1(glob_script_mem.html_script, 0, 0);
+#else
+    if (glob_script_mem.event_script) Run_Scripter1(glob_script_mem.event_script, 0, 0);
+#endif
   }
 }
 
@@ -9801,9 +9817,8 @@ bool Xdrv10(uint8_t function)
     //  break;
     //case FUNC_INIT:
       if (bitRead(Settings->rule_enabled, 0)) {
+        set_callbacks();
         Run_Scripter1(">B\n", 3, 0);
-        if (Run_Scripter1(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
-        if (Run_Scripter1(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
         script_set_web_pages();
 #if defined(USE_SCRIPT_HUE) && defined(USE_WEBSERVER) && defined(USE_EMULATION) && defined(USE_EMULATION_HUE) && defined(USE_LIGHT)
         Script_Check_Hue(0);
