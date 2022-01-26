@@ -490,6 +490,7 @@ char *ForceStringVar(char *lp,char *dstr);
 void send_download(void);
 uint8_t UfsReject(char *name);
 void fread_str(uint8_t fref, char *sp, uint16_t slen);
+char *eval_sub(char *lp, float *fvar, char *rstr);
 
 void ScriptEverySecond(void) {
 
@@ -1937,6 +1938,8 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
     float fvar = 0;
     tind->index = 0;
     tind->bits.data = 0;
+
+    //Serial.printf("Stack 2: %d\n",GetStack());
 
     if (isdigit(*lp) || (*lp=='-' && isdigit(*(lp+1))) || *lp=='.') {
       // isnumber
@@ -4237,33 +4240,12 @@ extern char *SML_GetSVal(uint32_t index);
         }
         break;
       case '#':
-        {
-#if 0
-          char sub[128];
-          // subroutine
-          sub[0] = '=';
-          strncpy(sub + 1, lp, sizeof(sub) - 1);
-          scripter_sub(sub, 0);
-#else
-          scripter_sub(lp - 1, 0);
-#endif
-          while (1) {
-            if (*lp == ')' || *lp == SCRIPT_EOL) {
-              lp++;
-              break;
-            }
-            lp++;
-          }
-
-          len = 0;
-          if (glob_script_mem.retstr) {
-            if (sp) strlcpy(sp, glob_script_mem.retstr, glob_script_mem.max_ssize);
-            free (glob_script_mem.retstr);
-            goto strexit;
-          } else {
-            fvar = glob_script_mem.retval;
-            goto exit;
-          }
+        len = 0;
+        lp = eval_sub(lp, &fvar, sp);
+        if (glob_script_mem.retstr)  {
+          goto strexit;
+        } else {
+          goto exit;
         }
         break;
 
@@ -5016,7 +4998,34 @@ void esp_pwm(int32_t value, uint32 freq, uint32_t channel) {
 #endif // ESP32
 }
 
-
+char *eval_sub(char *lp, float *fvar, char *rstr) {
+  scripter_sub(lp - 1, 0);
+  while (1) {
+    if (*lp == ')') {
+      lp++;
+      break;
+    }
+    if (*lp == SCRIPT_EOL || *lp == '+' || *lp == '-') {
+      break;
+    }
+    lp++;
+  }
+  if (glob_script_mem.retstr) {
+    if (rstr) {
+      strcpy(rstr, glob_script_mem.retstr);
+    } else {
+      *fvar = CharToFloat(glob_script_mem.retstr);
+    }
+    free (glob_script_mem.retstr);
+  } else {
+    if (fvar) {
+      *fvar = glob_script_mem.retval;
+    } else {
+      dtostrfd(glob_script_mem.retval, 6, rstr);
+    }
+  }
+  return lp;
+}
 
 //#define IFTHEN_DEBUG
 
@@ -5625,11 +5634,11 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             }
 
             // check for variable result
-            if (if_state[ifstck]==1) {
+            if (if_state[ifstck] == 1) {
               // evaluate exxpression
               lp = Evaluate_expression(lp, and_or, &if_result[ifstck], gv);
               SCRIPT_SKIP_SPACES
-              if (*lp=='{' && if_state[ifstck]==1) {
+              if (*lp == '{' && if_state[ifstck] == 1) {
                 lp += 1; // then
                 if_state[ifstck] = 2;
                 if (if_exe[ifstck - 1]) if_exe[ifstck] = if_result[ifstck];
@@ -5638,7 +5647,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             } else {
               char *vnp = lp;
               lp = isvar(lp, &vtype, &ind, &sysvar, 0, gv);
-              if (vtype!=VAR_NV) {
+              if (vtype != VAR_NV) {
 #ifdef USE_SCRIPT_GLOBVARS
                   char varname[16];
                   uint32_t vnl = (uint32_t)lp - (uint32)vnp;
@@ -5666,14 +5675,22 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                       }
                       numeric = 1;
                       lp = getop(lp, &lastop);
-                      char *slp = lp;
-                      glob_script_mem.glob_error = 0;
-                      lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-                      if (glob_script_mem.glob_error==1) {
-                        // mismatch was string, not number
-                        // get the string and convert to number
-                        lp = isvar(slp, &vtype, &ind, 0, cmpstr, gv);
-                        fvar = CharToFloat(cmpstr);
+
+                      if (*lp=='#') {
+                        // subroutine
+                        lp = eval_sub(lp, &fvar, 0);
+                      } else {
+                        char *slp = lp;
+                        glob_script_mem.glob_error = 0;
+                        //Serial.printf("Stack 1: %d\n",GetStack());
+                        lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+                        if (glob_script_mem.glob_error == 1) {
+                          // mismatch was string, not number
+                          // get the string and convert to number
+                          lp = isvar(slp, &vtype, &ind, 0, cmpstr, gv);
+                          fvar = CharToFloat(cmpstr);
+                        }
+
                       }
                       switch (lastop) {
                           case OPER_EQU:
@@ -5764,16 +5781,20 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                     // string result
                     char str[SCRIPT_MAXSSIZE];
                     lp = getop(lp, &lastop);
-                    char *slp = lp;
-                    glob_script_mem.glob_error = 0;
-                    lp = GetStringArgument(lp, OPER_EQU, str, gv);
-                    if ((!gv || !gv->jo) && glob_script_mem.glob_error) {
-                      // mismatch
-                      lp = GetNumericArgument(slp, OPER_EQU, &fvar, 0);
-                      dtostrfd(fvar, 6, str);
+                    if (*lp=='#') {
+                      // subroutine
+                      lp = eval_sub(lp, 0, str);
+                    } else {
+                      char *slp = lp;
                       glob_script_mem.glob_error = 0;
+                      lp = GetStringArgument(lp, OPER_EQU, str, gv);
+                      if ((!gv || !gv->jo) && glob_script_mem.glob_error) {
+                        // mismatch
+                        lp = GetNumericArgument(slp, OPER_EQU, &fvar, 0);
+                        dtostrfd(fvar, 6, str);
+                        glob_script_mem.glob_error = 0;
+                      }
                     }
-
                     if (!glob_script_mem.var_not_found) {
                       // var was changed
                       SetChanged(globvindex);
