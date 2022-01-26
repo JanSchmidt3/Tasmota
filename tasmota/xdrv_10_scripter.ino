@@ -59,6 +59,8 @@ keywords if then else endif, or, and are better readable for beginners (others m
 #ifndef SCRIPT_MAXSSIZE
 #define SCRIPT_MAXSSIZE 48
 #endif
+
+
 #define SCRIPT_EOL '\n'
 #define SCRIPT_FLOAT_PRECISION 2
 #define PMEM_SIZE sizeof(Settings->script_pram)
@@ -1940,8 +1942,7 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
     tind->bits.data = 0;
 
     //Serial.printf("Stack 2: %d\n",GetStack());
-
-    if (isdigit(*lp) || (*lp=='-' && isdigit(*(lp+1))) || *lp=='.') {
+    if (isdigit(*lp) || (*lp == '-' && isdigit(*(lp+1))) || *lp == '.') {
       // isnumber
         if (fp) {
           if (*lp == '0' && *(lp + 1) == 'x') {
@@ -1961,20 +1962,21 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
         *vtype = NUM_RES;
         return lp;
     }
-    if (*lp=='"') {
+
+    if (*lp == '"') {
       lp++;
-      while (*lp!='"') {
-        if (*lp==0 || *lp==SCRIPT_EOL) break;
+      while (*lp != '"') {
+        if (*lp == 0 || *lp == SCRIPT_EOL) break;
         uint8_t iob = *lp;
-        if (iob=='\\') {
+        if (iob == '\\') {
           lp++;
-          if (*lp=='t') {
+          if (*lp == 't') {
             iob = '\t';
-          } else if (*lp=='n') {
+          } else if (*lp == 'n') {
             iob = '\n';
-          } else if (*lp=='r') {
+          } else if (*lp == 'r') {
             iob = '\r';
-          } else if (*lp=='\\') {
+          } else if (*lp == '\\') {
             iob = '\\';
           } else {
             lp--;
@@ -1999,9 +2001,9 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
     }
 
     const char *term="\n\r ])=+-/*%><!^&|}{";
-    for (count = 0; count<sizeof(vname); count++) {
+    for (count = 0; count < sizeof(vname); count++) {
         char iob = lp[count];
-        if (!iob || strchr(term,iob)) {
+        if (!iob || strchr(term, iob)) {
             vname[count] = 0;
             break;
         }
@@ -2031,15 +2033,16 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
       ja++;
       olen = strlen(dvnam);
     }
-    for (count = 0; count<glob_script_mem.numvars; count++) {
+
+    for (count = 0; count < glob_script_mem.numvars; count++) {
         char *cp = glob_script_mem.glob_vnp + glob_script_mem.vnp_offset[count];
         uint8_t slen = strlen(cp);
-        if (slen==olen && *cp==dvnam[0]) {
+        if (slen == olen && *cp == dvnam[0]) {
             if (!strncmp(cp, dvnam, olen)) {
                 uint8_t index = vtp[count].index;
                 *tind = vtp[count];
                 tind->index = count; // overwrite with global var index
-                if (vtp[count].bits.is_string==0) {
+                if (vtp[count].bits.is_string == 0) {
                     *vtype = NTYPE | index;
                     if (vtp[count].bits.is_filter) {
                       if (ja) {
@@ -2066,6 +2069,9 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
         }
     }
 
+#define USE_JSON
+
+#ifdef USE_JSON
     if (gv && gv->jo) {
       // look for json input
 
@@ -2180,9 +2186,13 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
         }
       }
     }
+#endif
+
 
 chknext:
+
     switch (vname[0]) {
+
       case 'a':
 #ifdef USE_ANGLE_FUNC
         if (!strncmp(lp, "acos(", 5)) {
@@ -2231,6 +2241,7 @@ chknext:
           len = 0;
           goto exit;
         }
+
         if (!strncmp(lp, "acp(", 4)) {
           lp += 4;
           SCRIPT_SKIP_SPACES
@@ -2581,7 +2592,7 @@ chknext:
           uint8_t find = fvar;
           if (find>=SFS_MAX) find = SFS_MAX - 1;
           uint8_t index = 0;
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           char *cp = str;
           if (glob_script_mem.file_flags[find].is_open) {
             if (glob_script_mem.file_flags[find].is_dir) {
@@ -2681,7 +2692,7 @@ chknext:
           goto nfuncexit;
         }
         if (!strncmp(lp, "fd(", 3)) {
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
           ufsp->remove(str);
           goto nfuncexit;
@@ -2726,7 +2737,7 @@ chknext:
 #endif //ESP32 && USE_WEBCAM
 #ifdef USE_SCRIPT_FATFS_EXT
         if (!strncmp(lp, "fe(", 3)) {
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
           // execute script
           File ef = ufsp->open(str, FS_FILE_READ);
@@ -2747,7 +2758,7 @@ chknext:
           goto nfuncexit;
         }
         if (!strncmp(lp, "fmd(", 4)) {
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
           fvar = ufsp->mkdir(str);
           goto nfuncexit;
@@ -2762,13 +2773,13 @@ chknext:
           goto nfuncexit;
         }
         if (!strncmp(lp, "frd(", 4)) {
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
           fvar = ufsp->rmdir(str);
           goto nfuncexit;
         }
         if (!strncmp(lp, "fx(", 3)) {
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
           if (ufsp->exists(str)) fvar = 1;
           else fvar = 0;
@@ -2782,11 +2793,11 @@ chknext:
         }
         if (!strncmp(lp, "frn(", 4)) {
           // rename a file
-          char fn_from[glob_script_mem.max_ssize + 1];
+          char fn_from[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, fn_from, 0);
           SCRIPT_SKIP_SPACES
 
-          char fn_to[glob_script_mem.max_ssize + 1];
+          char fn_to[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp, OPER_EQU, fn_to, 0);
           SCRIPT_SKIP_SPACES
 
@@ -2938,7 +2949,7 @@ chknext:
           SCRIPT_SKIP_SPACES
 
           if (find >= SFS_MAX) find = SFS_MAX - 1;
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           if (glob_script_mem.file_flags[find].is_open) {
             uint8_t first = 0;
             for (uint32_t cnt = 0; cnt < alen; cnt++) {
@@ -2972,7 +2983,7 @@ chknext:
 #endif // USE_SCRIPT_FATFS_EXT
         if (!strncmp(lp, "fl1(", 4) || !strncmp(lp, "fl2(", 4) )  {
           uint8_t lknum = *(lp+2)&3;
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
           if (lknum<1 || lknum>2) lknum = 1;
           strlcpy(glob_script_mem.flink[lknum - 1], str, 14);
@@ -3303,6 +3314,7 @@ chknext:
         }
 #endif // USE_SCRIPT_I2C
         break;
+
       case 'l':
         if (!strncmp(lp, "lip", 3)) {
           if (sp) strlcpy(sp, (const char*)WiFi.localIP().toString().c_str(), glob_script_mem.max_ssize);
@@ -3561,6 +3573,7 @@ chknext:
         }
 #endif
         break;
+
       case 's':
         if (!strncmp(vname, "secs", 4)) {
           fvar = RtcTime.second;
@@ -3683,7 +3696,7 @@ chknext:
             }
           }
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-          char str[glob_script_mem.max_ssize + 1];
+          char str[SCRIPT_MAXSSIZE];
           f2char(fvar, dprec, lzero, str);
           if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
           lp++;
@@ -3924,7 +3937,7 @@ extern char *SML_GetSVal(uint32_t index);
         }
         if (!strncmp(lp, "sr(", 3)) {
           uint16_t size = glob_script_mem.max_ssize;
-          char str[size];
+          char str[SCRIPT_MAXSSIZE];
           memset(str, 0, size);
           lp += 3;
           uint8_t runt = 0;
@@ -3960,12 +3973,13 @@ extern char *SML_GetSVal(uint32_t index);
           if (Script_Close_Serial()) {
             fvar = 0;
           }
-          lp+=4;
+          lp += 4;
           len = 0;
           goto exit;
         }
 #endif //USE_SCRIPT_SERIAL
         break;
+
       case 't':
         if (!strncmp(vname, "time", 4)) {
           fvar = MinutesPastMidnight();
@@ -3995,25 +4009,25 @@ extern char *SML_GetSVal(uint32_t index);
 #ifdef USE_SCRIPT_TIMER
         if (!strncmp(lp, "ts1(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
-          if (fvar<10) fvar = 10;
+          if (fvar < 10) fvar = 10;
           Script_ticker1.attach_ms(fvar, Script_ticker1_end);
           goto nfuncexit;
         }
         if (!strncmp(lp, "ts2(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
-          if (fvar<10) fvar = 10;
+          if (fvar < 10) fvar = 10;
           Script_ticker2.attach_ms(fvar, Script_ticker2_end);
           goto nfuncexit;
         }
         if (!strncmp(lp, "ts3(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
-          if (fvar<10) fvar = 10;
+          if (fvar < 10) fvar = 10;
           Script_ticker3.attach_ms(fvar, Script_ticker3_end);
           goto nfuncexit;
         }
         if (!strncmp(lp, "ts4(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
-          if (fvar<10) fvar = 10;
+          if (fvar < 10) fvar = 10;
           Script_ticker4.attach_ms(fvar, Script_ticker4_end);
           goto nfuncexit;
         }
@@ -4024,7 +4038,7 @@ extern char *SML_GetSVal(uint32_t index);
         if (!strncmp(lp, "tbut[", 5)) {
           GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
           uint8_t index = fvar;
-          if (index<1 || index>MAX_TOUCH_BUTTONS) index = 1;
+          if (index < 1 || index > MAX_TOUCH_BUTTONS) index = 1;
           index--;
           if (buttons[index]) {
             fvar = buttons[index]->vpower.on_off;
@@ -4037,11 +4051,13 @@ extern char *SML_GetSVal(uint32_t index);
 
 #endif //USE_TOUCH_BUTTONS
 #endif //USE_DISPLAY
+
+
 #if 0
         if (!strncmp(lp, "test(", 5)) {
           lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
           uint32_t cycles;
-          uint64_t accu=0;
+          uint64_t accu = 0;
           char sbuffer[32];
           // PSTR performance test
           // this is best case since everything will be in cache
@@ -4252,6 +4268,7 @@ extern char *SML_GetSVal(uint32_t index);
       default:
         break;
     }
+
     // nothing valid found
 notfound:
     if (fp) *fp=0;
@@ -5383,15 +5400,19 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             }
 #ifdef USE_DISPLAY
             else if (!strncmp(lp, "dt", 2)) {
-              char dstbuf[256];
+              //char dstbuf[256];
               lp += 2;
               SCRIPT_SKIP_SPACES
-              Replace_Cmd_Vars(lp, 1, dstbuf, sizeof(dstbuf));
-              char *savptr = XdrvMailbox.data;
-              XdrvMailbox.data = dstbuf;
-              XdrvMailbox.data_len = 0;
-              DisplayText();
-              XdrvMailbox.data = savptr;
+              char *dstbuf = (char*)malloc(256);
+              if (dstbuf) {
+                Replace_Cmd_Vars(lp, 1, dstbuf, 256);
+                char *savptr = XdrvMailbox.data;
+                XdrvMailbox.data = dstbuf;
+                XdrvMailbox.data_len = 0;
+                DisplayText();
+                XdrvMailbox.data = savptr;
+                free(dstbuf);
+              }
               goto next_line;
             }
 #endif //USE_DISPLAY
@@ -5541,17 +5562,24 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             else if (!strncmp(lp, "rapp", 3)) {
               lp+=4;
               // skip one space after cmd
-              char tmp[256];
-              Replace_Cmd_Vars(lp ,1 , tmp, sizeof(tmp));
-              ResponseAppend_P(PSTR("%s"), tmp);
+              char *tmp = (char*)malloc(256);
+              if (tmp) {
+                Replace_Cmd_Vars(lp ,1 , tmp, 256);
+                ResponseAppend_P(PSTR("%s"), tmp);
+                free(tmp);
+              }
               goto next_line;
             }
 #if defined(USE_SENDMAIL) || defined(USE_ESP32MAIL)
             else if (!strncmp(lp, "mail", 4)) {
               lp+=5;
-              char tmp[256];
-              Replace_Cmd_Vars(lp ,1 , tmp, sizeof(tmp));
-              SendMail(tmp);
+              //char tmp[256];
+              char *tmp = (char*)malloc(256);
+              if (tmp) {
+                Replace_Cmd_Vars(lp ,1 , tmp, 256);
+                SendMail(tmp);
+                free(tmp);
+              }
               goto next_line;
             }
 #endif
@@ -5675,8 +5703,11 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                       }
                       numeric = 1;
                       lp = getop(lp, &lastop);
-
+#ifdef SCRIPT_LM_SUB
                       if (*lp=='#') {
+#else
+                      if (0) {
+#endif
                         // subroutine
                         lp = eval_sub(lp, &fvar, 0);
                       } else {
@@ -5780,8 +5811,11 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                     saindex = gv->strind;
                     // string result
                     char str[SCRIPT_MAXSSIZE];
-                    lp = getop(lp, &lastop);
+#ifdef SCRIPT_LM_SUB
                     if (*lp=='#') {
+#else
+                    if (0) {
+#endif
                       // subroutine
                       lp = eval_sub(lp, 0, str);
                     } else {
