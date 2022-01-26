@@ -6424,7 +6424,7 @@ void SaveScriptEnd(void) {
 void set_callbacks() {
   if (Run_Scripter1(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
   if (Run_Scripter1(">E", -2, 0) == 99) {glob_script_mem.event_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.event_script = 0;}
-  if (Run_Scripter1(">HC", -3, 0) == 99) {glob_script_mem.html_script = glob_script_mem.section_ptr + 3;} else {glob_script_mem.html_script = 0;}
+  if (Run_Scripter1(">CH", -3, 0) == 99) {glob_script_mem.html_script = glob_script_mem.section_ptr + 3;} else {glob_script_mem.html_script = 0;}
 }
 
 void script_set_web_pages(void) {
