@@ -8610,7 +8610,7 @@ exgc:
         uint16_t ipos = 0;
         lp = gc_get_arrays(lp, &arrays[0], &anum, &entries, &ipos);
 
-        if (anum>nanum) {
+        if (anum > nanum) {
           return lp1;
           //goto nextwebline;
         }
