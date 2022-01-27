@@ -5148,6 +5148,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
         // skip leading spaces
         startline:
         SCRIPT_SKIP_SPACES
+        while (*lp == '\t') {lp++;}
         // skip empty line
         SCRIPT_SKIP_EOL
         // skip comment
