@@ -7934,7 +7934,7 @@ const char SCRIPT_MSG_GOPT3[] PROGMEM =
 
 const char SCRIPT_MSG_GOPT4[] PROGMEM =
 //"hAxis:{minValue:new Date(0,1,1,0,0),maxValue:new Date(0,1,2,0,0),format:'HH:mm'}";
-"hAxis:{format:'HH:mm',minValue:new Date(0,0,0,0,0),maxValue:new Date(0,0,0,23,59)},theme: 'maximized'";
+"hAxis:{format:'HH:mm',minValue:new Date(0,0,0,0,0),maxValue:new Date(0,0,0,23,59)},theme: 'maximized',timeline:{tooltipDateFormat:'HH:mm'},";
 
 const char SCRIPT_MSG_GOPT5[] PROGMEM =
 "new Date(0,0,0,%d,%d)";
@@ -8677,6 +8677,11 @@ exgc:
             }
           }
           snprintf_P(options,sizeof(options), SCRIPT_MSG_GOPT4);
+        }
+        if (tonly) {
+          WSContentSend_PD("]);");
+          return lp1;
+          //goto nextwebline;
         }
       } else {
         // we need to fetch the labels now
