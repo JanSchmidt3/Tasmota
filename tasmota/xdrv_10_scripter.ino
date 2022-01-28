@@ -5554,6 +5554,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               lp++;
               goto next_line;
             }
+#ifdef USE_SCRIPT_WEB_DISPLAY
             else if (!strncmp(lp, "wcs", 3)) {
               lp+=4;
               // skip one space after cmd
@@ -5568,6 +5569,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               WSContentFlush();
               goto next_line;
             }
+#endif
             else if (!strncmp(lp, "rapp", 3)) {
               lp+=4;
               // skip one space after cmd
@@ -5579,6 +5581,8 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               }
               goto next_line;
             }
+
+
 #if defined(USE_SENDMAIL) || defined(USE_ESP32MAIL)
             else if (!strncmp(lp, "mail", 4)) {
               lp+=5;
