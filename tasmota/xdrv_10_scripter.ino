@@ -3443,6 +3443,14 @@ chknext:
         }
 #endif //USE_MORITZ
         break;
+
+      case 'n':
+        if (!strncmp(vname, "npwr", 4)) {
+          fvar = TasmotaGlobal.devices_present;
+          goto exit;
+        }
+        break;
+
       case 'p':
         if (!strncmp(lp, "pin[", 4)) {
           // raw pin level
@@ -3524,7 +3532,7 @@ chknext:
         if (!strncmp(lp, "pwr[", 4)) {
           GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           uint8_t index = fvar;
-          if (index<=TasmotaGlobal.devices_present) {
+          if (index <= TasmotaGlobal.devices_present) {
             fvar = bitRead(TasmotaGlobal.power, index - 1);
           } else {
             fvar = -1;
@@ -3535,7 +3543,7 @@ chknext:
         if (!strncmp(lp, "pc[", 3)) {
           GetNumericArgument(lp + 3, OPER_EQU, &fvar, gv);
           uint8_t index = fvar;
-          if (index<1 || index>MAX_COUNTERS) index = 1;
+          if (index < 1 || index > MAX_COUNTERS) index = 1;
           fvar = RtcSettings.pulse_counter[index - 1];
           len += 1;
           goto exit;
