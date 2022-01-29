@@ -24,6 +24,12 @@ static int lv_get_ver_res(void) {
   return lv_disp_get_ver_res(lv_disp_get_default());
 }
 
+typedef enum {
+    FT_FONT_STYLE_NORMAL = 0,
+    FT_FONT_STYLE_ITALIC = 1 << 0,
+    FT_FONT_STYLE_BOLD   = 1 << 1
+} LV_FT_FONT_STYLE;
+
 /* `lv` methods */
 const be_ntv_func_def_t lv_func[] = {
 
