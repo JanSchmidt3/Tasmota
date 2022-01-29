@@ -137,6 +137,7 @@
 #define D_ORP                  "ORP"
 #define D_PASSWORD             "Password"
 #define D_PH                   "pH"
+#define D_MQ                   "MQ"
 #define D_PORT                 "Porta"
 #define D_POWER_FACTOR         "Fattore di potenza"
 #define D_POWERUSAGE           "Potenza"
@@ -788,6 +789,7 @@
 #define D_SENSOR_ADC_CT_POWER           "ADC - CTR alimentazione"
 #define D_SENSOR_ADC_JOYSTICK           "ADC - Joystick"
 #define D_SENSOR_ADC_PH                 "ADC pH"
+#define D_SENSOR_ADC_MQ                 "ADC MQ"
 #define D_GPIO_WEBCAM_PWDN              "Webcam - PWDN"
 #define D_GPIO_WEBCAM_RESET             "Webcam - RESET"
 #define D_GPIO_WEBCAM_XCLK              "Webcam - XCLK"
@@ -850,6 +852,8 @@
 #define D_GPIO_SHIFT595_RCLK            "74x595 - RCLK"
 #define D_GPIO_SHIFT595_OE              "74x595 - OE"
 #define D_GPIO_SHIFT595_SER             "74x595 - SER"
+#define D_SENSOR_CM11_TX                "CM110x TX"
+#define D_SENSOR_CM11_RX                "CM110x RX"
 
 // Units
 #define D_UNIT_AMPERE                     "A"

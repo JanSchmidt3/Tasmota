@@ -180,6 +180,8 @@ enum UserSelectablePins {
   GPIO_SOLAXX1_RTS,                    // Solax Inverter Serial interface
   GPIO_OPTION_E,                       // Emulated module
   GPIO_SDM230_TX, GPIO_SDM230_RX,      // SDM230 Serial interface
+  GPIO_ADC_MQ,                         // Analog MQ Sensor
+  GPIO_CM11_TXD, GPIO_CM11_RXD,        // CM11 Serial interface
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -398,8 +400,10 @@ const char kSensorNames[] PROGMEM =
   D_GPIO_SHIFT595_SRCLK "|" D_GPIO_SHIFT595_RCLK "|" D_GPIO_SHIFT595_OE "|" D_GPIO_SHIFT595_SER "|"
   D_SENSOR_SOLAXX1_RTS "|"
   D_SENSOR_OPTION " E|"
-  D_SENSOR_SDM230_TX "|" D_SENSOR_SDM230_RX
-;
+  D_SENSOR_SDM230_TX "|" D_SENSOR_SDM230_RX "|"
+  D_SENSOR_ADC_MQ "|"
+  D_SENSOR_CM11_TX "|" D_SENSOR_CM11_RX "|"
+  ;
 
 const char kSensorNamesFixed[] PROGMEM =
   D_SENSOR_USER;
@@ -446,8 +450,8 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_CNTR1) + MAX_COUNTERS,     // Counters
   AGPIO(GPIO_CNTR1_NP) + MAX_COUNTERS,
 #endif
-  AGPIO(GPIO_PWM1) + MAX_PWMS,          // RGB   Red   or C  Cold White
-  AGPIO(GPIO_PWM1_INV) + MAX_PWMS,
+  AGPIO(GPIO_PWM1) + MAX_PWMS,      // RGB   Red   or C  Cold White
+  AGPIO(GPIO_PWM1_INV) + MAX_PWMS,  // or extended PWM for ESP32
 #ifdef USE_BUZZER
   AGPIO(GPIO_BUZZER),                   // Buzzer
   AGPIO(GPIO_BUZZER_INV),               // Inverted buzzer
@@ -932,6 +936,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_MAX7219CS),
 #endif  // USE_DISPLAY_MAX7219
 
+#ifdef USE_CM110x
+  AGPIO(GPIO_CM11_TXD),        // CM110x Serial interface
+  AGPIO(GPIO_CM11_RXD),        // CM110x Serial interface
+#endif
 /*-------------------------------------------------------------------------------------------*\
  * ESP32 specifics
 \*-------------------------------------------------------------------------------------------*/
@@ -973,6 +981,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_ADC_CT_POWER) + MAX_ADCS,    // Current
   AGPIO(GPIO_ADC_JOY) + MAX_ADCS,         // Joystick
   AGPIO(GPIO_ADC_PH) + MAX_ADCS,          // Analog PH Sensor
+  AGPIO(GPIO_ADC_MQ) + MAX_ADCS,          // Analog MQ Sensor
 #endif  // ESP32
 
 #ifdef USE_SHIFT595
@@ -999,6 +1008,7 @@ const uint16_t kAdcNiceList[] PROGMEM = {
   AGPIO(GPIO_ADC_CT_POWER),               // Current
   AGPIO(GPIO_ADC_JOY),                    // Joystick
   AGPIO(GPIO_ADC_PH),                     // Analog PH Sensor
+  AGPIO(GPIO_ADC_MQ),                     // Analog MQ Sensor
 };
 #endif  // ESP8266
 
@@ -1014,6 +1024,7 @@ enum UserSelectableAdc {
   ADC_CT_POWER,       // Current
   ADC_JOY,            // Joystick
   ADC_PH,             // Analog PH Sensor
+  ADC_MQ,             // Analog MQ Sensor
 //  ADC_SWITCH,         // Switch
 //  ADC_SWITCH_INV,
   ADC_END };

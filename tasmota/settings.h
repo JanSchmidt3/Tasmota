@@ -163,7 +163,7 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t tuya_allow_dimmer_0 : 1;      // bit 17 (v10.0.0.3) - SetOption131 - (Tuya) Allow save dimmer = 0 receved by MCU
     uint32_t tls_use_fingerprint : 1;      // bit 18 (v10.0.0.4) - SetOption132 - (TLS) Use fingerprint validation instead of CA based
     uint32_t shift595_invert_outputs : 1;  // bit 19 (v10.0.0.4) - SetOption133 - (Shift595) Invert outputs of 74x595 shift registers
-    uint32_t spare20 : 1;                  // bit 20
+    uint32_t pwm_force_same_phase : 1;     // bit 20 (2022.01.3) - SetOption134 - (PWM) force PWM lights to start at same phase, default is to spread phases to minimze overlap (also needed for H-bridge)
     uint32_t spare21 : 1;                  // bit 21
     uint32_t spare22 : 1;                  // bit 22
     uint32_t spare23 : 1;                  // bit 23
@@ -474,7 +474,7 @@ typedef struct {
   TimeRule      tflag[2];                  // 2E2
   uint16_t      pwm_frequency;             // 2E6
   power_t       power;                     // 2E8
-  uint16_t      pwm_value[MAX_PWMS];       // 2EC
+  uint16_t      pwm_value[MAX_PWMS_LEGACY];// 2EC
   int16_t       altitude;                  // 2F6
   uint16_t      tele_period;               // 2F8
   uint8_t       display_rotate;            // 2FA
@@ -579,7 +579,7 @@ typedef struct {
   uint8_t       ex_my_adc0;                // 495  Free since 9.0.0.1
 
   uint16_t      light_pixels;              // 496
-  uint8_t       light_color[5];            // 498
+  uint8_t       light_color[LST_MAX];      // 498  LST_MAX = 5
   uint8_t       light_correction;          // 49D
   uint8_t       light_dimmer;              // 49E
   uint8_t       rule_enabled;              // 49F
@@ -614,7 +614,8 @@ typedef struct {
   uint32_t      ipv4_rgx_address;          // 558
   uint32_t      ipv4_rgx_subnetmask;       // 55C
 
-  uint8_t       free_560[92];              // 560
+  uint16_t      pwm_value_ext[16-5];       // 560  Extension to pwm_value to store up to 16 PWM for ESP32. This array stores values 5..15
+  uint8_t       free_560[70];              // 576
 
   SysMBitfield1 flag2;                     // 5BC
   uint32_t      pulse_counter[MAX_COUNTERS];  // 5C0
