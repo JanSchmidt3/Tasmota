@@ -184,7 +184,7 @@ bool RtcRebootValid(void) {
 extern "C" {
 #include "spi_flash.h"
 }
-#include "eboot_command.h"
+//#include "eboot_command.h"
 
 #ifdef ESP8266
 
