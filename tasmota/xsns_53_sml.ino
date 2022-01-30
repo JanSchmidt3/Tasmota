@@ -2823,6 +2823,8 @@ init10:
             sml_counters[cindex].sml_cnt_old_state=meters;
             sml_counters[cindex].sml_debounce=-meter_desc_p[meters].params;
           }
+
+          RtcSettings.pulse_counter[cindex] = Settings->pulse_counter[cindex]; // >>>>> 
           InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
           cindex++;
         }
