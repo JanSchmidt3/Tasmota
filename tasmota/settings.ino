@@ -1094,7 +1094,7 @@ void SettingsDefaultSet2(void) {
 
   Settings->pwm_frequency = PWM_FREQ;
   Settings->pwm_range = PWM_RANGE;
-  for (uint32_t i = 0; i < MAX_PWMS; i++) {
+  for (uint32_t i = 0; i < LST_MAX; i++) {
     Settings->light_color[i] = DEFAULT_LIGHT_COMPONENT;
 //    Settings->pwm_value[i] = 0;
   }

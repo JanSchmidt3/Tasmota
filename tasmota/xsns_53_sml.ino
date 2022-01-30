@@ -2819,12 +2819,12 @@ init10:
           // check for irq mode
           if (meter_desc_p[meters].params<=0) {
             // init irq mode
-            attachInterruptArg(meter_desc_p[meters].srcpin, SML_CounterIsr,&sml_cnt_index[cindex], CHANGE);
             sml_counters[cindex].sml_cnt_old_state=meters;
             sml_counters[cindex].sml_debounce=-meter_desc_p[meters].params;
+            attachInterruptArg(meter_desc_p[meters].srcpin, SML_CounterIsr,&sml_cnt_index[cindex], CHANGE);
           }
 
-          RtcSettings.pulse_counter[cindex] = Settings->pulse_counter[cindex]; // >>>>> 
+          RtcSettings.pulse_counter[cindex] = Settings->pulse_counter[cindex]; // >>>>>
           InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
           cindex++;
         }
