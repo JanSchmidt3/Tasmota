@@ -2411,7 +2411,7 @@ uint8_t sml_cnt_index[MAX_COUNTERS] =  { 0, 1, 2, 3 };
 void IRAM_ATTR SML_CounterIsr(void *arg) {
 uint32_t index = *static_cast<uint8_t*>(arg);
 
-uint32_t time = micros();
+uint32_t time = millis();
 uint32_t debounce_time;
 
   if (digitalRead(meter_desc_p[sml_counters[index].sml_cnt_old_state].srcpin) == bitRead(sml_counter_pinstate, index)) {
@@ -2420,15 +2420,15 @@ uint32_t debounce_time;
 
   debounce_time = time - sml_counters[index].sml_counter_ltime;
 
-  if (debounce_time <= sml_counters[index].sml_debounce * 1000) return;
+  if (debounce_time <= sml_counters[index].sml_debounce) return;
 
   if bitRead(sml_counter_pinstate, index) {
     // falling edge
     RtcSettings.pulse_counter[index]++;
-    sml_counters[index].sml_cnt_updated=1;
+    sml_counters[index].sml_cnt_updated = 1;
   }
   sml_counters[index].sml_counter_ltime = time;
-  sml_counter_pinstate ^= (1<<index);
+  sml_counter_pinstate ^= (1 << index);
 }
 
 
@@ -2797,9 +2797,10 @@ init10:
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
       RtcSettings.pulse_counter[i] = Settings->pulse_counter[i];
-      sml_counters[i].sml_cnt_last_ts=millis();
+      sml_counters[i].sml_cnt_last_ts = millis();
   }
   uint32_t uart_index = 2;
+  sml_counter_pinstate = 0;
   for (uint8_t meters = 0; meters < meters_used; meters++) {
     if (meter_desc_p[meters].type == 'c') {
         if (meter_desc_p[meters].flag & 2) {
@@ -2819,13 +2820,17 @@ init10:
           // check for irq mode
           if (meter_desc_p[meters].params<=0) {
             // init irq mode
-            sml_counters[cindex].sml_cnt_old_state=meters;
-            sml_counters[cindex].sml_debounce=-meter_desc_p[meters].params;
-            attachInterruptArg(meter_desc_p[meters].srcpin, SML_CounterIsr,&sml_cnt_index[cindex], CHANGE);
+            sml_counters[cindex].sml_cnt_old_state = meters;
+            sml_counters[cindex].sml_debounce = -meter_desc_p[meters].params;
+            attachInterruptArg(meter_desc_p[meters].srcpin, SML_CounterIsr, &sml_cnt_index[cindex], CHANGE);
+            if (digitalRead(meter_desc_p[meters].srcpin) > 0) {
+              sml_counter_pinstate |= (1 << cindex);
+            }
+            sml_counters[cindex].sml_counter_ltime = millis();
           }
 
-          RtcSettings.pulse_counter[cindex] = Settings->pulse_counter[cindex]; // >>>>>
-          InjektCounterValue(meters,RtcSettings.pulse_counter[cindex]);
+          RtcSettings.pulse_counter[cindex] = Settings->pulse_counter[cindex];
+          InjektCounterValue(meters, RtcSettings.pulse_counter[cindex]);
           cindex++;
         }
     } else {
