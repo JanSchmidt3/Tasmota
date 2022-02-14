@@ -373,6 +373,13 @@ struct GVARS {
   int16_t strind;
 };
 
+struct SCRIPT_SPI {
+  int8_t sclk;
+  int8_t mosi;
+  int8_t miso;
+  int8_t cs[4];
+};
+
 
 #define NUM_RES 0xfe
 #define STR_RES 0xfd
@@ -454,6 +461,10 @@ struct SCRIPT_MEM {
 #endif
     float retval;
     char *retstr;
+#ifdef USE_SCRIPT_SPI
+    struct SCRIPT_SPI spi;
+#endif
+
 } glob_script_mem;
 
 
@@ -4005,6 +4016,66 @@ extern char *SML_GetSVal(uint32_t index);
           goto exit;
         }
 #endif //USE_SCRIPT_SERIAL
+
+
+#ifdef USE_SCRIPT_SPI
+        if (!strncmp(lp, "spi(", 4)) {
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
+          uint8_t sel = fvar;
+          uint8_t index;
+          switch (sel) {
+            case 0:
+              // set bus pins
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              glob_script_mem.spi.mosi = fvar;
+              if (glob_script_mem.spi.mosi >= 0) {
+                pinMode(glob_script_mem.spi.mosi , OUTPUT);
+                digitalWrite(glob_script_mem.spi.mosi , 0);
+              }
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              glob_script_mem.spi.miso = fvar;
+              if (glob_script_mem.spi.miso >= 0) {
+                  pinMode(glob_script_mem.spi.miso , INPUT_PULLUP);
+              }
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              glob_script_mem.spi.sclk = fvar;
+              pinMode(glob_script_mem.spi.sclk , OUTPUT);
+              digitalWrite(glob_script_mem.spi.sclk , 0);
+
+              if (Is_gpio_used(glob_script_mem.spi.mosi) || Is_gpio_used(glob_script_mem.spi.miso)
+                  || Is_gpio_used(glob_script_mem.spi.sclk) ) {
+                AddLog(LOG_LEVEL_INFO, PSTR("warning: pins already used"));
+              }
+              break;
+
+            case 1:
+              // set cs
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              index = fvar;
+              index &= 3;
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              glob_script_mem.spi.cs[index] = fvar;
+              pinMode(glob_script_mem.spi.cs[index] , OUTPUT);
+              digitalWrite(glob_script_mem.spi.cs[index] , 1);
+              if (Is_gpio_used(glob_script_mem.spi.cs[index])) {
+                AddLog(LOG_LEVEL_INFO, PSTR("warning: pins already used"));
+              }
+              break;
+
+            case 2:
+              // transfer bytes
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              uint8_t index = fvar;
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              uint32_t val = fvar;
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              script_sspi_trans(index & 3, val, fvar);
+              break;
+          }
+          len = 0;
+          goto exit;
+        }
+#endif // USE_SCRIPT_SPI
         break;
 
       case 't':
@@ -5990,6 +6061,34 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
     return -1;
 }
 
+
+#ifdef USE_SCRIPT_SPI
+// transfer 1-3 bytes
+uint32_t script_sspi_trans(uint32_t cs_index, uint32_t val, uint32_t size) {
+  digitalWrite(glob_script_mem.spi.cs[cs_index], 0);
+  if (size < 1 || size > 3) size = 1;
+  uint32_t bit = 1 << ((size * 8) - 1);
+  uint32_t out = 0;
+  while (bit) {
+    digitalWrite(glob_script_mem.spi.sclk, 0);
+    if (glob_script_mem.spi.mosi >= 0) {
+      if (val & bit) digitalWrite(glob_script_mem.spi.mosi, 1);
+      else   digitalWrite(glob_script_mem.spi.mosi, 0);
+    }
+    digitalWrite(glob_script_mem.spi.sclk, 1);
+    if (glob_script_mem.spi.miso >= 0) {
+      if (digitalRead(glob_script_mem.spi.miso)) {
+        out |= bit;
+      }
+    }
+    Serial.printf(">>> %d \n", bit);
+    bit >>= 1;
+  }
+  digitalWrite(glob_script_mem.spi.cs[cs_index], 1);
+  return out;
+}
+#endif // USE_SCRIPT_SPI
+
 #ifdef USE_SCRIPT_SERIAL
 bool Script_Close_Serial() {
   if (glob_script_mem.sp) {
@@ -6004,7 +6103,7 @@ bool Script_Close_Serial() {
 #endif //USE_SCRIPT_SERIAL
 
 bool Is_gpio_used(uint8_t gpiopin) {
-  if ((gpiopin < nitems(TasmotaGlobal.gpio_pin)) && (TasmotaGlobal.gpio_pin[gpiopin] > 0)) {
+  if (gpiopin >= 0 && (gpiopin < nitems(TasmotaGlobal.gpio_pin)) && (TasmotaGlobal.gpio_pin[gpiopin] > 0)) {
     return true;
   }
   return false;
