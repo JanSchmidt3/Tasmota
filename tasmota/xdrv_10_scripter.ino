@@ -378,6 +378,8 @@ struct SCRIPT_SPI {
   int8_t mosi;
   int8_t miso;
   int8_t cs[4];
+  SPIClass *spip;
+  SPISettings settings;
 };
 
 
@@ -4027,20 +4029,44 @@ extern char *SML_GetSVal(uint32_t index);
             case 0:
               // set bus pins
               lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+              glob_script_mem.spi.sclk = fvar;
+
+              if (glob_script_mem.spi.sclk < 0) {
+                // attach to existing Tasmota SPI
+                lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
+                fvar *= 1000000;
+                glob_script_mem.spi.settings = SPISettings(fvar, MSBFIRST, SPI_MODE0);
+
+                if (TasmotaGlobal.spi_enabled) {
+#ifdef EPS8266
+                  SPI.begin();
+                  glob_script_mem.spi.spip = &SPI;
+#endif // EPS8266
+
+#ifdef ESP32
+                  SPI.begin(Pin(GPIO_SPI_CLK), Pin(GPIO_SPI_MISO), Pin(GPIO_SPI_MOSI), -1);
+                  glob_script_mem.spi.spip = &SPI;
+#endif // ESP32
+                } else {
+                  AddLog(LOG_LEVEL_INFO, PSTR("error: spi pins not defined"));
+                }
+                break;
+              }
+              pinMode(glob_script_mem.spi.sclk , OUTPUT);
+              digitalWrite(glob_script_mem.spi.sclk , 0);
+
+              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
               glob_script_mem.spi.mosi = fvar;
               if (glob_script_mem.spi.mosi >= 0) {
                 pinMode(glob_script_mem.spi.mosi , OUTPUT);
                 digitalWrite(glob_script_mem.spi.mosi , 0);
               }
+
               lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
               glob_script_mem.spi.miso = fvar;
               if (glob_script_mem.spi.miso >= 0) {
                   pinMode(glob_script_mem.spi.miso , INPUT_PULLUP);
               }
-              lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
-              glob_script_mem.spi.sclk = fvar;
-              pinMode(glob_script_mem.spi.sclk , OUTPUT);
-              digitalWrite(glob_script_mem.spi.sclk , 0);
 
               if (Is_gpio_used(glob_script_mem.spi.mosi) || Is_gpio_used(glob_script_mem.spi.miso)
                   || Is_gpio_used(glob_script_mem.spi.sclk) ) {
@@ -6065,10 +6091,32 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
 #ifdef USE_SCRIPT_SPI
 // transfer 1-3 bytes
 uint32_t script_sspi_trans(uint32_t cs_index, uint32_t val, uint32_t size) {
+  uint32_t out = 0;
+
   digitalWrite(glob_script_mem.spi.cs[cs_index], 0);
+
+  if (glob_script_mem.spi.sclk < 0) {
+    // use existing hardware spi
+    glob_script_mem.spi.spip->beginTransaction(glob_script_mem.spi.settings);
+    if (size == 1) {
+      out = glob_script_mem.spi.spip->transfer(val);
+    }
+    if (size == 2) {
+      out = glob_script_mem.spi.spip->transfer16(val);
+    }
+    if (size == 3) {
+      out = glob_script_mem.spi.spip->transfer(val >> 16);
+      out <<= 16;
+      out |= glob_script_mem.spi.spip->transfer16(val);
+    }
+    //SPI.transferBytes();
+    glob_script_mem.spi.spip->endTransaction();
+    digitalWrite(glob_script_mem.spi.cs[cs_index], 1);
+    return out;
+  }
+
   if (size < 1 || size > 3) size = 1;
   uint32_t bit = 1 << ((size * 8) - 1);
-  uint32_t out = 0;
   while (bit) {
     digitalWrite(glob_script_mem.spi.sclk, 0);
     if (glob_script_mem.spi.mosi >= 0) {
@@ -6081,7 +6129,6 @@ uint32_t script_sspi_trans(uint32_t cs_index, uint32_t val, uint32_t size) {
         out |= bit;
       }
     }
-    Serial.printf(">>> %d \n", bit);
     bit >>= 1;
   }
   digitalWrite(glob_script_mem.spi.cs[cs_index], 1);
