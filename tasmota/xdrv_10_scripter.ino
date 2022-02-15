@@ -373,6 +373,7 @@ struct GVARS {
   int16_t strind;
 };
 
+#ifdef USE_SCRIPT_SPI
 struct SCRIPT_SPI {
   int8_t sclk;
   int8_t mosi;
@@ -381,6 +382,7 @@ struct SCRIPT_SPI {
   SPIClass *spip;
   SPISettings settings;
 };
+#endif
 
 
 #define NUM_RES 0xfe
@@ -4044,8 +4046,14 @@ extern char *SML_GetSVal(uint32_t index);
 #endif // EPS8266
 
 #ifdef ESP32
-                  SPI.begin(Pin(GPIO_SPI_CLK), Pin(GPIO_SPI_MISO), Pin(GPIO_SPI_MOSI), -1);
-                  glob_script_mem.spi.spip = &SPI;
+                  if (glob_script_mem.spi.sclk == -1) {
+                    SPI.begin(Pin(GPIO_SPI_CLK), Pin(GPIO_SPI_MISO), Pin(GPIO_SPI_MOSI), -1);
+                    glob_script_mem.spi.spip = &SPI;
+                  } else {
+                    glob_script_mem.spi.spip = new SPIClass(HSPI);
+                    glob_script_mem.spi.spip->begin(Pin(GPIO_SPI_CLK, 1), Pin(GPIO_SPI_MISO, 1), Pin(GPIO_SPI_MOSI, 1), -1);
+                  }
+
 #endif // ESP32
                 } else {
                   AddLog(LOG_LEVEL_INFO, PSTR("error: spi pins not defined"));
@@ -5499,7 +5507,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               } else {
                 glob_script_mem.retstr = 0;
               }
-              section = 0;
+              section = 99;
               goto next_line;
             } else if (!strncmp(lp, "break", 5)) {
               lp += 5;
@@ -5510,7 +5518,8 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                 }
                 floop = 0;
               } else {
-                section = 0;
+                section = 99;
+                // leave immediately
               }
               goto next_line;
             } else if (!strncmp(lp, "dp", 2) && isdigit(*(lp + 2))) {
@@ -6070,6 +6079,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
         }
         // next line
     next_line:
+        if (section == 99) return 0;
         if (*lp==SCRIPT_EOL) {
           lp++;
         } else {
