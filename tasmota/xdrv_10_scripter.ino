@@ -4191,6 +4191,12 @@ extern char *SML_GetSVal(uint32_t index);
           uint32_t cycles;
           uint64_t accu = 0;
           char sbuffer[32];
+
+          void br_gcm_flip(br_gcm_context *ctx);
+
+          void br_gcm_run(br_gcm_context *ctx, int encrypt, void *data, size_t len);
+
+          /*
           // PSTR performance test
           // this is best case since everything will be in cache
           // PSTR at least 3 times slower here, will be much slower if cache missed
@@ -4204,6 +4210,7 @@ extern char *SML_GetSVal(uint32_t index);
             accu += ESP.getCycleCount()-cycles;
           }
           fvar = accu / 1000;
+          */
           goto nfuncexit;
         }
 #endif
@@ -9232,6 +9239,7 @@ int32_t url2file(uint8_t fref, char *url) {
         uint32_t read = stream->readBytes(buff, size);
         glob_script_mem.files[fref].write(buff, read);
         len -= read;
+        AddLog(LOG_LEVEL_INFO,PSTR("HTTP read %d"), len);
       }
       delayMicroseconds(1);
     }
