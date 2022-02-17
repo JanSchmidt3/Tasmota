@@ -1665,6 +1665,23 @@ uint32_t vbus_get_septet(uint8_t *cp) {
 }
 
 
+char *skip_double(char *cp) {
+  if (*cp == '+' || *cp == '-') {
+    cp++;
+  }
+  while (*cp) {
+    if (*cp == '.') {
+      cp++;
+    }
+    if (!isdigit(*cp)) {
+      return cp;
+    }
+    cp++;
+  }
+  return 0;
+}
+
+
 void SML_Decode(uint8_t index) {
   const char *mp=(const char*)meter_p;
   int8_t mindex;
@@ -2169,6 +2186,17 @@ void SML_Decode(uint8_t index) {
           // get scaling factor
           double fac = CharToDouble((char*)mp);
           meter_vars[vindex] /= fac;
+          // get optional offset to calibrate meter
+          char *cp = skip_double((char*)mp);
+          if (cp && (*cp == '+' || *cp == '-')) {
+            mp = cp + 1;
+            fac = CharToDouble((char*)mp);
+            if (*cp == '+') {
+              meter_vars[vindex] += fac;
+            } else {
+              meter_vars[vindex] -= fac;
+            }
+          }
           SML_Immediate_MQTT((const char*)mp, vindex, mindex);
         }
       }
