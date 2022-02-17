@@ -2189,13 +2189,8 @@ void SML_Decode(uint8_t index) {
           // get optional offset to calibrate meter
           char *cp = skip_double((char*)mp);
           if (cp && (*cp == '+' || *cp == '-')) {
-            mp = cp + 1;
-            fac = CharToDouble((char*)mp);
-            if (*cp == '+') {
-              meter_vars[vindex] += fac;
-            } else {
-              meter_vars[vindex] -= fac;
-            }
+            fac = CharToDouble(cp);
+            meter_vars[vindex] += fac;
           }
           SML_Immediate_MQTT((const char*)mp, vindex, mindex);
         }
