@@ -4,12 +4,26 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - Development
 ## [11.0.0.1]
 ### Added
+- Command ``SspmMap 0`` to reset Sonoff SPM default mapping
+- Command ``TcpConnect <port><ip_address>`` to add client connection mode (#14874)
+- ESP32 support for BLE Mi scale V1 (#13517)
+- ESP32 integrate Homekit in Bluetooth binary (#14818)
+- ESP32 Berry always enable rules
+- ESP32 Berry bootloop protection
+- ESP32 Berry virtual Alexa hue device (#14833)
 
 ### Changed
-- ESP32 update the internal Berry type system to sync with Skiars Berry reopsitory. No expected impact on code, but .bec files need to be generated again. (#14811)
+- Adafruit BusIO library from v1.0.10 to v1.11.0
+- ESP32 update the internal Berry type system to sync with Skiars Berry repository. No expected impact on code, but .bec files need to be generated again. (#14811)
+- ESP32 LVGL library from v8.1.0 to v8.2.0
+- ESP32 NimBLE library from v1.3.3 to v1.3.6
 
 ### Fixed
 - SSPM energy yesterday when zero
+- GPIO OptionE1 selection regression (#14821)
+- BL0939, BL0940 and BL0942 energy monitoring buffer miscompares resulting in wrong daily energy values regression from v9.5.0.8 (#14829)
+- Orno WE517 power meter phase 2 current reactive (#14841)
+- Wiegand 34-bit rfid reading and presentation (#14834)
 
 ## [Released]
 
