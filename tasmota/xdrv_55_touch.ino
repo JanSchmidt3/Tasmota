@@ -19,19 +19,19 @@
 
 /*******************************************************************************************\
  * Universal TouchScreen driver, extensible via Berry
- * 
+ *
  * API:
  *   void Touch_Init() - TODO
- * 
+ *
  *   uint32_t Touch_Status(int32_t sel)
  *     0: return 1 if TSGlobal.touched
  *     1: return x
  *     2: return y
  *    -1: return raw x (before conersion for resistive)
  *    -2: return raw y
- * 
+ *
  *   void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y))
- * 
+ *
  *   void TS_RotConvert(int16_t *x, int16_t *y) - calls the renderer's rotation converter
 \*******************************************************************************************/
 
@@ -213,6 +213,7 @@ void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y)) {
     }
   }
 #endif // USE_XPT2046
+
   TSGlobal.touch_xp = TSGlobal.raw_touch_xp;
   TSGlobal.touch_yp = TSGlobal.raw_touch_yp;
 
@@ -270,6 +271,8 @@ void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y)) {
   }
 }
 
+extern uint8_t GT911_found;
+
 #ifdef USE_TOUCH_BUTTONS
 void Touch_MQTT(uint8_t index, const char *cp, uint32_t val) {
 #ifdef USE_FT5206
@@ -277,6 +280,9 @@ void Touch_MQTT(uint8_t index, const char *cp, uint32_t val) {
 #endif
 #ifdef USE_XPT2046
   if (XPT2046_found) ResponseTime_P(PSTR(",\"XPT2046\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
+#endif  // USE_XPT2046
+#ifdef USE_M5EPD47
+  if (GT911_found) ResponseTime_P(PSTR(",\"GT911\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
 #endif  // USE_XPT2046
   MqttPublishTeleSensor();
 }
@@ -293,7 +299,7 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
   uint8_t vbutt=0;
 
   if (!renderer) return;
-    if (TSGlobal.touched) {
+    if (touched) {
       // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), pLoc.x, pLoc.y);
       // now must compare with defined buttons
       for (uint8_t count = 0; count < MAX_TOUCH_BUTTONS; count++) {
@@ -371,8 +377,6 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
         }
       }
     }
-    TSGlobal.raw_touch_xp = TSGlobal.touch_xp = 0;
-    TSGlobal.raw_touch_yp = TSGlobal.touch_yp = 0;
   }
 }
 #endif // USE_TOUCH_BUTTONS

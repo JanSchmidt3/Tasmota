@@ -91,14 +91,15 @@ void M5EpdInitDriver47(void) {
 #define M5EPD47_address 0x5D
 
 GT911 *M5EPD47_touchp;
+uint8_t GT911_found;
 
 void M5EPD47_Touch_Init(void) {
-FT5206_found = false;
+GT911_found = false;
 M5EPD47_touchp = new GT911();
 
 if (ESP_OK == M5EPD47_touchp->begin(&Wire1, 36)) {
     I2cSetActiveFound(M5EPD47_address, "GT911", 1);
-    FT5206_found = true;
+    GT911_found = true;
   }
 }
 
@@ -137,27 +138,31 @@ void M5EPD47_CheckTouch(void) {
     M5EPD47_ctouch_counter = 0;
     if (M5EPD47_touchp->avaliable()) {
       M5EPD47_touchp->update();
-      touched = !M5EPD47_touchp->isFingerUp();
-      if (touched) {
+      TSGlobal.touched = !M5EPD47_touchp->isFingerUp();
+      if (TSGlobal.touched) {
         //M5EPD47_touchp->update();
         tp_finger_t FingerItem = M5EPD47_touchp->readFinger(0);
 
-        touch_xp = M5EPD47_touchp->readFingerX(0);
-        touch_yp = M5EPD47_touchp->readFingerY(0);
-        if (touch_xp < 0) touch_xp = 0;
-        if (touch_yp < 0) touch_yp = 0;
-        if (touch_xp >= M5EPD47_WIDTH) touch_xp = M5EPD47_WIDTH - 1;
-        if (touch_yp >= M5EPD47_HEIGHT) touch_yp = M5EPD47_HEIGHT - 1;
+        TSGlobal.touch_xp = M5EPD47_touchp->readFingerX(0);
+        TSGlobal.touch_yp = M5EPD47_touchp->readFingerY(0);
+        if (TSGlobal.touch_xp < 0) TSGlobal.touch_xp = 0;
+        if (TSGlobal.touch_yp < 0) TSGlobal.touch_yp = 0;
+        if (TSGlobal.touch_xp >= M5EPD47_WIDTH) TSGlobal.touch_xp = M5EPD47_WIDTH - 1;
+        if (TSGlobal.touch_yp >= M5EPD47_HEIGHT) TSGlobal.touch_yp = M5EPD47_HEIGHT - 1;
 
-      //  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch before convert %d - %d"), touch_xp, touch_yp);
+        //AddLog(LOG_LEVEL_INFO, PSTR("touch before convert %d - %d"), TSGlobal.touch_xp, TSGlobal.touch_yp);
 
-        M5EPD47_RotConvert(&touch_xp, &touch_yp);
+        M5EPD47_RotConvert(&TSGlobal.touch_xp, &TSGlobal.touch_yp);
 
-      //  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), touch_xp, touch_yp);
+        //AddLog(LOG_LEVEL_INFO, PSTR("touch after convert %d - %d"), TSGlobal.touch_xp, TSGlobal.touch_yp);
 
       }
+      //Touch_Check(EPD47_RotConvert);
+#ifdef USE_TOUCH_BUTTONS
+      CheckTouchButtons(TSGlobal.touched, TSGlobal.touch_xp, TSGlobal.touch_yp);
+#endif // USE_TOUCH_BUTTONS
     }
-    //Touch_Check(EPD47_RotConvert);
+
   }
 }
 #endif // USE_TOUCH_BUTTONS
@@ -182,7 +187,7 @@ bool Xdsp20(uint8_t function)
         break;
 #ifdef USE_TOUCH_BUTTONS
       case FUNC_DISPLAY_EVERY_50_MSECOND:
-        if (FT5206_found) {
+        if (GT911_found) {
           M5EPD47_CheckTouch();
         }
         break;
