@@ -1,5 +1,5 @@
 /*
-  xdrv_55_touch.ino - Touch contolers
+  xdrv_55_touch.ino - Touch controllers
 
   Copyright (C) 2021 Gerhard Mutz, Theo Arends & Stephan Hadinger
 
@@ -27,7 +27,7 @@
  *     0: return 1 if TSGlobal.touched
  *     1: return x
  *     2: return y
- *    -1: return raw x (before conersion for resistive)
+ *    -1: return raw x (before conversion for resistive)
  *    -2: return raw y
  *
  *   void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y))
@@ -281,7 +281,7 @@ void Touch_MQTT(uint8_t index, const char *cp, uint32_t val) {
 #ifdef USE_XPT2046
   if (XPT2046_found) ResponseTime_P(PSTR(",\"XPT2046\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
 #endif  // USE_XPT2046
-#ifdef USE_M5EPD47
+#ifdef USE_GT911
   if (GT911_found) ResponseTime_P(PSTR(",\"GT911\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
 #endif  // USE_XPT2046
   MqttPublishTeleSensor();
