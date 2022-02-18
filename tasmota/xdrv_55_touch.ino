@@ -287,8 +287,13 @@ void Touch_MQTT(uint8_t index, const char *cp, uint32_t val) {
   MqttPublishTeleSensor();
 }
 
+void EP_Drawbutton(uint32_t count) {
+  renderer->ep_update_area(buttons[count]->spars.xp, buttons[count]->spars.yp, buttons[count]->spars.xs, buttons[count]->spars.ys, 3);
+}
+
 void Touch_RDW_BUTT(uint32_t count, uint32_t pwr) {
   buttons[count]->xdrawButton(pwr);
+  EP_Drawbutton(count);
   if (pwr) buttons[count]->vpower.on_off = 1;
   else buttons[count]->vpower.on_off = 0;
 }
@@ -313,8 +318,8 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
                   if (!buttons[count]->vpower.is_virtual) {
                     uint8_t pwr=bitRead(TasmotaGlobal.power, rbutt);
                     if (!SendKey(KEY_BUTTON, rbutt+1, POWER_TOGGLE)) {
-                      ExecuteCommandPower(rbutt+1, POWER_TOGGLE, SRC_BUTTON);
                       Touch_RDW_BUTT(count, !pwr);
+                      ExecuteCommandPower(rbutt+1, POWER_TOGGLE, SRC_BUTTON);
                     }
                   } else {
                     // virtual button
@@ -329,7 +334,9 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
                       cp="PBT";
                     }
                     buttons[count]->xdrawButton(buttons[count]->vpower.on_off);
+                    EP_Drawbutton(count);
                     Touch_MQTT(count, cp, buttons[count]->vpower.on_off);
+
                   }
                 }
               }
@@ -343,6 +350,7 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
             // slider
             if (buttons[count]->didhit(touch_x, touch_y)) {
               uint16_t value = buttons[count]->UpdateSlider(touch_x, touch_y);
+              EP_Drawbutton(count);
               Touch_MQTT(count, "SLD", value);
             }
           }
@@ -362,6 +370,7 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
                 buttons[count]->vpower.on_off = 0;
                 Touch_MQTT(count,"PBT", buttons[count]->vpower.on_off);
                 buttons[count]->xdrawButton(buttons[count]->vpower.on_off);
+                EP_Drawbutton(count);
               }
             }
           }
