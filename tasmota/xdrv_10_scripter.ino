@@ -4192,10 +4192,6 @@ extern char *SML_GetSVal(uint32_t index);
           uint64_t accu = 0;
           char sbuffer[32];
 
-          void br_gcm_flip(br_gcm_context *ctx);
-
-          void br_gcm_run(br_gcm_context *ctx, int encrypt, void *data, size_t len);
-
           /*
           // PSTR performance test
           // this is best case since everything will be in cache
