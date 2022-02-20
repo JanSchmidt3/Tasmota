@@ -3111,8 +3111,8 @@ const mytmplt kModules[] PROGMEM = {
     AGPIO(GPIO_SPI_CLK),         // 18      IO                  GPIO18, SPI_CLK
     AGPIO(GPIO_USER),            // 19      IO                  GPIO19, VSPIQ, U0CTS, EMAC_TXD0
     0,                           // 20
-    0,                           // 21      IO                  GPIO21, I2C_SDA_INTERNAL
-    0,                           // 22      IO      LED         GPIO22, I2C_SCL_INTERNAL
+    AGPIO(GPIO_USER),                           // 21      IO                  GPIO21, I2C_SDA_INTERNAL
+    AGPIO(GPIO_USER),                           // 22      IO      LED         GPIO22, I2C_SCL_INTERNAL
     AGPIO(GPIO_SPI_MOSI),        // 23      IO                  GPIO23, SPI_MOSI
     0,                           // 24
     AGPIO(GPIO_USER),            // 25      IO                  GPIO25, DAC_1, ADC2_CH8, RTC_GPIO6, EMAC_RXD0

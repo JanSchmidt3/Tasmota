@@ -305,7 +305,7 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
 
   if (!renderer) return;
     if (touched) {
-      // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), pLoc.x, pLoc.y);
+      //AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), touch_x, touch_y);
       // now must compare with defined buttons
       for (uint8_t count = 0; count < MAX_TOUCH_BUTTONS; count++) {
         if (buttons[count]) {
