@@ -577,7 +577,7 @@ bool HueActive(uint8_t device) {
 
 /*********************************************************************************\
  * HueLightStatus2Generic
- * 
+ *
  * Adds specific information for a newly discovered device
  * Returns a (char*) pointer that the caller needs to `free()`
 \*********************************************************************************/
@@ -987,7 +987,7 @@ void HueLights(String *path_req)
 
 #ifdef USE_SCRIPT_HUE
     if (device > TasmotaGlobal.devices_present) {
-      return Script_Handle_Hue(path);
+      return Script_Handle_Hue(&path);
     }
 #endif
 #ifdef USE_LIGHT

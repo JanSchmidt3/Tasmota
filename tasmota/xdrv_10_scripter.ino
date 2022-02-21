@@ -9471,7 +9471,7 @@ uint32_t script_i2c(uint8_t sel, uint32_t val, uint32_t val1) {
 
       for (uint8_t cnt = 0; cnt < val1; cnt++) {
         rval <<= 8;
-        rval |= script_i2c_wire->read();
+        rval |= (uint8_t)script_i2c_wire->read();
       }
       break;
 
