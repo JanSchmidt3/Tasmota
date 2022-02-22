@@ -259,7 +259,7 @@ uint32_t WcSetup(int32_t fsiz) {
     config.pin_reset = RESET_GPIO_NUM;
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Default template"));
   }
-  
+
   int32_t ledc_channel = analogAttach(config.pin_xclk);
   if (ledc_channel < 0) {
     AddLog(LOG_LEVEL_ERROR, "CAM: cannot allocated ledc cahnnel, remove a PWM GPIO");
@@ -408,7 +408,10 @@ uint8_t *last_motion_buffer;
 
 
 uint32_t WcSetMotionDetect(int32_t value) {
-  if (value >= 0) { wc_motion.motion_detect = value; }
+  if (value >= 0) {
+    wc_motion.motion_detect = value;
+    wc_motion.motion_ltime = millis();
+  }
   if (-1 == value) {
     return wc_motion.motion_trigger;
   } else  {
