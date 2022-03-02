@@ -480,12 +480,16 @@ void flt2char(float num, char *nbuff) {
 // convert float to char with leading zeros
 void f2char(float num, uint32_t dprec, uint32_t lzeros, char *nbuff) {
   dtostrfd(num, dprec, nbuff);
-  if (lzeros>1) {
+  if (lzeros > 1) {
     // check leading zeros
-    uint32_t nd = num;
-    nd/=10;
-    nd+=1;
-    if (lzeros>nd) {
+    uint32_t nd = strlen(nbuff);
+    for (uint8_t cnt = 0; cnt < nd; cnt++) {
+      if (nbuff[cnt] == '.') {
+        nd = cnt;
+        break;
+      }
+    }
+    if (lzeros > nd) {
       // insert zeros
       char cpbuf[24];
       char *cp = cpbuf;
