@@ -8303,7 +8303,6 @@ void ScriptWebShow(char mc, uint8_t page) {
           break;
       }
       if (*lp != ';') {
-
         // send this line to web
         SCRIPT_SKIP_SPACES
         if (!strncmp(lp, "%for ", 5)) {
@@ -8348,14 +8347,14 @@ void ScriptWebShow(char mc, uint8_t page) {
         } else {
           web_send_line(mc, lp);
         }
+      }
 nextwebline:
-        if (*lp == SCRIPT_EOL) {
-          lp++;
-        } else {
-          lp = strchr(lp, SCRIPT_EOL);
-          if (!lp) break;
-          lp++;
-        }
+      if (*lp == SCRIPT_EOL) {
+        lp++;
+      } else {
+        lp = strchr(lp, SCRIPT_EOL);
+        if (!lp) break;
+        lp++;
       }
     }
   }
