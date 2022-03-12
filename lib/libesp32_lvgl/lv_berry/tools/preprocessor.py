@@ -67,11 +67,13 @@ lv_fun_globs = [
                   "extra/libs/qrcode/lv_qrcode.h",
                   "core/*.h",
                   "draw/*.h",
+                  "misc/lv_anim.h",
                   "misc/lv_style_gen.h",
                   "misc/lv_color.h",
                   "misc/lv_style.h",
-                  "misc/lv_math.h"
-                  #"misc/lv_area.h",
+                  "misc/lv_math.h",
+                  "misc/lv_area.h",
+                  "misc/lv_timer.h",
                   #"**/*.h",
               ]
 headers_names = list_files(lv_src_prefix, lv_fun_globs)
@@ -168,6 +170,7 @@ for header_name in headers_names:
               "^lv_event_get_",            # event_getters not needed
               "^lv_refr_reset_fps_counter",
               "^lv_refr_get_fps_avg",
+              "^lv_anim_path_",             # callbacks for animation are moved to constants
             ]:
           if re.search(exclude_pattern, fun_name): exclude = True
         if exclude: continue
@@ -199,7 +202,16 @@ print("""// ====================================================================
 // Functions
 // ======================================================================
 
-load_font=&lv0_load_font
+load_font=@lv0_load_font
+
+// lv_anim_path_functions
+anim_path_bounce=&lv_anim_path_bounce
+anim_path_ease_in=&lv_anim_path_ease_in
+anim_path_ease_in_out=&lv_anim_path_ease_in_out
+anim_path_ease_out=&lv_anim_path_ease_out
+anim_path_linear=&lv_anim_path_linear
+anim_path_overshoot=&lv_anim_path_overshoot
+anim_path_step=&lv_anim_path_step
 
 // ======================================================================
 // Colors
@@ -230,17 +242,7 @@ FT_FONT_STYLE_ITALIC=FT_FONT_STYLE_ITALIC
 FT_FONT_STYLE_BOLD=FT_FONT_STYLE_BOLD
 
 // following are #define, not enum
-LV_RADIUS_CIRCLE
-LV_TEXTAREA_CURSOR_LAST
-LV_STYLE_PROP_ANY
-
-LV_SIZE_CONTENT
-
 LV_GRID_FR=LV_GRID_FR(0)
-LV_GRID_CONTENT
-LV_GRID_TEMPLATE_LAST
-
-LV_OBJ_FLAG_FLEX_IN_NEW_TRACK
 
 // ======================================================================
 // Symbols
@@ -340,4 +342,9 @@ for header_name in headers_names:
         if exclude: continue
 
         print(enum_item)
+
+    # extract `LV_EXPORT_CONST_INT()` int constants
+    constints = re.findall('LV_EXPORT_CONST_INT\((\w+)\)', raw, flags=re.DOTALL)
+    for constint in constints:
+      print(constint)
 sys.stdout.close()
