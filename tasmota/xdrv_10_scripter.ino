@@ -1706,6 +1706,32 @@ int32_t extract_from_file(uint8_t fref,  char *ts_from, char *ts_to, int8_t coff
 }
 #endif // USE_FEXTRACT
 
+
+uint32_t script_bcd(uint8_t sel, uint32_t val) {
+uint32_t res = 0;
+  if (sel) {
+    // to bcd
+    uint32_t mfac = 1;
+    for (uint32_t cnt = 0; cnt < 6; cnt++) {
+      res |= (val % 10) << 24;
+      val /= 10;
+      res >>= 4;
+    }
+  } else {
+    // from bcd
+    uint32_t mfac = 1;
+    for (uint32_t cnt = 0; cnt < 6; cnt++) {
+      res += (val & 0xf) * mfac;
+      val >>= 4;
+      mfac *= 10;
+    }
+  }
+  return res;
+}
+
+
+
+
 #ifdef USE_LIGHT
 uint32_t HSVToRGB(uint16_t hue, uint8_t saturation, uint8_t value) {
 float r = 0, g = 0, b = 0;
@@ -2301,6 +2327,14 @@ chknext:
           goto nfuncexit;
         }
 #endif //USE_BUTTON_EVENT
+        if (!strncmp(lp, "bcd(", 4)) {
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          uint32_t sel = fvar;
+          while (*lp==' ') lp++;
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          fvar = script_bcd(sel, fvar);
+          goto nfuncexit;
+        }
         break;
       case 'c':
         if (!strncmp(lp, "chg[", 4)) {
