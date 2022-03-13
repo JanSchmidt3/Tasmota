@@ -7251,12 +7251,17 @@ bool ScriptCommand(void) {
   }
   else if ((CMND_SCRIPT == command_code) && (index > 0)) {
 
-    if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 4)) {
+    if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 9)) {
       switch (XdrvMailbox.payload) {
         case 0: // Off
         case 1: // On
           bitWrite(Settings->rule_enabled, index -1, XdrvMailbox.payload);
           break;
+        case 8: // stop on error Off
+        case 9: // On
+          bitWrite(Settings->rule_stop, index -1, XdrvMailbox.payload &1);
+          break;
+
 #ifdef xSCRIPT_STRIP_COMMENTS
         case 2:
           bitWrite(Settings->rule_enabled, 1, 0);
@@ -7265,6 +7270,8 @@ bool ScriptCommand(void) {
           bitWrite(Settings->rule_enabled, 1, 1);
           break;
 #endif //xSCRIPT_STRIP_COMMENTS
+        default:
+          break;
       }
     } else {
       if ('>' == XdrvMailbox.data[0]) {
@@ -7296,7 +7303,7 @@ bool ScriptCommand(void) {
       }
       return serviced;
     }
-    Response_P(PSTR("{\"%s\":\"%s\",\"Free\":%d}"), command, GetStateText(bitRead(Settings->rule_enabled, 0)), glob_script_mem.script_size - strlen(glob_script_mem.script_ram));
+    Response_P(PSTR("{\"%s\":\"%s\",\"StopOnError\":\"%s\",\"Free\":%d}"), command, GetStateText(bitRead(Settings->rule_enabled, 0)), GetStateText(bitRead(Settings->rule_stop, 0)),glob_script_mem.script_size - strlen(glob_script_mem.script_ram));
 #ifdef SUPPORT_MQTT_EVENT
   } else if (CMND_SUBSCRIBE == command_code) {			//MQTT Subscribe command. Subscribe <Event>, <Topic> [, <Key>]
       String result = ScriptSubscribe(XdrvMailbox.data, XdrvMailbox.data_len);
