@@ -1983,15 +1983,15 @@ void SML_Decode(uint8_t index) {
               if (digits > 12) digits = 12;
               uint64_t bcdval = 0;
               uint64_t mfac = 1;
-              for (uint32_t cnt = 0; cnt < digits - 1; cnt++) mfac *= 10;
               for (uint32_t cnt = 0; cnt < digits; cnt += 2) {
                 uint8_t iob = *cp++;
-                bcdval += (iob >> 4) * mfac;
-                mfac /= 10;
                 bcdval += (iob & 0xf) * mfac;
-                mfac /= 10;
+                mfac *= 10;
+                bcdval += (iob >> 4) * mfac;
+                mfac *= 10;
               }
               mbus_dval = bcdval;
+              ebus_dval = bcdval;
             } else if (*mp == 'v') {
               // vbus values vul, vsl, vuwh, vuwl, wswh, vswl, vswh
               // vub3, vsb3 etc

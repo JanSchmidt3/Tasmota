@@ -7697,7 +7697,7 @@ String ScriptUnsubscribe(const char * data, int data_len)
 
 const char HTTP_SCRIPT_MIMES[] PROGMEM =
   "HTTP/1.1 200 OK\r\n"
-  "Content-disposition: inline; filename=%s"
+  "Content-disposition: inline; filename=%s; "
   "Content-type: %s\r\n\r\n";
 
 void ScriptGetSDCard(void) {
@@ -7707,7 +7707,7 @@ void ScriptGetSDCard(void) {
   String stmp = Webserver->uri();
 
   char *cp = strstr_P(stmp.c_str(), PSTR("/ufs/"));
-//  if (cp) Serial.printf(">>>%s\n",cp);
+
   if (cp) {
 #ifdef ESP32
     cp += 4;
@@ -7770,7 +7770,6 @@ void SendFile_sub(char *fname) {
 char buff[512];
   const char *mime = 0;
   uint8_t sflg = 0;
-
 
 #ifdef USE_DISPLAY_DUMP
   char *sbmp = strstr_P(fname, PSTR("scrdmp.bmp"));
@@ -10186,7 +10185,7 @@ bool Xdrv10(uint8_t function)
 #endif // SCRIPT_FULL_WEBPAGE
 
 #ifdef USE_UFILESYS
-        Webserver->onNotFound(ScriptGetSDCard);
+    //    Webserver->onNotFound(ScriptGetSDCard);
 #endif // USE_UFILESYS
       }
       break;
