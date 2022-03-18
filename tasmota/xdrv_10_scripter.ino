@@ -7709,11 +7709,7 @@ void ScriptGetSDCard(void) {
   char *cp = strstr_P(stmp.c_str(), PSTR("/ufs/"));
 
   if (cp) {
-#ifdef ESP32
     cp += 4;
-#else
-    cp += 5;
-#endif
     if (ufsp) {
       if (strstr_P(cp, PSTR("scrdmp.bmp"))) {
         SendFile(cp);
@@ -7768,7 +7764,6 @@ void script_download_task(void *path) {
 
 void SendFile_sub(char *fname) {
 char buff[512];
-  const char *mime = 0;
   uint8_t sflg = 0;
 
 #ifdef USE_DISPLAY_DUMP
@@ -7780,24 +7775,28 @@ char buff[512];
 
   char *jpg = strstr_P(fname, PSTR(".jpg"));
   if (jpg) {
-    mime = "image/jpeg";
+    strcpy_P(buff,PSTR("image/jpeg"));
   }
   char *bmp = strstr_P(fname, PSTR(".bmp"));
   if (bmp) {
-    mime = "image/bmp";
+    strcpy_P(buff,PSTR("image/bmp"));
   }
   char *html = strstr_P(fname, PSTR(".html"));
   if (html) {
-    mime = "text/html";
+    strcpy_P(buff,PSTR("text/html"));
   }
   char *txt = strstr_P(fname, PSTR(".txt"));
   if (txt) {
-    mime = "text/plain";
+    strcpy_P(buff,PSTR("text/plain"));
+  }
+  txt = strstr_P(fname, PSTR(".pdf"));
+  if (txt) {
+    strcpy_P(buff,PSTR("application/pdf"));
   }
 
-  if (!mime) return;
+  if (!buff[0]) return;
 
-  WSContentSend_P(HTTP_SCRIPT_MIMES, fname, mime);
+  WSContentSend_P(HTTP_SCRIPT_MIMES, fname, buff);
 
   if (sflg) {
 #ifdef USE_DISPLAY_DUMP
