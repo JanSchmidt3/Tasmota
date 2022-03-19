@@ -211,6 +211,8 @@ void alt_eeprom_readBytes(uint32_t adr, uint32_t len, uint8_t *buf) {
 
 #endif // LITTLEFS_SCRIPT_SIZE
 
+#include <uri/UriGlob.h>
+
 #include <TasmotaSerial.h>
 
 #ifdef TESLA_POWERWALL
@@ -7697,10 +7699,10 @@ String ScriptUnsubscribe(const char * data, int data_len)
 
 const char HTTP_SCRIPT_MIMES[] PROGMEM =
   "HTTP/1.1 200 OK\r\n"
-  "Content-disposition: inline; filename=%s; "
+  "Content-disposition: inline; "
   "Content-type: %s\r\n\r\n";
 
-void ScriptGetSDCard(void) {
+void ScriptServeFile(void) {
 
   if (!HttpCheckPriviledgedAccess()) { return; }
 
@@ -7773,30 +7775,25 @@ char buff[512];
   }
 #endif // USE_DISPLAY_DUMP
 
-  char *jpg = strstr_P(fname, PSTR(".jpg"));
-  if (jpg) {
+  if ( strstr_P(fname, PSTR(".jpg"))) {
     strcpy_P(buff,PSTR("image/jpeg"));
-  }
-  char *bmp = strstr_P(fname, PSTR(".bmp"));
-  if (bmp) {
+  } else if (strstr_P(fname, PSTR(".bmp"))) {
     strcpy_P(buff,PSTR("image/bmp"));
-  }
-  char *html = strstr_P(fname, PSTR(".html"));
-  if (html) {
+  } else if (strstr_P(fname, PSTR(".html"))) {
     strcpy_P(buff,PSTR("text/html"));
-  }
-  char *txt = strstr_P(fname, PSTR(".txt"));
-  if (txt) {
+  } else if (strstr_P(fname, PSTR(".txt"))) {
     strcpy_P(buff,PSTR("text/plain"));
-  }
-  txt = strstr_P(fname, PSTR(".pdf"));
-  if (txt) {
+  } else if (strstr_P(fname, PSTR(".pdf"))) {
     strcpy_P(buff,PSTR("application/pdf"));
+  } else {
+    strcpy_P(buff,PSTR("text/plain"));
   }
 
   if (!buff[0]) return;
 
-  WSContentSend_P(HTTP_SCRIPT_MIMES, fname, buff);
+  WSContentSend_P(HTTP_SCRIPT_MIMES, buff);
+  WSContentFlush();
+
 
   if (sflg) {
 #ifdef USE_DISPLAY_DUMP
@@ -10183,9 +10180,6 @@ bool Xdrv10(uint8_t function)
         script_add_subpage(4);
 #endif // SCRIPT_FULL_WEBPAGE
 
-#ifdef USE_UFILESYS
-    //    Webserver->onNotFound(ScriptGetSDCard);
-#endif // USE_UFILESYS
       }
       break;
 #endif // USE_SCRIPT_WEB_DISPLAY
@@ -10194,6 +10188,9 @@ bool Xdrv10(uint8_t function)
       Webserver->on("/ta",HTTP_POST, HandleScriptTextareaConfiguration);
       Webserver->on("/exs", HTTP_POST,[]() { Webserver->sendHeader("Location","/exs");Webserver->send(303);}, script_upload_start);
       Webserver->on("/exs", HTTP_GET, ScriptExecuteUploadSuccess);
+#ifdef USE_UFILESYS
+      Webserver->on(UriGlob("/ufs/*"), HTTP_GET, ScriptServeFile);
+#endif
 #endif // USE_WEBSERVER
       break;
 

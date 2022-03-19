@@ -582,11 +582,7 @@ void StartWebserver(int type, IPAddress ipweb)
         // register
         WebServer_on(uri, line.handler, pgm_read_byte(&line.method));
       }
-#if defined(USE_SCRIPT) && defined(USE_UFILESYS)
-      Webserver->onNotFound(ScriptGetSDCard);
-#else
       Webserver->onNotFound(HandleNotFound);
-#endif
 //      Webserver->on(F("/u2"), HTTP_POST, HandleUploadDone, HandleUploadLoop);  // this call requires 2 functions so we keep a direct call
       Webserver->on("/u2", HTTP_POST, HandleUploadDone, HandleUploadLoop);  // this call requires 2 functions so we keep a direct call
 #ifndef FIRMWARE_MINIMAL
