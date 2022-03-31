@@ -4149,6 +4149,19 @@ extern char *SML_GetSVal(uint32_t index);
           goto exit;
         }
 #endif // USE_SCRIPT_SPI
+        if (!strncmp(lp, "s2hms(", 6)) {
+          lp = GetNumericArgument(lp + 6, OPER_EQU, &fvar, 0);
+          lp++;
+          char tbuff[16];
+          uint8_t hours = (uint32_t)fvar / 3600;
+          fvar -= (hours * 3600);
+          uint8_t mins = (uint32_t)fvar / 60;
+          uint8_t secs = (uint32_t)fvar % 60;
+          sprintf_P(tbuff,PSTR("%02d:%02d:%02d"), hours, mins, secs);
+          if (sp) strlcpy(sp, tbuff, glob_script_mem.max_ssize);
+          len = 0;
+          goto strexit;
+        }
         break;
 
       case 't':
