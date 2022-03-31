@@ -8961,7 +8961,8 @@ exgc:
           WSContentSend_PD("['");
           char lbl[16];
           if (todflg >= 0) {
-            sprintf(lbl, "%d:%02d", todflg / divflg, (todflg % divflg) * (60 / divflg) );
+            uint16_t mins = (float)(todflg % divflg) * (float)((float)60 / (float)divflg);
+            sprintf(lbl, "%d:%02d", todflg / divflg, mins);
             todflg++;
             if (hmflg == 0) {
               if (todflg >= entries) {
