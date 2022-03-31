@@ -3983,7 +3983,6 @@ extern char *SML_GetSVal(uint32_t index);
         }
         if (!strncmp(lp, "swb(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
-          fvar = -1;
           if (glob_script_mem.sp) {
             glob_script_mem.sp->write((uint8_t)fvar);
             fvar = 0;
