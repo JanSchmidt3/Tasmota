@@ -7082,7 +7082,7 @@ const char sHUE_ERROR_JSON[] PROGMEM =
 
 
 // get alexa arguments
-void Script_Handle_Hue(String *path) {
+void Script_Handle_Hue(String path) {
   String response;
   int code = 200;
   uint16_t tmp = 0;
@@ -7092,7 +7092,7 @@ void Script_Handle_Hue(String *path) {
   uint16_t ct = 0;
   bool resp = false;
 
-  uint8_t device = DecodeLightId(atoi(path->c_str()));
+  uint8_t device = DecodeLightId(atoi(path.c_str()));
   uint8_t index = device - TasmotaGlobal.devices_present - 1;
 
   if (Webserver->args()) {

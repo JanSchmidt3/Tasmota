@@ -577,7 +577,7 @@ bool HueActive(uint8_t device) {
 
 /*********************************************************************************\
  * HueLightStatus2Generic
- * 
+ *
  * Adds specific information for a newly discovered device
  * Returns a (char*) pointer that the caller needs to `free()`
 \*********************************************************************************/
