@@ -164,6 +164,9 @@ void BM8563SetUtc(uint32_t epoch_time) {
   bm8563_driver.Rtc.SetDate(&RTCdate);
 }
 
+BM8563 *Get_BM8563(void) {
+  return &bm8563_driver.Rtc;
+}
 void BM8563Detected(void) {
   if (!RtcChip.detected && I2cEnabled(XI2C_59)) {
     RtcChip.address = BM8563_ADRESS;
