@@ -14,7 +14,9 @@
     "partitions": "esp32_partition_app1856k_spiffs320k.csv"
   },
   "connectivity": [
-    "wifi"
+    "wifi",
+    "bluetooth",
+    "ethernet"
   ],
   "debug": {
     "openocd_target": "esp32s3.cfg"

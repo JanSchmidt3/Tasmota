@@ -165,8 +165,8 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t shift595_invert_outputs : 1;  // bit 19 (v10.0.0.4) - SetOption133 - (Shift595) Invert outputs of 74x595 shift registers
     uint32_t pwm_force_same_phase : 1;     // bit 20 (v10.1.0.6) - SetOption134 - (PWM) force PWM lights to start at same phase, default is to spread phases to minimze overlap (also needed for H-bridge)
     uint32_t display_no_splash : 1;        // bit 21 (v11.0.0.2) - SetOption135 - (Display & LVGL) forece disbabling default splash screen
-    uint32_t spare22 : 1;                  // bit 22
-    uint32_t spare23 : 1;                  // bit 23
+    uint32_t tuyasns_no_immediate : 1;     // bit 22 (v11.0.0.4) - SetOption136 - (TuyaSNS) When ON disable publish single SNS value on Tuya Receive (keep Teleperiod)
+    uint32_t tuya_exclude_heartbeat : 1;   // bit 23 (v11.0.0.5) - SetOption137 - (Tuya) When Set, avoid the (mqtt-) publish of Tuya MCU Heartbeat response if SetOption66 is active
     uint32_t spare24 : 1;                  // bit 24
     uint32_t spare25 : 1;                  // bit 25
     uint32_t spare26 : 1;                  // bit 26
@@ -251,7 +251,7 @@ typedef union {
     uint32_t influxdb_default : 1;         // bit 6  (v9.5.0.5) - Set influxdb initial defaults if 0
     uint32_t influxdb_state : 1;           // bit 7  (v9.5.0.5) - CMND_IFX - Enable influxdb support
     uint32_t sspm_display : 1;             // bit 8  (v10.0.0.4) - CMND_SSPMDISPLAY - Enable gui display of powered on relays only
-    uint32_t spare09 : 1;                  // bit 9
+    uint32_t local_ntp_server : 1;         // bit 9  (v11.0.0.4) - CMND_RTCNTPSERVER - Enable local NTP server
     uint32_t spare10 : 1;                  // bit 10
     uint32_t spare11 : 1;                  // bit 11
     uint32_t spare12 : 1;                  // bit 12
@@ -626,8 +626,8 @@ typedef struct {
   uint8_t       switchmode[MAX_SWITCHES_SET];  // 4A9
 
   uint8_t       free_4c5[5];               // 4C5
-  uint8_t       ex_interlock[4];           // 4CA MAX_INTERLOCKS = MAX_RELAYS / 2 (Legacy)
 
+  uint8_t       ds3502_state[MAX_DS3502];  // 4CA
   uint16_t      influxdb_port;             // 4CE
   power_t       interlock[MAX_INTERLOCKS_SET];  // 4D0 MAX_INTERLOCKS = MAX_RELAYS / 2
   int8_t        shutter_tilt_config[5][MAX_SHUTTERS];  //508
@@ -833,8 +833,9 @@ typedef struct {
   uint32_t      baudrate;                  // 2CC
   uint32_t      ultradeepsleep;            // 2D0
   uint16_t      deepsleep_slip;            // 2D4
+  uint8_t       improv_state;              // 2D6
 
-  uint8_t       free_2d6[2];               // 2D6
+  uint8_t       free_2d7[1];               // 2D7
 
   int32_t       energy_kWhtoday_ph[3];     // 2D8
   int32_t       energy_kWhtotal_ph[3];     // 2E4

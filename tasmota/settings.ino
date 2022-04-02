@@ -1208,6 +1208,7 @@ void SettingsDefaultSet2(void) {
   // Tuya
   flag3.tuya_apply_o20 |= TUYA_SETOPTION_20;
   flag5.tuya_allow_dimmer_0 |= TUYA_ALLOW_DIMMER_0;
+  flag5.tuya_exclude_heartbeat |= TUYA_SETOPTION_137;
   flag3.tuya_serial_mqtt_publish |= MQTT_TUYA_RECEIVED;
   mbflag2.temperature_set_res |= TUYA_TEMP_SET_RES;
 
@@ -1435,7 +1436,7 @@ void SettingsDelta(void) {
         Settings->switchmode[i] = (i < 8) ? Settings->ex_switchmode[i] : SWITCH_MODE;
       }
       for (uint32_t i = 0; i < MAX_INTERLOCKS_SET; i++) {
-        Settings->interlock[i] = (i < 4) ? Settings->ex_interlock[i] : 0;
+        Settings->interlock[i] = (i < 4) ? Settings->ds3502_state[i] : 0;
       }
     }
     if (Settings->version < 0x09020007) {
