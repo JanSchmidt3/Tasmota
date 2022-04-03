@@ -4058,6 +4058,68 @@ extern char *SML_GetSVal(uint32_t index);
           len = 0;
           goto exit;
         }
+        // serial read array
+        if (!strncmp(lp, "sra(", 4)) {
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            uint16_t alen;
+            float *fa;
+            lp = get_array_by_name(lp + 4, &fa, &alen);
+            if (!fa) {
+              goto exit;
+            }
+            uint16_t index;
+            for (index = 0; index < alen; index++) {
+              if (!glob_script_mem.sp->available()) {
+                break;
+              }
+              *fa++ = glob_script_mem.sp->read();
+            }
+            fvar = index;
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+        // serial modbus write float, 010404ffffffffxxxx
+        if (!strncmp(lp, "smw(", 4)) {
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            float addr;
+            lp = GetNumericArgument(lp + 4, OPER_EQU, &addr, 0);
+            SCRIPT_SKIP_SPACES
+            float mval;
+            lp = GetNumericArgument(lp, OPER_EQU, &mval, 0);
+            SCRIPT_SKIP_SPACES
+            uint32_t uval, *uvp;
+            uvp = &uval;
+            *(uvp) = *(uint32_t*)&mval;
+
+            uint8_t modbus_response[10];
+
+            modbus_response[0] = addr;
+            modbus_response[1] = 4;
+            modbus_response[2] = 4;
+            modbus_response[3] = (uval >> 24);
+            modbus_response[4] = (uval >> 16);
+            modbus_response[5] = (uval >> 8);
+            modbus_response[6] = (uval >> 0);
+
+#ifdef USE_SML_M
+            // calc mobus checksum
+            uint16_t crc = MBUS_calculateCRC(modbus_response, 7);
+            modbus_response[7] = lowByte(crc);
+            modbus_response[8] = highByte(crc);
+#endif
+            glob_script_mem.sp->write(modbus_response, 9);
+            fvar = 0;
+
+          }
+          lp++;
+          len = 0;
+          goto exit;
+        }
+
 #endif //USE_SCRIPT_SERIAL
 
 
