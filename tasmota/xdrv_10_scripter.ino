@@ -4063,9 +4063,9 @@ extern char *SML_GetSVal(uint32_t index);
           fvar = -1;
           if (glob_script_mem.sp) {
             uint16_t alen;
-            float *fa;
-            lp = get_array_by_name(lp + 4, &fa, &alen);
-            if (!fa) {
+            float *array;
+            lp = get_array_by_name(lp + 4, &array, &alen);
+            if (!array) {
               goto exit;
             }
             uint16_t index;
@@ -4073,20 +4073,36 @@ extern char *SML_GetSVal(uint32_t index);
               if (!glob_script_mem.sp->available()) {
                 break;
               }
-              *fa++ = glob_script_mem.sp->read();
+              array[index] = glob_script_mem.sp->read();
             }
             fvar = index;
+#ifdef USE_SML_M
+            if (index == 8) {
+              uint8_t modbus_response[10];
+              for (uint8_t cnt = 0; cnt < 8; cnt++) {
+                modbus_response[cnt] = array[cnt];
+              }
+              uint16_t crc = MBUS_calculateCRC(modbus_response, 6);
+              if  ( (lowByte(crc) != modbus_response[6]) || (highByte(crc) != modbus_response[7]) ) {
+                fvar = -2;
+              }
+            }
+#endif
           }
           lp++;
           len = 0;
           goto exit;
         }
+#ifdef USE_SML_M
         // serial modbus write float, 010404ffffffffxxxx
         if (!strncmp(lp, "smw(", 4)) {
           fvar = -1;
           if (glob_script_mem.sp) {
             float addr;
             lp = GetNumericArgument(lp + 4, OPER_EQU, &addr, 0);
+            SCRIPT_SKIP_SPACES
+            float mode;
+            lp = GetNumericArgument(lp, OPER_EQU, &mode, 0);
             SCRIPT_SKIP_SPACES
             float mval;
             lp = GetNumericArgument(lp, OPER_EQU, &mval, 0);
@@ -4097,20 +4113,40 @@ extern char *SML_GetSVal(uint32_t index);
 
             uint8_t modbus_response[10];
 
+            uint32_t ui32 = mval;
             modbus_response[0] = addr;
             modbus_response[1] = 4;
-            modbus_response[2] = 4;
-            modbus_response[3] = (uval >> 24);
-            modbus_response[4] = (uval >> 16);
-            modbus_response[5] = (uval >> 8);
-            modbus_response[6] = (uval >> 0);
+            switch  ((uint8_t)mode) {
+              case 0:
+                // UINT16
+                modbus_response[2] = 2;
+                modbus_response[3] = (ui32 >> 16);
+                modbus_response[4] = (ui32 >> 0);
+                break;
+              case 1:
+                  // UINT32
+                modbus_response[2] = 4;
+                modbus_response[3] = (ui32 >> 24);
+                modbus_response[4] = (ui32 >> 16);
+                modbus_response[5] = (ui32 >> 8);
+                modbus_response[6] = (ui32 >> 0);
+                break;
 
-#ifdef USE_SML_M
+              default:
+                // float
+                modbus_response[2] = 4;
+                modbus_response[3] = (uval >> 24);
+                modbus_response[4] = (uval >> 16);
+                modbus_response[5] = (uval >> 8);
+                modbus_response[6] = (uval >> 0);
+                break;
+            }
+
+
             // calc mobus checksum
-            uint16_t crc = MBUS_calculateCRC(modbus_response, 7);
-            modbus_response[7] = lowByte(crc);
-            modbus_response[8] = highByte(crc);
-#endif
+            uint16_t crc = MBUS_calculateCRC(modbus_response, modbus_response[2] + 3);
+            modbus_response[modbus_response[2] + 3] = lowByte(crc);
+            modbus_response[modbus_response[2] + 4] = highByte(crc);
             glob_script_mem.sp->write(modbus_response, 9);
             fvar = 0;
 
@@ -4119,6 +4155,7 @@ extern char *SML_GetSVal(uint32_t index);
           len = 0;
           goto exit;
         }
+#endif
 
 #endif //USE_SCRIPT_SERIAL
 
