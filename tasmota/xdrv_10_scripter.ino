@@ -10050,7 +10050,7 @@ void script_add_subpage(uint8_t num) {
   //uint8_t web_script = Run_Scripter(code, -strlen(code), 0);
   if (glob_script_mem.web_pages[num]) {
       char bname[48];
-      cpy2lf(bname, sizeof(bname), glob_script_mem.web_pages[num] + 3);
+      cpy2lf(bname, sizeof(bname), glob_script_mem.web_pages[num] + 1);
 
       void (*wptr)(void);
 
