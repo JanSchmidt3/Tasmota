@@ -451,7 +451,7 @@ struct SCRIPT_MEM {
     char *fast_script = 0;
     char *event_script = 0;
     char *html_script = 0;
-    char *web_pages[5];
+    char *web_pages[7];
     uint32_t script_lastmillis;
     bool event_handeled = false;
 #ifdef USE_BUTTON_EVENT
@@ -6830,6 +6830,8 @@ void script_set_web_pages(void) {
   if (Run_Scripter1(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[2] = 0;}
   if (Run_Scripter1(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[3] = 0;}
   if (Run_Scripter1(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[4] = 0;}
+  if (Run_Scripter1(">WS", -3, 0) == 99) {glob_script_mem.web_pages[5] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[5] = 0;}
+  if (Run_Scripter1(">WM", -3, 0) == 99) {glob_script_mem.web_pages[6] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[6] = 0;}
 }
 
 #endif // USE_WEBSERVER
@@ -8420,7 +8422,7 @@ void ScriptWebShow(char mc, uint8_t page) {
 
   //uint8_t web_script;
   glob_script_mem.web_mode = mc;
-  if (mc == 'w' || mc == 'x') {
+  if (mc == 'w' || mc == 'x' || page >= 5) {
     if (mc == 'x') {
       mc = '$';
     }
@@ -10297,7 +10299,11 @@ bool Xdrv10(uint8_t function)
 #ifdef USE_SCRIPT_WEB_DISPLAY
     case FUNC_WEB_ADD_MAIN_BUTTON:
       if (bitRead(Settings->rule_enabled, 0)) {
-        ScriptWebShow('$', 0);
+        if (glob_script_mem.web_pages[6]) {
+          ScriptWebShow('$', 6);
+        } else {
+          ScriptWebShow('$', 0);
+        }
 #ifdef SCRIPT_FULL_WEBPAGE
         script_add_subpage(1);
         script_add_subpage(2);
@@ -10338,7 +10344,11 @@ bool Xdrv10(uint8_t function)
 #ifdef USE_SCRIPT_WEB_DISPLAY
     case FUNC_WEB_SENSOR:
       if (bitRead(Settings->rule_enabled, 0)) {
-        ScriptWebShow(0, 0);
+        if (glob_script_mem.web_pages[5]) {
+          ScriptWebShow(0, 5);
+        } else {
+          ScriptWebShow(0, 0);
+        }
       }
       break;
 #endif //USE_SCRIPT_WEB_DISPLAY
