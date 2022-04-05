@@ -6825,13 +6825,13 @@ void set_callbacks() {
 }
 
 void script_set_web_pages(void) {
-  if (Run_Scripter1(">W", -2, 0) == 99) {glob_script_mem.web_pages[0] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[0] = 0;}
-  if (Run_Scripter1(">w ", -3, 0) == 99) {glob_script_mem.web_pages[1] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[1] = 0;}
-  if (Run_Scripter1(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[2] = 0;}
-  if (Run_Scripter1(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[3] = 0;}
-  if (Run_Scripter1(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[4] = 0;}
-  if (Run_Scripter1(">WS", -3, 0) == 99) {glob_script_mem.web_pages[5] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[5] = 0;}
-  if (Run_Scripter1(">WM", -3, 0) == 99) {glob_script_mem.web_pages[6] = glob_script_mem.section_ptr;} else {glob_script_mem.web_pages[6] = 0;}
+  if (Run_Scripter1(">W", -2, 0) == 99) {glob_script_mem.web_pages[0] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[0] = 0;}
+  if (Run_Scripter1(">w ", -3, 0) == 99) {glob_script_mem.web_pages[1] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[1] = 0;}
+  if (Run_Scripter1(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[2] = 0;}
+  if (Run_Scripter1(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[3] = 0;}
+  if (Run_Scripter1(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[4] = 0;}
+  if (Run_Scripter1(">WS", -3, 0) == 99) {glob_script_mem.web_pages[5] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[5] = 0;}
+  if (Run_Scripter1(">WM", -3, 0) == 99) {glob_script_mem.web_pages[6] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[6] = 0;}
 }
 
 #endif // USE_WEBSERVER
@@ -8435,7 +8435,7 @@ void ScriptWebShow(char mc, uint8_t page) {
 
     chartindex = 1;
     google_libs = 0;
-    char *lp = glob_script_mem.section_ptr + 2;
+    char *lp = glob_script_mem.section_ptr;
     if (mc == 'w') {
       while (*lp) {
         if (*lp == '\n') break;
@@ -8872,10 +8872,12 @@ const char *gc_str;
     // end standard web interface
   } else {
     //  main section interface
-    if (*lin == mc) {
+    if (*lin == mc || mc == 'z') {
 
 #ifdef USE_GOOGLE_CHARTS
-      lin++;
+      if (mc != 'z') {
+        lin++;
+      }
 exgc:
       char *lp;
       if (!strncmp(lin, "gc(", 3)) {
@@ -10300,7 +10302,7 @@ bool Xdrv10(uint8_t function)
     case FUNC_WEB_ADD_MAIN_BUTTON:
       if (bitRead(Settings->rule_enabled, 0)) {
         if (glob_script_mem.web_pages[6]) {
-          ScriptWebShow('$', 6);
+          ScriptWebShow('z', 6);
         } else {
           ScriptWebShow('$', 0);
         }
