@@ -6827,9 +6827,9 @@ void set_callbacks() {
 void script_set_web_pages(void) {
   if (Run_Scripter1(">W", -2, 0) == 99) {glob_script_mem.web_pages[0] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[0] = 0;}
   if (Run_Scripter1(">w ", -3, 0) == 99) {glob_script_mem.web_pages[1] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[1] = 0;}
-  if (Run_Scripter1(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[2] = 0;}
-  if (Run_Scripter1(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[3] = 0;}
-  if (Run_Scripter1(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[4] = 0;}
+  if (Run_Scripter1(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[2] = 0;}
+  if (Run_Scripter1(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[3] = 0;}
+  if (Run_Scripter1(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[4] = 0;}
   if (Run_Scripter1(">WS", -3, 0) == 99) {glob_script_mem.web_pages[5] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[5] = 0;}
   if (Run_Scripter1(">WM", -3, 0) == 99) {glob_script_mem.web_pages[6] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[6] = 0;}
 }
