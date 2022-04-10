@@ -166,7 +166,7 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t pwm_force_same_phase : 1;     // bit 20 (v10.1.0.6) - SetOption134 - (PWM) force PWM lights to start at same phase, default is to spread phases to minimze overlap (also needed for H-bridge)
     uint32_t display_no_splash : 1;        // bit 21 (v11.0.0.2) - SetOption135 - (Display & LVGL) forece disbabling default splash screen
     uint32_t tuyasns_no_immediate : 1;     // bit 22 (v11.0.0.4) - SetOption136 - (TuyaSNS) When ON disable publish single SNS value on Tuya Receive (keep Teleperiod)
-    uint32_t tuya_exclude_heartbeat : 1;   // bit 23 (v11.0.0.5) - SetOption137 - (Tuya) When Set, avoid the (mqtt-) publish of Tuya MCU Heartbeat response if SetOption66 is active
+    uint32_t tuya_exclude_from_mqtt : 1;   // bit 23 (v11.0.0.5) - SetOption137 - (Tuya) When Set, avoid the (MQTT-) publish of defined Tuya CMDs (see xdrv_16_tuyamcu.ino) if SetOption66 is active
     uint32_t spare24 : 1;                  // bit 24
     uint32_t spare25 : 1;                  // bit 25
     uint32_t spare26 : 1;                  // bit 26
@@ -252,7 +252,7 @@ typedef union {
     uint32_t influxdb_state : 1;           // bit 7  (v9.5.0.5) - CMND_IFX - Enable influxdb support
     uint32_t sspm_display : 1;             // bit 8  (v10.0.0.4) - CMND_SSPMDISPLAY - Enable gui display of powered on relays only
     uint32_t local_ntp_server : 1;         // bit 9  (v11.0.0.4) - CMND_RTCNTPSERVER - Enable local NTP server
-    uint32_t spare10 : 1;                  // bit 10
+    uint32_t influxdb_sensor : 1;          // bit 10 (v11.0.0.5) - CMND_IFXSENSOR - Enable sensor support in addition to teleperiod support
     uint32_t spare11 : 1;                  // bit 11
     uint32_t spare12 : 1;                  // bit 12
     uint32_t spare13 : 1;                  // bit 13
@@ -486,9 +486,7 @@ typedef struct {
   int32_t       energy_kWhtoday_ph[3];     // 314
   int32_t       energy_kWhyesterday_ph[3]; // 320
   int32_t       energy_kWhtotal_ph[3];     // 32C
-
-  uint8_t       free_338[4];               // 338
-
+  int32_t       weight_user_tare;          // 338
   uint8_t       web_time_start;            // 33C
   uint8_t       web_time_end;              // 33D
   uint8_t       sserial_config;            // 33E
@@ -634,9 +632,8 @@ typedef struct {
   int8_t        shutter_tilt_pos[MAX_SHUTTERS];        //51C
   uint16_t      influxdb_period;           // 520
   uint16_t      rf_duplicate_time;         // 522
-
-  uint8_t       free_524[8];               // 524
-
+  int32_t       weight_absconv_a;          // 524
+  int32_t       weight_absconv_b;          // 528
   uint16_t      mqtt_keepalive;            // 52C
   uint16_t      mqtt_socket_timeout;       // 52E
   uint8_t       mqtt_wifi_timeout;         // 530
@@ -648,8 +645,9 @@ typedef struct {
   uint32_t      ipv4_rgx_subnetmask;       // 55C
   uint16_t      pwm_value_ext[16-5];       // 560  Extension to pwm_value to store up to 16 PWM for ESP32. This array stores values 5..15
 
-  uint8_t       free_576[6];               // 576
+  uint8_t       free_576[2];               // 576
 
+  int32_t       weight_offset;             // 578
   uint16_t      pulse_timer[MAX_PULSETIMERS];  // 57C
   SysMBitfield1 flag2;                     // 5BC
   uint32_t      pulse_counter[MAX_COUNTERS];  // 5C0
