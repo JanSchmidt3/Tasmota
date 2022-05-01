@@ -4104,44 +4104,67 @@ extern char *SML_GetSVal(uint32_t index);
             float mode;
             lp = GetNumericArgument(lp, OPER_EQU, &mode, 0);
             SCRIPT_SKIP_SPACES
-            float mval;
-            lp = GetNumericArgument(lp, OPER_EQU, &mval, 0);
+
+            uint16_t alend;
+            float *fpd;
+            lp = get_array_by_name(lp, &fpd, &alend);
             SCRIPT_SKIP_SPACES
-            uint32_t uval, *uvp;
-            uvp = &uval;
-            *(uvp) = *(uint32_t*)&mval;
 
-            uint8_t modbus_response[10];
+            uint8_t modbus_response[64];
 
-            uint32_t ui32 = mval;
-            modbus_response[0] = addr;
-            modbus_response[1] = 4;
-            switch  ((uint8_t)mode) {
-              case 0:
-                // UINT16
-                modbus_response[2] = 2;
-                modbus_response[3] = (ui32 >> 16);
-                modbus_response[4] = (ui32 >> 0);
-                break;
-              case 1:
+
+            uint8_t mb_index = 0;
+            modbus_response[mb_index] = addr;
+            mb_index++;
+            modbus_response[mb_index] = 4;
+            mb_index++;
+
+            for (uint16_t cnt = 0; cnt < alend; cnt++) {
+              uint32_t ui32 = *fpd;
+              uint32_t uval, *uvp;
+              uvp = &uval;
+              *(uvp) = *(uint32_t*)&mval;
+
+
+              switch  ((uint8_t)mode) {
+                case 0:
+                  // UINT16
+                  modbus_response[mb_index] = 2;
+                  mb_index++;
+                  modbus_response[mb_index] = (ui32 >> 16);
+                  mb_index++;
+                  modbus_response[mb_index] = (ui32 >> 0);
+                  mb_index++;
+                  break;
+                case 1:
                   // UINT32
-                modbus_response[2] = 4;
-                modbus_response[3] = (ui32 >> 24);
-                modbus_response[4] = (ui32 >> 16);
-                modbus_response[5] = (ui32 >> 8);
-                modbus_response[6] = (ui32 >> 0);
-                break;
+                  modbus_response[mb_index] = 4;
+                  mb_index++;
+                  modbus_response[mb_index] = (ui32 >> 24);
+                  mb_index++;
+                  modbus_response[mb_index] = (ui32 >> 16);
+                  mb_index++;
+                  modbus_response[mb_index] = (ui32 >> 8);
+                  mb_index++;
+                  modbus_response[mb_index] = (ui32 >> 0);
+                  mb_index++;
+                  break;
 
-              default:
-                // float
-                modbus_response[2] = 4;
-                modbus_response[3] = (uval >> 24);
-                modbus_response[4] = (uval >> 16);
-                modbus_response[5] = (uval >> 8);
-                modbus_response[6] = (uval >> 0);
-                break;
-            }
-
+                default:
+                  // float
+                  modbus_response[mb_index] = 4;
+                  mb_index++;
+                  modbus_response[mb_index] = (uval >> 24);
+                  mb_index++;
+                  modbus_response[mb_index] = (uval >> 16);
+                  mb_index++;
+                  modbus_response[mb_index] = (uval >> 8);
+                  mb_index++;
+                  modbus_response[mb_index] = (uval >> 0);
+                  mb_index++;
+                  break;
+                }
+              }
 
             // calc mobus checksum
             uint16_t crc = MBUS_calculateCRC(modbus_response, modbus_response[2] + 3);
