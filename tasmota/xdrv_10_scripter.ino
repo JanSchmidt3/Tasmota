@@ -4110,8 +4110,15 @@ extern char *SML_GetSVal(uint32_t index);
             lp = get_array_by_name(lp, &fpd, &alend);
             SCRIPT_SKIP_SPACES
 
-            uint8_t modbus_response[64];
+            float nvals;
+            lp = GetNumericArgument(lp, OPER_EQU, &nvals, 0);
+            SCRIPT_SKIP_SPACES
 
+            if (nvals > alend) {
+              nvals = alend;
+            }
+
+            uint8_t modbus_response[128];
 
             uint8_t mb_index = 0;
             modbus_response[mb_index] = addr;
@@ -4119,18 +4126,23 @@ extern char *SML_GetSVal(uint32_t index);
             modbus_response[mb_index] = 4;
             mb_index++;
 
-            for (uint16_t cnt = 0; cnt < alend; cnt++) {
-              uint32_t ui32 = *fpd;
+            if (mode == 0) {
+              modbus_response[mb_index] = 2 * nvals;
+            } else {
+              modbus_response[mb_index] = 4 * nvals;
+            }
+            mb_index++;
+
+            for (uint16_t cnt = 0; cnt < nvals; cnt++) {
+              float fpval = *fpd++;
+              uint32_t ui32 = fpval;
               uint32_t uval, *uvp;
               uvp = &uval;
-              *(uvp) = *(uint32_t*)&mval;
-
+              *(uvp) = *(uint32_t*)&fpval;
 
               switch  ((uint8_t)mode) {
                 case 0:
                   // UINT16
-                  modbus_response[mb_index] = 2;
-                  mb_index++;
                   modbus_response[mb_index] = (ui32 >> 16);
                   mb_index++;
                   modbus_response[mb_index] = (ui32 >> 0);
@@ -4138,8 +4150,6 @@ extern char *SML_GetSVal(uint32_t index);
                   break;
                 case 1:
                   // UINT32
-                  modbus_response[mb_index] = 4;
-                  mb_index++;
                   modbus_response[mb_index] = (ui32 >> 24);
                   mb_index++;
                   modbus_response[mb_index] = (ui32 >> 16);
@@ -4149,11 +4159,8 @@ extern char *SML_GetSVal(uint32_t index);
                   modbus_response[mb_index] = (ui32 >> 0);
                   mb_index++;
                   break;
-
                 default:
                   // float
-                  modbus_response[mb_index] = 4;
-                  mb_index++;
                   modbus_response[mb_index] = (uval >> 24);
                   mb_index++;
                   modbus_response[mb_index] = (uval >> 16);
@@ -4170,7 +4177,7 @@ extern char *SML_GetSVal(uint32_t index);
             uint16_t crc = MBUS_calculateCRC(modbus_response, modbus_response[2] + 3);
             modbus_response[modbus_response[2] + 3] = lowByte(crc);
             modbus_response[modbus_response[2] + 4] = highByte(crc);
-            glob_script_mem.sp->write(modbus_response, 9);
+            glob_script_mem.sp->write(modbus_response, mb_index + 2);
             fvar = 0;
 
           }
