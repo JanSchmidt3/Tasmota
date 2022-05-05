@@ -4179,8 +4179,20 @@ extern char *SML_GetSVal(uint32_t index);
             modbus_response[modbus_response[2] + 4] = highByte(crc);
             glob_script_mem.sp->write(modbus_response, mb_index + 2);
             fvar = 0;
-            AddLog(LOG_LEVEL_INFO,PSTR(">> %d - %d - %d - %d - %d - %d - %d - %d  - %d = %d"),modbus_response[0],modbus_response[1],modbus_response[2],modbus_response[3],modbus_response[4],modbus_response[5],modbus_response[6],modbus_response[7],modbus_response[8],mb_index + 2);
-
+#if 1
+            // show response
+            char hexbuff[256];
+            sprintf(hexbuff,"%02x%02x%02x - ",modbus_response[0],modbus_response[1],modbus_response[2]);
+            for (uint16_t cnt = 3; cnt < mb_index; cnt+=4) {
+              char cbuff[32];
+              sprintf(cbuff," %02x%02x%02x%02x",modbus_response[cnt],modbus_response[cnt+1],modbus_response[cnt+2],modbus_response[cnt+3]);
+              strcat(hexbuff,cbuff);
+            }
+            char cbuff[32];
+            sprintf(cbuff," - %02x%02x",modbus_response[mb_index],modbus_response[mb_index+1]);
+            strcat(hexbuff,cbuff);
+            AddLog(LOG_LEVEL_INFO,PSTR(">> %s"),hexbuff);
+#endif
           }
           lp++;
           len = 0;
