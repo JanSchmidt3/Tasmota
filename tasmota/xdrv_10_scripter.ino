@@ -4520,6 +4520,7 @@ extern char *SML_GetSVal(uint32_t index);
                 fvar = WcSetMotionDetect(fvar2);
               }
               break;
+              /*
 #ifdef USE_FACE_DETECT
             case 7:
               { float fvar2;
@@ -4528,6 +4529,7 @@ extern char *SML_GetSVal(uint32_t index);
               }
               break;
 #endif //USE_FACE_DETECT
+*/
             default:
               fvar = 0;
           }
