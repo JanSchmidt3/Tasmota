@@ -4173,12 +4173,13 @@ extern char *SML_GetSVal(uint32_t index);
                 }
               }
 
-            // calc mobus checksum
+            // calc modbus checksum
             uint16_t crc = MBUS_calculateCRC(modbus_response, modbus_response[2] + 3);
             modbus_response[modbus_response[2] + 3] = lowByte(crc);
             modbus_response[modbus_response[2] + 4] = highByte(crc);
             glob_script_mem.sp->write(modbus_response, mb_index + 2);
             fvar = 0;
+            AddLog(LOG_LEVEL_INFO,PSTR(">> %d - %d - %d - %d - %d - %d - %d - %d  - %d = %d"),modbus_response[0],modbus_response[1],modbus_response[2],modbus_response[3],modbus_response[4],modbus_response[5],modbus_response[6],modbus_response[7],modbus_response[8],mb_index + 2);
 
           }
           lp++;
