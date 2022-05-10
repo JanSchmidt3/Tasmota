@@ -8992,6 +8992,22 @@ exgc:
         SCRIPT_SKIP_SPACES
 
         //Serial.printf("type %d\n",ctype);
+        float max_entries = 0;
+
+        struct T_INDEX ind;
+        uint8_t vtype;
+        char *slp = lp;
+        lp = isvar(lp, &vtype, &ind, &max_entries, 0, 0);
+        if (vtype != VAR_NV) {
+          if ((vtype&STYPE) == 0) {
+            // numeric result
+            if (!ind.bits.constant && glob_script_mem.type[ind.index].bits.is_filter) {
+              // is 1. array
+              lp = slp;
+            }
+          }
+        }
+        SCRIPT_SKIP_SPACES
 
         float *arrays[MAX_GARRAY];
         uint8_t anum = 0;
@@ -9003,6 +9019,15 @@ exgc:
           return lp1;
           //goto nextwebline;
         }
+
+        // override array size
+        if (max_entries > 0) {
+          if (max_entries > entries) {
+            max_entries = entries;
+          }
+          entries = max_entries;
+        }
+
         // we know how many arrays and the number of entries
         //Serial.printf("arrays %d\n",anum);
         //Serial.printf("entries %d\n",entries);
@@ -9114,6 +9139,7 @@ exgc:
             }
           }
           divflg = entries / segments;
+          if (!divflg) divflg = 1;
         }
 
         uint32_t aind = ipos;
