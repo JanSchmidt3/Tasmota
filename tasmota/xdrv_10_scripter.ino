@@ -3370,6 +3370,20 @@ chknext:
 #endif // USE_SCRIPT_I2C
         break;
 
+#ifdef USE_KNX
+      case 'k':
+        if (!strncmp(lp, "knx(", 4)) {
+          float type;
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &type, gv);
+          SCRIPT_SKIP_SPACES
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          KnxSensor(type, fvar);
+          goto nfuncexit;
+        }
+        break;
+#endif
+
       case 'l':
         if (!strncmp(lp, "lip", 3)) {
           if (sp) strlcpy(sp, (const char*)WiFi.localIP().toString().c_str(), glob_script_mem.max_ssize);
