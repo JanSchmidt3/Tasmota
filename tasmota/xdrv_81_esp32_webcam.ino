@@ -59,13 +59,40 @@
  * WcSaturation = Set picture Saturation -2 ... +2
  * WcBrightness = Set picture Brightness -2 ... +2
  * WcContrast   = Set picture Contrast -2 ... +2
- * WcInit       = Init Camera Interface
- * WcRtsp       = Control RTSP Server, 0=disable, 1=enable (forces restart) (if defined ENABLE_RTSPSERVER)
+ * WcSpecialEffekt = Set Special Picture Effect: 0 = off, 1 = , 2 = , 3 = , 4 = , 5 = , 6 =
+ * WcAWB          = Auto White Balance, 0 = no, 1 = yes
+ * WcWBMode       = White Balance Mode, 0 = auto, 1 =
+ * WcAWBGain      = Auto White Balance Gain, 0 = no, 1 = yes
+ * WcAEC          = Auto exposure control (Sensor), 0 = no, 1 = yes
+ * WcAECDSP       = Auto exposure control (DSP), 0 = no, 1 = yes
+ * WcAECValue     = Auto exposure control value, 0 ... 1024
+ * WcAECLevel     = Auto exposure control level, -2 ... +2
+ * WcAGC          = Auto gain control, 0 = no, 1 = yes
+ * WcAGCGain      = Auto gain control gain, 0 .. 30
+ * WcGainCeiling  = Gain ceiling, 0 .. 6 (0 = x2, 1 = x4, 2 = x8, 3 = x16, 4 = x32, 5 = x64, 6 = x128)
+ * WcGammaCorrect = Auto Gamma Correct, 0 = no, 1 = yes
+ * WcLensCorrect  = Auto Lens Correct, 0 = no, 1 = yes
+ * WcWPC          = White Pixel Correct, 0 = no, 1 = yes
+ * WcDCW          = Downscale, 0 = no, 1 = yes
+ * WcBPC          = Black Pixel Correct, 0 = no, 1 = yes
+ * WcColorbar     = Show Colorbar, 0 = no, 1 = yes
+ * WcFeature      = Set extended Feature, 0 = off, 1 = reduce FPS, 2 = Nightmode
+ * WcStats        = Show Statistics
+ * WcInit         = Init Camera Interface
+ * WcRtsp         = Control RTSP Server, 0=disable, 1=enable (forces restart) (if defined ENABLE_RTSPSERVER)
  *
- * Only boards with PSRAM should be used. To enable PSRAM board should be se set to esp32cam in common32 of platform_override.ini
- * board                   = esp32cam
- * To speed up cam processing cpu frequency should be better set to 240Mhz in common32 of platform_override.ini
- * board_build.f_cpu       = 240000000L
+ * WcFeature Explanation
+ * See https://hobbylad.files.wordpress.com/2020/02/ov2640-camera-module-software-application-notes.pdf
+ * for more Information
+ * 0: Normal Operation
+ * 1: Reduced FPS: Set XCLK Divisor to 2. Reduces Framerate and also increases exposure time. This causes
+ *    better low light performance. See above document, page 6
+ * 2: Night Mode: Further increase exposure time and lower the Framerate depending on available light.
+ *    See above Document, Page 8
+ *
+ * Only boards with PSRAM should be used.
+ * To speed up cam processing cpu frequency should be better set to 240Mhz
+ * 
  * remarks for AI-THINKER
  * GPIO0 zero must be disconnected from any wire after programming because this pin drives the cam clock and does
  * not tolerate any capictive load
@@ -82,17 +109,6 @@
 #include "esp_camera.h"
 #include "sensor.h"
 #include "fb_gfx.h"
-
-#ifdef USE_FACE_DETECT
-  #if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(4, 0, 0)
-    #include "fd_forward.h"
-    #include "fr_forward.h"
-//    #pragma message("Face detection enabled")
-  #else
-    #pragma message("Face detection not supported from Tasmota with Arduino Core 2.0.x. Disabling")
-    #undef USE_FACE_DETECT
-  #endif
-#endif
 
 bool HttpCheckPriviledgedAccess(bool);
 extern ESP8266WebServer *Webserver;
@@ -146,12 +162,6 @@ struct {
   WiFiClient client;
   ESP8266WebServer *CamServer;
   struct PICSTORE picstore[MAX_PICSTORE];
-#ifdef USE_FACE_DETECT
-  uint8_t  faces;
-  uint16_t face_detect_time;
-  uint32_t face_ltime;
-  mtmn_config_t mtmn_config = {0};
-#endif // USE_FACE_DETECT
 #ifdef ENABLE_RTSPSERVER
   WiFiServer *rtspp;
   CStreamer *rtsp_streamer;
@@ -162,6 +172,15 @@ struct {
   uint32_t rtsp_lastframe_time;
 #endif // ENABLE_RTSPSERVER
 } Wc;
+
+struct {
+  uint32_t camcnt = 0;
+  uint32_t camfps = 0;
+  uint32_t camfail = 0;
+  uint32_t jpegfail = 0;
+  uint32_t clientfail = 0;
+  char name[7] = "Webcam";
+} WcStats;
 
 /*********************************************************************************************/
 
@@ -196,6 +215,115 @@ bool WcPinUsed(void) {
     pin_used = false;
   }
   return pin_used;
+}
+
+void WcFeature(int32_t value) {
+  sensor_t * wc_s = esp_camera_sensor_get();
+  if (!wc_s) { return; }
+
+  if (value != 1) {
+      // CLKRC: Set Clock Divider to 0 = fullspeed
+      wc_s->set_reg(wc_s, 0x111, 0x3f, 0x00);
+      vTaskDelay(200 / portTICK_PERIOD_MS);
+  }
+  if (value != 2) {
+      // Stop Nightmode
+      wc_s->set_reg(wc_s, 0x103, 0xff, 0x0a);   // COM1: Reset dummy frames
+      wc_s->set_reg(wc_s, 0x10f, 0xff, 0x43);   // Reserved Reg
+      wc_s->set_reg(wc_s, 0x10f, 0xff, 0x4b);   // Reserved Reg
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      wc_s->set_reg(wc_s, 0x10f, 0xff, 0x43);   // Reserved Reg
+  }
+
+  switch(value) {
+    case 1:
+      // Reduce FPS
+      // CLKRC: Set Clock Divider to 2
+      wc_s->set_reg(wc_s, 0x111, 0x3f, 0x02);
+      break;
+    case 2:
+      // Start Nightmode
+      wc_s->set_reg(wc_s, 0x10f, 0xff, 0x4b);   // Reserved Reg
+      wc_s->set_reg(wc_s, 0x103, 0xff, 0xcf);   // COM1: Allow 7 dummy frames
+      break;
+  }
+  AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Feature: %d"), value);
+}
+
+void WcApplySettings() {
+  sensor_t * wc_s = esp_camera_sensor_get();
+  if (!wc_s) { return; }
+
+  wc_s->set_vflip(wc_s, Settings->webcam_config.flip);
+  wc_s->set_hmirror(wc_s, Settings->webcam_config.mirror);
+
+  wc_s->set_brightness(wc_s, Settings->webcam_config.brightness - 2);
+  wc_s->set_saturation(wc_s, Settings->webcam_config.saturation - 2);
+  wc_s->set_contrast(wc_s, Settings->webcam_config.contrast - 2);
+
+  wc_s->set_special_effect(wc_s, Settings->webcam_config2.special_effect);
+
+  wc_s->set_whitebal(wc_s, Settings->webcam_config.awb);
+  wc_s->set_wb_mode(wc_s, Settings->webcam_config2.wb_mode);
+  wc_s->set_awb_gain(wc_s, Settings->webcam_config.awb_gain);
+
+  wc_s->set_exposure_ctrl(wc_s, Settings->webcam_config.aec);
+  wc_s->set_aec_value(wc_s, Settings->webcam_config2.aec_value - 2);
+  wc_s->set_ae_level(wc_s, Settings->webcam_config2.ae_level);
+  wc_s->set_aec2(wc_s, Settings->webcam_config.aec2);
+
+  wc_s->set_gain_ctrl(wc_s, Settings->webcam_config.agc);
+  wc_s->set_agc_gain(wc_s, Settings->webcam_config2.agc_gain);
+  wc_s->set_gainceiling(wc_s, (gainceiling_t)Settings->webcam_config2.gainceiling);
+
+  wc_s->set_raw_gma(wc_s, Settings->webcam_config.raw_gma);
+  wc_s->set_lenc(wc_s, Settings->webcam_config.lenc);
+  wc_s->set_wpc(wc_s, Settings->webcam_config.wpc);
+  wc_s->set_dcw(wc_s, Settings->webcam_config.dcw);
+  wc_s->set_bpc(wc_s, Settings->webcam_config.bpc);
+
+  WcFeature(Settings->webcam_config.feature);
+
+  AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Settings updated"));
+}
+
+void WcSetDefaults(uint32_t upgrade) {
+  if (!upgrade) {
+    Settings->webcam_config.flip = 0;
+    Settings->webcam_config.mirror = 0;
+
+    Settings->webcam_config.saturation = 2; // = 0
+    Settings->webcam_config.brightness = 2; // = 0
+    Settings->webcam_config.contrast = 2;   // = 0
+  }
+
+  Settings->webcam_config2.special_effect = 0;
+  Settings->webcam_config.colorbar = 0;
+
+  Settings->webcam_config.awb = 1;        // white balance
+  Settings->webcam_config2.wb_mode = 0;   // white balance mode
+  Settings->webcam_config.awb_gain = 1;   // white blance gain
+
+  Settings->webcam_config.aec = 1;          // autoexposure (sensor)
+  Settings->webcam_config.aec2 = 1;         // autoexposure (dsp)
+  Settings->webcam_config2.ae_level = 2;    // autoexposure level (-2 - +2, default 0)
+  Settings->webcam_config2.aec_value = 204; // manual exposure value
+
+  Settings->webcam_config.agc = 1;          // auto gain control
+  Settings->webcam_config2.agc_gain = 5;    // manual gain control
+  Settings->webcam_config2.gainceiling = 0; // auto gain ceiling
+
+  Settings->webcam_config.raw_gma = 1;      // gamma correct
+  Settings->webcam_config.lenc = 1;         // lens correction
+  Settings->webcam_config.wpc = 1;          // white pixel correct
+  Settings->webcam_config.dcw = 1;          // downsize en
+  Settings->webcam_config.bpc = 0;          // black pixel correct?
+
+  Settings->webcam_config.feature = 0;
+
+  AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Defaults set"));
+
+  if (Wc.up) { WcApplySettings(); }
 }
 
 uint32_t WcSetup(int32_t fsiz) {
@@ -308,13 +436,6 @@ uint32_t WcSetup(int32_t fsiz) {
 //  AddLog(LOG_LEVEL_INFO, PSTR("CAM: heap check 2: %d"),ESP_getFreeHeap());
 
   sensor_t * wc_s = esp_camera_sensor_get();
-
-  wc_s->set_vflip(wc_s, Settings->webcam_config.flip);
-  wc_s->set_hmirror(wc_s, Settings->webcam_config.mirror);
-  wc_s->set_brightness(wc_s, Settings->webcam_config.brightness -2);  // up the brightness just a bit
-  wc_s->set_saturation(wc_s, Settings->webcam_config.saturation -2);  // lower the saturation
-  wc_s->set_contrast(wc_s, Settings->webcam_config.contrast -2);      // keep contrast
-
   // drop down frame size for higher initial frame rate
   wc_s->set_framesize(wc_s, (framesize_t)fsiz);
 
@@ -327,9 +448,7 @@ uint32_t WcSetup(int32_t fsiz) {
   Wc.height = wc_fb->height;
   esp_camera_fb_return(wc_fb);
 
-#ifdef USE_FACE_DETECT
-  fd_init();
-#endif
+  WcApplySettings();
 
   AddLog(LOG_LEVEL_INFO, PSTR("CAM: Initialized"));
 
@@ -350,6 +469,9 @@ int32_t WcSetOptions(uint32_t sel, int32_t value) {
     case 0:
       if (value >= 0) { s->set_framesize(s, (framesize_t)value); }
       res = s->status.framesize;
+
+      // WcFeature is lost on resolution change
+      WcApplySettings();
       break;
     case 1:
       if (value >= 0) { s->set_special_effect(s, value); }
@@ -374,6 +496,74 @@ int32_t WcSetOptions(uint32_t sel, int32_t value) {
     case 6:
       if (value >= -4) { s->set_saturation(s,value); }
       res = s->status.saturation;
+      break;
+    case 7:
+      if (value >= 0) { s->set_whitebal(s, value); }
+      res = s->status.awb;
+      break;
+    case 8:
+      if (value >= 0) { s->set_wb_mode(s, value); }
+      res = s->status.wb_mode;
+      break;
+    case 9:
+      if (value >= 0) { s->set_awb_gain(s, value); }
+      res = s->status.awb_gain;
+      break;
+    case 10:
+      if (value >= 0) { s->set_exposure_ctrl(s, value); }
+      res = s->status.aec;
+      break;
+    case 11:
+      if (value >= 0) { s->set_aec_value(s, value); }
+      res = s->status.aec_value;
+      break;
+    case 12:
+      if (value >= 0) { s->set_ae_level(s, value); }
+      res = s->status.ae_level;
+      break;
+    case 13:
+      if (value >= 0) { s->set_aec2(s, value); }
+      res = s->status.aec2;
+      break;
+    case 14:
+      if (value >= 0) { s->set_gain_ctrl(s, value); }
+      res = s->status.agc;
+      break;
+    case 15:
+      if (value >= 0) { s->set_agc_gain(s, value); }
+      res = s->status.agc_gain;
+      break;
+    case 16:
+      if (value >= 0) { s->set_gainceiling(s, (gainceiling_t)value); }
+      res = s->status.gainceiling;
+      break;
+    case 17:
+      if (value >= 0) { s->set_raw_gma(s, value); }
+      res = s->status.raw_gma;
+      break;
+    case 18:
+      if (value >= 0) { s->set_lenc(s, value); }
+      res = s->status.lenc;
+      break;
+    case 19:
+      if (value >= 0) { s->set_wpc(s, value); }
+      res = s->status.wpc;
+      break;
+    case 20:
+      if (value >= 0) { s->set_dcw(s, value); }
+      res = s->status.dcw;
+      break;
+    case 21:
+      // blackpixelcontrol
+      if (value >= 0) { s->set_bpc(s, value); }
+      res = s->status.bpc;
+      break;
+    case 22:
+      if (value >= 0) { s->set_colorbar(s, value); }
+      res = s->status.colorbar;
+      break;
+    case 23:
+      if (value >= 0) { WcFeature(value); }
       break;
   }
 
@@ -408,11 +598,7 @@ uint8_t *last_motion_buffer;
 
 
 uint32_t WcSetMotionDetect(int32_t value) {
-  //if (value >= 0) { wc_motion.motion_detect = value; }
-  if (value >= 0) {
-   wc_motion.motion_detect = value;
-   wc_motion.motion_ltime = millis();
-  }
+  if (value >= 0) { wc_motion.motion_detect = value; }
   if (-1 == value) {
     return wc_motion.motion_trigger;
   } else  {
@@ -464,143 +650,6 @@ void WcDetectMotion(void) {
     esp_camera_fb_return(wc_fb);
   }
 }
-
-/*********************************************************************************************/
-
-#ifdef USE_FACE_DETECT
-
-void fd_init(void) {
-  Wc.mtmn_config.type = FAST;
-  Wc.mtmn_config.min_face = 80;
-  Wc.mtmn_config.pyramid = 0.707;
-  Wc.mtmn_config.pyramid_times = 4;
-  Wc.mtmn_config.p_threshold.score = 0.6;
-  Wc.mtmn_config.p_threshold.nms = 0.7;
-  Wc.mtmn_config.p_threshold.candidate_number = 20;
-  Wc.mtmn_config.r_threshold.score = 0.7;
-  Wc.mtmn_config.r_threshold.nms = 0.7;
-  Wc.mtmn_config.r_threshold.candidate_number = 10;
-  Wc.mtmn_config.o_threshold.score = 0.7;
-  Wc.mtmn_config.o_threshold.nms = 0.7;
-  Wc.mtmn_config.o_threshold.candidate_number = 1;
-}
-
-#define FACE_COLOR_WHITE  0x00FFFFFF
-#define FACE_COLOR_BLACK  0x00000000
-#define FACE_COLOR_RED    0x000000FF
-#define FACE_COLOR_GREEN  0x0000FF00
-#define FACE_COLOR_BLUE   0x00FF0000
-#define FACE_COLOR_YELLOW (FACE_COLOR_RED | FACE_COLOR_GREEN)
-#define FACE_COLOR_CYAN   (FACE_COLOR_BLUE | FACE_COLOR_GREEN)
-#define FACE_COLOR_PURPLE (FACE_COLOR_BLUE | FACE_COLOR_RED)
-void draw_face_boxes(dl_matrix3du_t *image_matrix, box_array_t *boxes, int face_id);
-
-/*
-void draw_face_boxes(dl_matrix3du_t *image_matrix, box_array_t *boxes, int face_id) {
-    int x, y, w, h, i;
-    uint32_t color = FACE_COLOR_YELLOW;
-    if(face_id < 0){
-        color = FACE_COLOR_RED;
-    } else if(face_id > 0){
-        color = FACE_COLOR_GREEN;
-    }
-    fb_data_t fb;
-    fb.width = image_matrix->w;
-    fb.height = image_matrix->h;
-    fb.data = image_matrix->item;
-    fb.bytes_per_pixel = 3;
-    fb.format = FB_BGR888;
-    for (i = 0; i < boxes->len; i++){
-        // rectangle box
-        x = (int)boxes->box[i].box_p[0];
-        y = (int)boxes->box[i].box_p[1];
-        w = (int)boxes->box[i].box_p[2] - x + 1;
-        h = (int)boxes->box[i].box_p[3] - y + 1;
-        fb_gfx_drawFastHLine(&fb, x, y, w, color);
-        fb_gfx_drawFastHLine(&fb, x, y+h-1, w, color);
-        fb_gfx_drawFastVLine(&fb, x, y, h, color);
-        fb_gfx_drawFastVLine(&fb, x+w-1, y, h, color);
-#if 0
-        // landmark
-        int x0, y0, j;
-        for (j = 0; j < 10; j+=2) {
-            x0 = (int)boxes->landmark[i].landmark_p[j];
-            y0 = (int)boxes->landmark[i].landmark_p[j+1];
-            fb_gfx_fillRect(&fb, x0, y0, 3, 3, color);
-        }
-#endif
-    }
-}
-*/
-
-//#define DL_SPIRAM_SUPPORT
-
-uint32_t WcSetFaceDetect(int32_t value) {
-  if (value >= 0) { Wc.face_detect_time = value; }
-  return Wc.faces;
-}
-
-uint32_t WcDetectFace(void);
-
-uint32_t WcDetectFace(void) {
-  dl_matrix3du_t *image_matrix;
-  size_t out_len, out_width, out_height;
-  uint8_t * out_buf;
-  bool s;
-  bool detected = false;
-  int face_id = 0;
-  camera_fb_t *fb;
-
-  if ((millis() - Wc.face_ltime) > Wc.face_detect_time) {
-    Wc.face_ltime = millis();
-    fb = esp_camera_fb_get();
-    if (!fb) { return ESP_FAIL; }
-
-    image_matrix = dl_matrix3du_alloc(1, fb->width, fb->height, 3);
-    if (!image_matrix) {
-      AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: dl_matrix3du_alloc failed"));
-      esp_camera_fb_return(fb);
-      return ESP_FAIL;
-    }
-
-    out_buf = image_matrix->item;
-    //out_len = fb->width * fb->height * 3;
-    //out_width = fb->width;
-    //out_height = fb->height;
-
-    s = fmt2rgb888(fb->buf, fb->len, fb->format, out_buf);
-    esp_camera_fb_return(fb);
-    if (!s){
-      dl_matrix3du_free(image_matrix);
-      AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: to rgb888 failed"));
-      return ESP_FAIL;
-    }
-
-    box_array_t *net_boxes = face_detect(image_matrix, &Wc.mtmn_config);
-    if (net_boxes){
-      detected = true;
-      Wc.faces = net_boxes->len;
-      //if(recognition_enabled){
-      //    face_id = run_face_recognition(image_matrix, net_boxes);
-      //}
-      //draw_face_boxes(image_matrix, net_boxes, face_id);
-      free(net_boxes->score);
-      free(net_boxes->box);
-      free(net_boxes->landmark);
-      free(net_boxes);
-    } else {
-      Wc.faces = 0;
-    }
-    dl_matrix3du_free(image_matrix);
-    //Serial.printf("face detected: %d",Wc.faces);
-
-  }
-  return 0;
-}
-#endif
-
-/*********************************************************************************************/
-
 
 #ifdef COPYFRAME
 struct PICSTORE tmp_picstore;
@@ -790,6 +839,7 @@ void HandleWebcamMjpegTask(void) {
   if (!Wc.client.connected()) {
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Client fail"));
     Wc.stream_active = 0;
+    WcStats.clientfail++;
   }
   if (1 == Wc.stream_active) {
     Wc.client.flush();
@@ -805,7 +855,9 @@ void HandleWebcamMjpegTask(void) {
     if (!wc_fb) {
       AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Frame fail"));
       Wc.stream_active = 0;
+      WcStats.camfail++;
     }
+    WcStats.camcnt++;
   }
   if (2 == Wc.stream_active) {
     if (wc_fb->format != PIXFORMAT_JPEG) {
@@ -814,6 +866,7 @@ void HandleWebcamMjpegTask(void) {
         AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: JPEG compression failed"));
         _jpg_buf_len = wc_fb->len;
         _jpg_buf = wc_fb->buf;
+        WcStats.jpegfail++;
       }
     } else {
       _jpg_buf_len = wc_fb->len;
@@ -907,9 +960,6 @@ void WcLoop(void) {
     if (Wc.stream_active) { HandleWebcamMjpegTask(); }
   }
   if (wc_motion.motion_detect) { WcDetectMotion(); }
-#ifdef USE_FACE_DETECT
-  if (Wc.face_detect_time) { WcDetectFace(); }
-#endif
 
 #ifdef ENABLE_RTSPSERVER
     if (Settings->webcam_config.rtsp && !TasmotaGlobal.global_state.wifi_down && Wc.up) {
@@ -977,11 +1027,14 @@ void WcInit(void) {
   if (!Settings->webcam_config.data) {
     Settings->webcam_config.stream = 1;
     Settings->webcam_config.resolution = FRAMESIZE_QVGA;
-    Settings->webcam_config.flip = 0;
-    Settings->webcam_config.mirror = 0;
-    Settings->webcam_config.saturation = 0;  // -2
-    Settings->webcam_config.brightness = 3;  // 1
-    Settings->webcam_config.contrast = 2;    // 0
+    WcSetDefaults(0);
+  }
+  // previous webcam driver had only a small subset of possible config vars
+  // in this case we have to only set the new variables to default values
+  if(!Settings->webcam_config2.upgraded) {
+    AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Upgrade settings"));
+    WcSetDefaults(1);
+    Settings->webcam_config2.upgraded = 1;
   }
 }
 
@@ -997,12 +1050,45 @@ void WcInit(void) {
 #define D_CMND_WC_SATURATION "Saturation"
 #define D_CMND_WC_BRIGHTNESS "Brightness"
 #define D_CMND_WC_CONTRAST "Contrast"
+#define D_CMND_WC_SPECIALEFFECT "SpecialEffect"
+
+#define D_CMND_WC_AWB "AWB"
+#define D_CMND_WC_WB_MODE "WBMode"
+#define D_CMND_WC_AWB_GAIN "AWBGain"
+
+#define D_CMND_WC_AEC "AEC"
+#define D_CMND_WC_AEC_VALUE "AECValue"
+#define D_CMND_WC_AE_LEVEL "AELevel"
+#define D_CMND_WC_AEC2 "AECDSP"
+
+#define D_CMND_WC_AGC "AGC"
+#define D_CMND_WC_AGC_GAIN "AGCGain"
+#define D_CMND_WC_GAINCEILING "GainCeiling"
+
+#define D_CMND_WC_RAW_GMA "GammaCorrect"
+#define D_CMND_WC_LENC "LensCorrect"
+
+#define D_CMND_WC_WPC "WPC"
+#define D_CMND_WC_DCW "DCW"
+#define D_CMND_WC_BPC "BPC"
+
+#define D_CMND_WC_COLORBAR "Colorbar"
+
+#define D_CMND_WC_FEATURE "Feature"
+#define D_CMND_WC_SETDEFAULTS "SetDefaults"
+#define D_CMND_WC_STATS "Stats"
+
 #define D_CMND_WC_INIT "Init"
 #define D_CMND_RTSP "Rtsp"
 
 const char kWCCommands[] PROGMEM =  D_PRFX_WEBCAM "|"  // Prefix
   "|" D_CMND_WC_STREAM "|" D_CMND_WC_RESOLUTION "|" D_CMND_WC_MIRROR "|" D_CMND_WC_FLIP "|"
-  D_CMND_WC_SATURATION "|" D_CMND_WC_BRIGHTNESS "|" D_CMND_WC_CONTRAST "|" D_CMND_WC_INIT
+  D_CMND_WC_SATURATION "|" D_CMND_WC_BRIGHTNESS "|" D_CMND_WC_CONTRAST "|" D_CMND_WC_SPECIALEFFECT "|"
+  D_CMND_WC_AWB "|" D_CMND_WC_WB_MODE "|" D_CMND_WC_AWB_GAIN "|" D_CMND_WC_AEC "|"
+  D_CMND_WC_AEC_VALUE "|" D_CMND_WC_AE_LEVEL "|" D_CMND_WC_AEC2 "|" D_CMND_WC_AGC "|"
+  D_CMND_WC_AGC_GAIN "|" D_CMND_WC_GAINCEILING "|" D_CMND_WC_RAW_GMA "|" D_CMND_WC_LENC "|"
+  D_CMND_WC_WPC "|" D_CMND_WC_DCW "|" D_CMND_WC_BPC "|" D_CMND_WC_COLORBAR "|" D_CMND_WC_FEATURE "|"
+  D_CMND_WC_SETDEFAULTS "|" D_CMND_WC_STATS "|" D_CMND_WC_INIT
 #ifdef ENABLE_RTSPSERVER
   "|" D_CMND_RTSP
 #endif // ENABLE_RTSPSERVER
@@ -1010,7 +1096,12 @@ const char kWCCommands[] PROGMEM =  D_PRFX_WEBCAM "|"  // Prefix
 
 void (* const WCCommand[])(void) PROGMEM = {
   &CmndWebcam, &CmndWebcamStream, &CmndWebcamResolution, &CmndWebcamMirror, &CmndWebcamFlip,
-  &CmndWebcamSaturation, &CmndWebcamBrightness, &CmndWebcamContrast, &CmndWebcamInit
+  &CmndWebcamSaturation, &CmndWebcamBrightness, &CmndWebcamContrast, &CmndWebcamSpecialEffect,
+  &CmndWebcamAWB, &CmndWebcamWBMode, &CmndWebcamAWBGain, &CmndWebcamAEC, &CmndWebcamAECValue,
+  &CmndWebcamAELevel, &CmndWebcamAEC2, &CmndWebcamAGC, &CmndWebcamAGCGain, &CmndWebcamGainCeiling,
+  &CmndWebcamGammaCorrect, &CmndWebcamLensCorrect, &CmndWebcamWPC, &CmndWebcamDCW, &CmndWebcamBPC,
+  &CmndWebcamColorbar, &CmndWebcamFeature, &CmndWebcamSetDefaults,
+  &CmndWebcamStats, &CmndWebcamInit
 #ifdef ENABLE_RTSPSERVER
   , &CmndWebRtsp
 #endif // ENABLE_RTSPSERVER
@@ -1019,14 +1110,26 @@ void (* const WCCommand[])(void) PROGMEM = {
 void CmndWebcam(void) {
   Response_P(PSTR("{\"" D_PRFX_WEBCAM "\":{\"" D_CMND_WC_STREAM "\":%d,\"" D_CMND_WC_RESOLUTION "\":%d,\"" D_CMND_WC_MIRROR "\":%d,\""
     D_CMND_WC_FLIP "\":%d,\""
-    D_CMND_WC_SATURATION "\":%d,\"" D_CMND_WC_BRIGHTNESS "\":%d,\"" D_CMND_WC_CONTRAST "\":%d"
+    D_CMND_WC_SATURATION "\":%d,\"" D_CMND_WC_BRIGHTNESS "\":%d,\"" D_CMND_WC_CONTRAST "\":%d,\""
+    D_CMND_WC_SPECIALEFFECT "\":%d,\"" D_CMND_WC_AWB  "\":%d,\"" D_CMND_WC_WB_MODE "\":%d,\""
+    D_CMND_WC_AWB_GAIN "\":%d,\"" D_CMND_WC_AEC "\":%d,\"" D_CMND_WC_AEC_VALUE "\":%d,\""
+    D_CMND_WC_AE_LEVEL "\":%d,\"" D_CMND_WC_AEC2 "\":%d,\"" D_CMND_WC_AGC "\":%d,\""
+    D_CMND_WC_AGC_GAIN "\":%d,\"" D_CMND_WC_GAINCEILING "\":%d,\"" D_CMND_WC_RAW_GMA "\":%d,\""
+    D_CMND_WC_LENC "\":%d,\"" D_CMND_WC_WPC "\":%d,\"" D_CMND_WC_DCW "\":%d,\"" D_CMND_WC_BPC "\":%d,\""
+    D_CMND_WC_COLORBAR "\":%d,\"" D_CMND_WC_FEATURE "\":%d"
 #ifdef ENABLE_RTSPSERVER
   ",\"" D_CMND_RTSP "\":%d"
 #endif // ENABLE_RTSPSERVER
   "}}"),
     Settings->webcam_config.stream, Settings->webcam_config.resolution, Settings->webcam_config.mirror,
     Settings->webcam_config.flip,
-    Settings->webcam_config.saturation -2, Settings->webcam_config.brightness -2, Settings->webcam_config.contrast -2
+    Settings->webcam_config.saturation -2, Settings->webcam_config.brightness -2, Settings->webcam_config.contrast -2,
+    Settings->webcam_config2.special_effect, Settings->webcam_config.awb, Settings->webcam_config2.wb_mode,
+    Settings->webcam_config.awb_gain, Settings->webcam_config.aec, Settings->webcam_config2.aec_value,
+    Settings->webcam_config2.ae_level -2, Settings->webcam_config.aec2, Settings->webcam_config.agc,
+    Settings->webcam_config2.agc_gain, Settings->webcam_config2.gainceiling, Settings->webcam_config.raw_gma,
+    Settings->webcam_config.lenc, Settings->webcam_config.wpc, Settings->webcam_config.dcw, Settings->webcam_config.bpc,
+    Settings->webcam_config.colorbar, Settings->webcam_config.feature
 #ifdef ENABLE_RTSPSERVER
   , Settings->webcam_config.rtsp
 #endif // ENABLE_RTSPSERVER
@@ -1089,9 +1192,171 @@ void CmndWebcamContrast(void) {
   ResponseCmndNumber(Settings->webcam_config.contrast -2);
 }
 
+void CmndWebcamSpecialEffect(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 6)) {
+    Settings->webcam_config2.special_effect = XdrvMailbox.payload;
+    WcSetOptions(1, Settings->webcam_config2.special_effect);
+  }
+  ResponseCmndNumber(Settings->webcam_config2.special_effect);
+}
+
+void CmndWebcamAWB(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.awb = XdrvMailbox.payload;
+    WcSetOptions(7, Settings->webcam_config.awb);
+  }
+  ResponseCmndStateText(Settings->webcam_config.awb);
+}
+
+void CmndWebcamWBMode(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 4)) {
+    Settings->webcam_config2.wb_mode = XdrvMailbox.payload;
+    WcSetOptions(8, Settings->webcam_config2.wb_mode);
+  }
+  ResponseCmndNumber(Settings->webcam_config2.wb_mode);
+}
+
+void CmndWebcamAWBGain(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.awb_gain = XdrvMailbox.payload;
+    WcSetOptions(9, Settings->webcam_config.awb_gain);
+  }
+  ResponseCmndStateText(Settings->webcam_config.awb_gain);
+}
+
+void CmndWebcamAEC(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.aec = XdrvMailbox.payload;
+    WcSetOptions(10, Settings->webcam_config.aec);
+  }
+  ResponseCmndStateText(Settings->webcam_config.aec);
+}
+
+void CmndWebcamAECValue(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1200)) {
+    Settings->webcam_config2.aec_value = XdrvMailbox.payload;
+    WcSetOptions(11, Settings->webcam_config2.aec_value);
+  }
+  ResponseCmndNumber(Settings->webcam_config2.aec_value);
+}
+
+void CmndWebcamAELevel(void) {
+  if ((XdrvMailbox.payload >= -2) && (XdrvMailbox.payload <= 2)) {
+    Settings->webcam_config2.ae_level = XdrvMailbox.payload + 2;
+    WcSetOptions(12, Settings->webcam_config2.ae_level - 2);
+  }
+  ResponseCmndNumber(Settings->webcam_config2.ae_level - 2);
+}
+
+void CmndWebcamAEC2(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.aec2 = XdrvMailbox.payload;
+    WcSetOptions(13, Settings->webcam_config.aec2);
+  }
+  ResponseCmndStateText(Settings->webcam_config.aec2);
+}
+
+void CmndWebcamAGC(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.agc = XdrvMailbox.payload;
+    WcSetOptions(14, Settings->webcam_config.agc);
+  }
+  ResponseCmndStateText(Settings->webcam_config.agc);
+}
+
+void CmndWebcamAGCGain(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 30)) {
+    Settings->webcam_config2.agc_gain = XdrvMailbox.payload;
+    WcSetOptions(15, Settings->webcam_config2.agc_gain);
+  }
+  ResponseCmndNumber(Settings->webcam_config2.agc_gain);
+}
+
+void CmndWebcamGainCeiling(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 6)) {
+    Settings->webcam_config2.gainceiling = XdrvMailbox.payload;
+    WcSetOptions(16, Settings->webcam_config2.gainceiling);
+  }
+  ResponseCmndNumber(Settings->webcam_config2.gainceiling);
+}
+
+void CmndWebcamGammaCorrect(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.raw_gma = XdrvMailbox.payload;
+    WcSetOptions(17, Settings->webcam_config.raw_gma);
+  }
+  ResponseCmndStateText(Settings->webcam_config.raw_gma);
+}
+
+void CmndWebcamLensCorrect(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.lenc = XdrvMailbox.payload;
+    WcSetOptions(18, Settings->webcam_config.lenc);
+  }
+  ResponseCmndStateText(Settings->webcam_config.lenc);
+}
+
+void CmndWebcamWPC(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.wpc = XdrvMailbox.payload;
+    WcSetOptions(19, Settings->webcam_config.wpc);
+  }
+  ResponseCmndStateText(Settings->webcam_config.wpc);
+}
+
+void CmndWebcamDCW(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.dcw = XdrvMailbox.payload;
+    WcSetOptions(20, Settings->webcam_config.dcw);
+  }
+  ResponseCmndStateText(Settings->webcam_config.dcw);
+}
+
+void CmndWebcamBPC(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.bpc = XdrvMailbox.payload;
+    WcSetOptions(21, Settings->webcam_config.bpc);
+  }
+  ResponseCmndStateText(Settings->webcam_config.bpc);
+}
+
+void CmndWebcamColorbar(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    Settings->webcam_config.colorbar = XdrvMailbox.payload;
+    WcSetOptions(22, Settings->webcam_config.colorbar);
+  }
+  ResponseCmndStateText(Settings->webcam_config.colorbar);
+}
+
+void CmndWebcamFeature(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 2)) {
+    Settings->webcam_config.feature = XdrvMailbox.payload;
+    WcSetOptions(23, Settings->webcam_config.feature);
+  }
+  ResponseCmndNumber(Settings->webcam_config.feature);
+}
+
 void CmndWebcamInit(void) {
   WcInterruptControl();
   ResponseCmndDone();
+}
+
+void CmndWebcamSetDefaults(void) {
+  WcSetDefaults(0);
+  ResponseCmndDone();
+}
+
+#define D_WEBCAM_STATS_FPS "FPS"
+#define D_WEBCAM_STATS_CAMFAIL "CamFail"
+#define D_WEBCAM_STATS_JPEGFAIL "JpegFail"
+#define D_WEBCAM_STATS_CLIENTFAIL "ClientFail"
+
+void CmndWebcamStats(void) {
+  Response_P(PSTR("{\"" D_PRFX_WEBCAM D_CMND_WC_STATS "\":{\"" D_WEBCAM_STATS_FPS "\":%d,\""
+    D_WEBCAM_STATS_CAMFAIL "\":%d,\"" D_WEBCAM_STATS_JPEGFAIL "\":%d,\"" D_WEBCAM_STATS_CLIENTFAIL "\":%d"
+  "}}"),
+  WcStats.camfps, WcStats.camfail, WcStats.jpegfail, WcStats.clientfail
+  );
 }
 
 #ifdef ENABLE_RTSPSERVER
@@ -1104,6 +1369,18 @@ void CmndWebRtsp(void) {
 }
 #endif // ENABLE_RTSPSERVER
 
+void WcUpdateStats(void) {
+  WcStats.camfps = WcStats.camcnt;
+  WcStats.camcnt = 0;
+}
+
+const char HTTP_WEBCAM_FPS[] PROGMEM = "{s}%s " D_FRAME_RATE "{m}%d " D_UNIT_FPS  "{e}";
+
+void WcStatsShow(void) {
+#ifdef USE_WEBSERVER
+  WSContentSend_PD(HTTP_WEBCAM_FPS, WcStats.name, WcStats.camfps);
+#endif  // USE_WEBSERVER
+}
 
 /*********************************************************************************************\
  * Interface
@@ -1122,6 +1399,11 @@ bool Xdrv81(uint8_t function) {
     case FUNC_WEB_ADD_MAIN_BUTTON:
       WcShowStream();
      break;
+    case FUNC_EVERY_SECOND:
+      WcUpdateStats();
+    case FUNC_WEB_SENSOR:
+      WcStatsShow();
+      break;
     case FUNC_COMMAND:
       result = DecodeCommand(kWCCommands, WCCommand);
       break;

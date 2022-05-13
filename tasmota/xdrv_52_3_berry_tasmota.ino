@@ -183,8 +183,9 @@ extern "C" {
     if (top == 1) {  // no argument (instance only)
       be_newobject(vm, "map");
       be_map_insert_int(vm, "flash", ESP.getFlashChipSize() / 1024);
+      be_map_insert_int(vm, "flash_real", ESP_getFlashChipRealSize() / 1024);
       be_map_insert_int(vm, "program", ESP_getSketchSize() / 1024);
-      be_map_insert_int(vm, "program_free", ESP.getFreeSketchSpace() / 1024);
+      be_map_insert_int(vm, "program_free", ESP_getFreeSketchSpace() / 1024);
       be_map_insert_int(vm, "heap_free", ESP_getFreeHeap() / 1024);
       be_map_insert_int(vm, "frag", ESP_getHeapFragmentation());
       // give info about stack size
@@ -381,7 +382,7 @@ extern "C" {
     if (top == 2 && be_isstring(vm, 2)) {
       const char *msg = be_tostring(vm, 2);
       strlcpy(XdrvMailbox.command, msg, CMDSZ);
-      be_return_nil(vm); // Return nil when something goes wrong
+      be_return_nil(vm);
     }
     be_raise(vm, kTypeError, nullptr);
   }
@@ -394,7 +395,7 @@ extern "C" {
       const char *msg = be_tostring(vm, 2);
       be_pop(vm, top);  // avoid Error be_top is non zero message
       ResponseAppend_P(PSTR("%s"), msg);
-      be_return_nil(vm); // Return nil when something goes wrong
+      be_return_nil(vm);
     }
     be_raise(vm, kTypeError, nullptr);
   }
@@ -636,7 +637,7 @@ extern "C" {
     uint32_t len = ext_vsnprintf_P(log_data, LOGSZ-3, berry_buf, arg);
     va_end(arg);
     if (len+3 > LOGSZ) { strcat(log_data, "..."); }  // Actual data is more
-    Serial.printf(log_data);
+    TasConsole.printf(log_data);
   }
 
   void berry_log_C(const char * berry_buf, ...) {

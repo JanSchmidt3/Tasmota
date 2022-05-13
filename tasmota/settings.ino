@@ -47,6 +47,7 @@ void RtcSettingsSave(void) {
       for (uint32_t i = 0; i < 3; i++) {
         RtcSettings.energy_kWhtoday_ph[i] = Settings->energy_kWhtoday_ph[i];
         RtcSettings.energy_kWhtotal_ph[i] = Settings->energy_kWhtotal_ph[i];
+        RtcSettings.energy_kWhexport_ph[i] = Settings->energy_kWhexport_ph[i];
       }
       RtcSettings.energy_usage = Settings->energy_usage;
       for (uint32_t i = 0; i < MAX_COUNTERS; i++) {
@@ -941,6 +942,7 @@ void SettingsDefaultSet2(void) {
   SettingsUpdateText(SET_RGX_PASSWORD, PSTR(WIFI_RGX_PASSWORD));
   Settings->sbflag1.range_extender = WIFI_RGX_STATE;
   Settings->sbflag1.range_extender_napt = WIFI_RGX_NAPT;
+  flag5.wifi_no_sleep |= WIFI_NO_SLEEP;
 
   // Syslog
   SettingsUpdateText(SET_SYSLOG_HOST, PSTR(SYS_LOG_HOST));
@@ -981,6 +983,7 @@ void SettingsDefaultSet2(void) {
   flag5.mqtt_info_retain |= MQTT_INFO_RETAIN;
   flag5.mqtt_state_retain |= MQTT_STATE_RETAIN;
   flag5.mqtt_switches |= MQTT_SWITCHES;
+  flag5.mqtt_persistent |= ~MQTT_CLEAN_SESSION;
 //  flag.mqtt_serial |= 0;
   flag.device_index_enable |= MQTT_POWER_FORMAT;
   flag3.time_append_timezone |= MQTT_APPEND_TIMEZONE;
@@ -1225,6 +1228,9 @@ void SettingsDefaultSet2(void) {
   flag5.shift595_invert_outputs |= SHIFT595_INVERT_OUTPUTS;
   Settings->shift595_device_count = SHIFT595_DEVICE_COUNT;
   flag5.tls_use_fingerprint |= MQTT_TLS_FINGERPRINT;
+  #ifdef BLE_ESP32_ENABLE
+  flag5.mi32_enable |= BLE_ESP32_ENABLE;
+  #endif
 
   Settings->flag = flag;
   Settings->flag2 = flag2;
@@ -1481,6 +1487,10 @@ void SettingsDelta(void) {
       ParseIPv4(&Settings->ipv4_rgx_subnetmask, PSTR(WIFI_RGX_SUBNETMASK));
       SettingsUpdateText(SET_RGX_SSID, PSTR(WIFI_RGX_SSID));
       SettingsUpdateText(SET_RGX_PASSWORD, PSTR(WIFI_RGX_PASSWORD));
+      if ((8883 == Settings->mqtt_port) || (8884 == Settings->mqtt_port) || (443 == Settings->mqtt_port)) {
+        // Turn on TLS for port 8883 (TLS), 8884 (TLS, client certificate), 443 (TLS, user/password)
+        Settings->flag4.mqtt_tls = true;
+      }
     }
     if (Settings->version < 0x09050007) {
 #ifdef DISABLE_REFERER_CHK

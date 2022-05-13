@@ -88,7 +88,7 @@ String ResolveToken(const char* input) {
   return resolved;
 }
 
-char* GetTopic_P(char *stopic, uint32_t prefix, char *topic, const char* subtopic)
+char* GetTopic_P(char *stopic, uint32_t prefix, const char *topic, const char* subtopic)
 {
   /* prefix 0 = Cmnd
      prefix 1 = Stat
@@ -845,6 +845,19 @@ String GetSwitchText(uint32_t i) {
   return switch_text;
 }
 
+void MqttAppendSensorUnits(void)
+{
+  if (ResponseContains_P(PSTR(D_JSON_PRESSURE))) {
+    ResponseAppend_P(PSTR(",\"" D_JSON_PRESSURE_UNIT "\":\"%s\""), PressureUnit().c_str());
+  }
+  if (ResponseContains_P(PSTR(D_JSON_TEMPERATURE))) {
+    ResponseAppend_P(PSTR(",\"" D_JSON_TEMPERATURE_UNIT "\":\"%c\""), TempUnit());
+  }
+  if (ResponseContains_P(PSTR(D_JSON_SPEED)) && Settings->flag2.speed_conversion) {
+    ResponseAppend_P(PSTR(",\"" D_JSON_SPEED_UNIT "\":\"%s\""), SpeedUnit().c_str());
+  }
+}
+
 bool MqttShowSensor(bool call_show_sensor)
 {
   ResponseAppendTime();
@@ -893,15 +906,7 @@ bool MqttShowSensor(bool call_show_sensor)
   }
 
   bool json_data_available = (ResponseLength() - json_data_start);
-  if (ResponseContains_P(PSTR(D_JSON_PRESSURE))) {
-    ResponseAppend_P(PSTR(",\"" D_JSON_PRESSURE_UNIT "\":\"%s\""), PressureUnit().c_str());
-  }
-  if (ResponseContains_P(PSTR(D_JSON_TEMPERATURE))) {
-    ResponseAppend_P(PSTR(",\"" D_JSON_TEMPERATURE_UNIT "\":\"%c\""), TempUnit());
-  }
-  if (ResponseContains_P(PSTR(D_JSON_SPEED)) && Settings->flag2.speed_conversion) {
-    ResponseAppend_P(PSTR(",\"" D_JSON_SPEED_UNIT "\":\"%s\""), SpeedUnit().c_str());
-  }
+  MqttAppendSensorUnits();
   ResponseJsonEnd();
 
   if (call_show_sensor && json_data_available) { XdrvCall(FUNC_SHOW_SENSOR); }
@@ -1170,6 +1175,9 @@ void Every250mSeconds(void)
     if (TasmotaGlobal.ota_state_flag && CommandsReady()) {
       TasmotaGlobal.ota_state_flag--;
       if (2 == TasmotaGlobal.ota_state_flag) {
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+        OtaFactoryWrite(false);
+#endif
         RtcSettings.ota_loader = 0;                       // Try requested image first
         ota_retry_counter = OTA_ATTEMPTS;
         SettingsSave(1);                                  // Free flash for OTA update
@@ -1237,6 +1245,37 @@ void Every250mSeconds(void)
             }
           }
 #endif  // ESP8266
+
+#ifdef ESP32
+#ifndef FIRMWARE_MINIMAL
+#ifdef USE_WEBCLIENT_HTTPS
+          if (TasmotaGlobal.ota_factory) {
+            char *bch = strrchr(full_ota_url, '/');            // Only consider filename after last backslash prevent change of urls having "-" in it
+            if (bch == nullptr) { bch = full_ota_url; }        // No path found so use filename only
+            char *ech = strchr(bch, '.');                      // Find file type in filename (none, .ino.bin, .ino.bin.gz, .bin, .bin.gz or .gz)
+            if (ech == nullptr) { ech = full_ota_url + strlen(full_ota_url); }  // Point to '/0' at end of full_ota_url becoming an empty string
+            char ota_url_type[strlen(ech) +1];
+            strncpy(ota_url_type, ech, sizeof(ota_url_type));  // Either empty, .ino.bin, .ino.bin.gz, .bin, .bin.gz or .gz
+
+            char *pch = strrchr(bch, '-');                     // Find last dash (-) and ignore remainder - handles tasmota-DE
+            if (pch == nullptr) { pch = ech; }                 // No dash so ignore filetype
+            *pch = '\0';                                       // full_ota_url = http://domus1:80/api/arduino/tasmota
+            snprintf_P(full_ota_url, sizeof(full_ota_url), PSTR("%s-safeboot%s"), full_ota_url, ota_url_type);  // Safeboot filename must be filename-safeboot
+          } else
+#endif  // USE_WEBCLIENT_HTTPS
+          if (EspSingleOtaPartition()) {
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+            OtaFactoryWrite(true);
+#endif
+            RtcSettings.ota_loader = 1;                 // Try safeboot image next
+            SettingsSaveAll();
+            AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_APPLICATION D_RESTARTING));
+            EspPrepRestartToSafeBoot();
+            EspRestart();
+          }
+#endif  // FIRMWARE_MINIMAL
+#endif  // ESP32
+
           char version[50];
           snprintf_P(version, sizeof(version), PSTR("%s%s"), TasmotaGlobal.version, TasmotaGlobal.image_name);
           AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_UPLOAD "%s %s"), full_ota_url, version);
@@ -1247,6 +1286,7 @@ void Every250mSeconds(void)
             ota_result = -999;
           } else {
             httpUpdateLight.rebootOnUpdate(false);
+            httpUpdateLight.setFactory(TasmotaGlobal.ota_factory);
             ota_result = (HTTP_UPDATE_FAILED != httpUpdateLight.update(OTAclient, version));
           }
 #else // standard OTA over HTTP
@@ -1395,6 +1435,12 @@ void Every250mSeconds(void)
   case 3:                                                 // Every x.75 second
     if (!TasmotaGlobal.global_state.network_down) {
 #ifdef FIRMWARE_MINIMAL
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+      if (OtaFactoryRead()) {
+        OtaFactoryWrite(false);
+        TasmotaGlobal.ota_state_flag = 3;
+      }
+#endif
       if (1 == RtcSettings.ota_loader) {
         RtcSettings.ota_loader = 0;
         TasmotaGlobal.ota_state_flag = 3;
@@ -1502,8 +1548,8 @@ void ArduinoOTAInit(void)
   {
     if ((LOG_LEVEL_DEBUG <= TasmotaGlobal.seriallog_level)) {
       arduino_ota_progress_dot_count++;
-      Serial.printf(".");
-      if (!(arduino_ota_progress_dot_count % 80)) { Serial.println(); }
+      TasConsole.printf(".");
+      if (!(arduino_ota_progress_dot_count % 80)) { TasConsole.println(); }
     }
   });
 
@@ -1515,7 +1561,7 @@ void ArduinoOTAInit(void)
     */
     char error_str[100];
 
-    if ((LOG_LEVEL_DEBUG <= TasmotaGlobal.seriallog_level) && arduino_ota_progress_dot_count) { Serial.println(); }
+    if ((LOG_LEVEL_DEBUG <= TasmotaGlobal.seriallog_level) && arduino_ota_progress_dot_count) { TasConsole.println(); }
     switch (error) {
       case OTA_BEGIN_ERROR: strncpy_P(error_str, PSTR(D_UPLOAD_ERR_2), sizeof(error_str)); break;
       case OTA_RECEIVE_ERROR: strncpy_P(error_str, PSTR(D_UPLOAD_ERR_5), sizeof(error_str)); break;
@@ -1529,7 +1575,7 @@ void ArduinoOTAInit(void)
 
   ArduinoOTA.onEnd([]()
   {
-    if ((LOG_LEVEL_DEBUG <= TasmotaGlobal.seriallog_level)) { Serial.println(); }
+    if ((LOG_LEVEL_DEBUG <= TasmotaGlobal.seriallog_level)) { TasConsole.println(); }
     AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_UPLOAD "Arduino OTA " D_SUCCESSFUL ". " D_RESTARTING));
     EspRestart();
 	});
@@ -1639,6 +1685,10 @@ void SerialInput(void)
 #endif  // USE_SONOFF_SC
 /*-------------------------------------------------------------------------------------------*/
 
+#ifdef ESP32
+    if (tasconsole_serial) {
+#endif  // ESP32
+
     if (!Settings->flag.mqtt_serial && (TasmotaGlobal.serial_in_byte == '\n')) {                // CMND_SERIALSEND and CMND_SERIALLOG
       TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;                // Serial data completed
       TasmotaGlobal.seriallog_level = (Settings->seriallog_level < LOG_LEVEL_INFO) ? (uint8_t)LOG_LEVEL_INFO : Settings->seriallog_level;
@@ -1653,7 +1703,12 @@ void SerialInput(void)
       Serial.flush();
       return;
     }
-  }
+
+#ifdef ESP32
+    }
+#endif  // ESP32
+
+  }  // endWhile
 
   if (Settings->flag.mqtt_serial && TasmotaGlobal.serial_in_byte_counter && (millis() > (serial_polling_window + SERIAL_POLLING))) {  // CMND_SERIALSEND and CMND_SERIALLOG
     TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;                  // Serial data completed
@@ -1683,6 +1738,43 @@ void SerialInput(void)
   }
 }
 
+/********************************************************************************************/
+
+#ifdef ESP32
+
+String console_buffer = "";
+
+void TasConsoleInput(void) {
+  static bool console_buffer_overrun = false;
+
+  while (TasConsole.available()) {
+    delay(0);
+    char console_in_byte = TasConsole.read();
+
+    if (isprint(console_in_byte)) {                       // Any char between 32 and 127
+      if (console_buffer.length() < INPUT_BUFFER_SIZE) {  // Add char to string if it still fits
+        console_buffer += console_in_byte;
+      } else {
+        console_buffer_overrun = true;                    // Signal overrun but continue reading input to flush until '\n' (EOL)
+      }
+    }
+    if (console_in_byte == '\n') {
+      TasmotaGlobal.seriallog_level = (Settings->seriallog_level < LOG_LEVEL_INFO) ? (uint8_t)LOG_LEVEL_INFO : Settings->seriallog_level;
+      if (console_buffer_overrun) {
+        AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_COMMAND "Console buffer overrun"));
+      } else {
+        AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_COMMAND "%s"), console_buffer.c_str());
+        ExecuteCommand(console_buffer.c_str(), SRC_SERIAL);
+      }
+      console_buffer = "";
+      console_buffer_overrun = false;
+      TasConsole.flush();
+      return;
+    }
+  }
+}
+
+#endif  // ESP32
 
 /********************************************************************************************/
 

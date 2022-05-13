@@ -116,7 +116,18 @@ void WifiConfig(uint8_t type)
   }
 }
 
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  // https://github.com/espressif/arduino-esp32/issues/6264#issuecomment-1040147331
+  // There's an include for this but it doesn't define the function if it doesn't think it needs it, so manually declare the function
+extern "C" void phy_bbpll_en_usb(bool en);
+#endif  // CONFIG_IDF_TARGET_ESP32C3
+
 void WifiSetMode(WiFiMode_t wifi_mode) {
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  // https://github.com/espressif/arduino-esp32/issues/6264#issuecomment-1094376906
+  // This brings the USB serial-jtag back to life. Suggest doing this immediately after wifi startup.
+  phy_bbpll_en_usb(true);
+#endif  // CONFIG_IDF_TARGET_ESP32C3
   if (WiFi.getMode() == wifi_mode) { return; }
 
   if (wifi_mode != WIFI_OFF) {
@@ -606,8 +617,7 @@ void WifiConnect(void)
 #endif  // WIFI_RF_PRE_INIT
 }
 
-void WifiShutdown(bool option = false)
-{
+void WifiShutdown(bool option) {
   // option = false - Legacy disconnect also used by DeepSleep
   // option = true  - Disconnect with SDK wifi calibrate sector erase when WIFI_FORCE_RF_CAL_ERASE enabled
   delay(100);                 // Allow time for message xfer - disabled v6.1.0b

@@ -18,6 +18,8 @@
 */
 
 #ifdef ESP32
+#ifdef USE_ESP32_SENSORS
+#ifndef CONFIG_IDF_TARGET_ESP32S3
 /*********************************************************************************************\
  * ESP32 CPU Temperature and optional Hall Effect sensor
  *
@@ -138,4 +140,6 @@ bool Xsns127(uint8_t function) {
   return result;
 }
 
+#endif  // Not CONFIG_IDF_TARGET_ESP32S3
+#endif  // USE_ESP32_SENSORS
 #endif  // ESP32

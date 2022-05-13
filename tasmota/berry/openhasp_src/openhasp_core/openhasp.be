@@ -3,6 +3,8 @@
 # use `import openhasp` and set the JSONL definitions in `pages.jsonl`
 #
 # As an optimization `0 #- lv.PART_MAIN | lv.STATE_DEFAULT -#` is replaced with `0`
+#
+# rm openhasp.tapp; zip -j -0 openhasp.tapp openhasp_core/*
 #################################################################################
 # How to solidify (needs an ESP32 with PSRAM)
 #-
@@ -17,7 +19,8 @@ var classes = [
   "page", "obj", "scr",
   "btn", "switch", "checkbox",
   "label", "spinner", "line", "img", "roller", "btnmatrix",
-  "bar", "slider", "arc", "textarea", "dropdown"
+  "bar", "slider", "arc", "textarea", "dropdown",
+  "qrcode"
 ]
 for c:classes
   solidify.dump(openhasp.OpenHASP.("lvh_"+c), true)
@@ -68,8 +71,8 @@ class lvh_obj
     "w": "width",
     "h": "height",
     # arc
-    "asjustable": nil,
-    "mode": nil,
+    # "asjustable": nil,
+    # "mode": nil,
     "start_angle": "bg_start_angle",
     "start_angle1": "start_angle",
     "end_angle": "bg_end_angle",
@@ -77,13 +80,14 @@ class lvh_obj
     "radius": "style_radius",
     "border_side": "style_border_side",
     "border_width": "style_border_width",
-    "line_width": nil,                      # depends on class
-    "line_width1": nil,                     # depends on class
-    "action": nil,                          # store the action in self.action
-    "hidden": nil,                          # apply to self
-    "enabled": nil,                         # apply to self
-    "click": nil,                           # synonym to enabled
-    "toggle": nil,
+    "border_color": "style_border_color",
+    # "line_width": nil,                      # depends on class
+    # "line_width1": nil,                     # depends on class
+    # "action": nil,                          # store the action in self.action
+    # "hidden": nil,                          # apply to self
+    # "enabled": nil,                         # apply to self
+    # "click": nil,                           # synonym to enabled
+    # "toggle": nil,
     "bg_color": "style_bg_color",
     "bg_opa": "style_bg_opa",
     "bg_grad_color": "style_bg_grad_color",
@@ -94,43 +98,50 @@ class lvh_obj
     "pad_top": "style_pad_top",
     "pad_bottom": "style_pad_bottom",
     "pad_all": "style_pad_all",             # write-only
-    "type": nil,
+    # "type": nil,
     # below automatically create a sub-label
-    "text": nil,                            # apply to self
-    "value_str": nil,                       # synonym to 'text'
-    "align": nil,
-    "text_font": nil,
-    "value_font": nil,                      # synonym to text_font
-    "text_color": nil,
-    "value_color": nil,                     # synonym to text_color
-    "value_ofs_x": nil,
-    "value_ofs_y": nil,
+    # "text": nil,                            # apply to self
+    # "value_str": nil,                       # synonym to 'text'
+    # "align": nil,
+    # "text_font": nil,
+    # "value_font": nil,                      # synonym to text_font
+    # "text_color": nil,
+    # "value_color": nil,                     # synonym to text_color
+    # "value_ofs_x": nil,
+    # "value_ofs_y": nil,
     #
-    "min": nil,
-    "max": nil,
-    "val": "value",
+    # "min": nil,
+    # "max": nil,
+    # "val": nil,
     "rotation": "rotation",
     # img
     "src": "src",
     "image_recolor": "style_img_recolor",
     "image_recolor_opa": "style_img_recolor_opa",
     # spinner
-    "angle": nil,
-    "speed": nil,
+    # "angle": nil,
+    # "speed": nil,
     # padding of knob
-    "pad_top2": nil,
-    "pad_bottom2": nil,
-    "pad_left2": nil,
-    "pad_right2": nil,
-    "pad_all2": nil,
-    "radius2": nil,
+    # "pad_top2": nil,
+    # "pad_bottom2": nil,
+    # "pad_left2": nil,
+    # "pad_right2": nil,
+    # "pad_all2": nil,
+    # "radius2": nil,
     # rule based update of attributes
     # supporting both `val` and `text`
-    "val_rule": nil,
-    "val_rule_formula": nil,
-    "text_rule": nil,
-    "text_rule_formula": nil,
-    "text_rule_format": nil,
+    # "val_rule": nil,
+    # "val_rule_formula": nil,
+    # "text_rule": nil,
+    # "text_rule_formula": nil,
+    # "text_rule_format": nil,
+    # roller
+    # "options": nil,
+    # qrcode
+    # "qr_size": nil,
+    # "qr_dark_color": nil,
+    # "qr_light_color": nil,
+    # "qr_text": nil,
   }
 
   #====================================================================
@@ -261,7 +272,8 @@ class lvh_obj
     # self._lv_obj.add_event_cb(/ obj, event -> self.action_cb(obj, event), lv.EVENT_CLICKED, 0)
   end
   def get_action()
-    return self._action
+    var action = self._action
+    return action ? action : ""     # cannot be `nil` as it would mean no member
   end
 
   #====================================================================
@@ -286,26 +298,19 @@ class lvh_obj
     lv.EVENT_VALUE_CHANGED:       "changed",
   }
   def register_event_cb()
-    # register callback for each event
-    var f = / obj, event -> self.event_cb(obj, event)
+    var oh = self._page._oh
     for ev:self._event_map.keys()
-      self._lv_obj.add_event_cb(f, ev, 0)
+      oh.register_event(self, ev)
     end
-    # # print("register_event_cb")
-    # var mask = lv.EVENT_PRESSED | lv.EVENT_CLICKED | lv.EVENT_PRESS_LOST | lv.EVENT_RELEASED |
-    #            lv.EVENT_LONG_PRESSED | lv.EVENT_LONG_PRESSED_REPEAT | lv.EVENT_VALUE_CHANGED
-    # var target = self
-    # mask = lv.EVENT_CLICKED
-    # self._lv_obj.add_event_cb(/ obj, event -> target.event_cb(obj, event), mask, 0)
   end
 
-  def event_cb(obj, event)
+  def event_cb(event)
     # the callback avoids doing anything sophisticated in the cb
     # defer the actual action to the Tasmota event loop
     # print("-> CB fired","self",self,"obj",obj,"event",event.tomap(),"code",event.code)
     var oh = self._page._oh         # openhasp global object
     var code = event.code           # materialize to a local variable, otherwise the value can change (and don't capture event object)
-    if self.action != nil && code == lv.EVENT_CLICKED
+    if self.action != "" && code == lv.EVENT_CLICKED
       # if clicked and action is declared, do the page change event
       tasmota.set_timer(0, /-> oh.do_action(self, code))
     end
@@ -313,24 +318,21 @@ class lvh_obj
     var event_hasp = self._event_map.find(code)
     if event_hasp != nil
       import string
-      var val = string.format('{"hasp":{"p%ib%i":"%s"}}', self._page._page_id, self.id, event_hasp)
-      # var pxby = "p" + self._page._page_id + "b" + self.id
-      # var val = '{"hasp":{"p' + str(self._page._page_id) + 'b' + str(self.id) +
-      #           '":"' + event_hasp + '"}}'
-      # var val = json.dump( {'hasp': {pxby: event_hasp}} )
+
+      var tas_event_more = ""   # complementary data
+      if event.code == lv.EVENT_VALUE_CHANGED
+        try
+          # try to get the new val
+          var val = self.val
+          tas_event_more = string.format(',"val":%i', val)
+        except ..
+        end
+      end
+      var tas_event = string.format('{"hasp":{"p%ib%i":{"event":"%s"%s}}}', self._page._page_id, self.id, event_hasp, tas_event_more)
       # print("val=",val)
-      tasmota.set_timer(0, /-> tasmota.publish_rule(val))
+      tasmota.set_timer(0, /-> tasmota.publish_rule(tas_event))
     end
   end
-  
-  # def action_cb(obj, event)
-  #   # the callback avoids doing anything sophisticated in the cb
-  #   # defer the actual action to the Tasmota event loop
-  #   # print("-> CB fired","self",self,"obj",obj,"event",event.tomap(),"code",event.code)
-  #   var oh = self._page._oh         # openhasp global object
-  #   var code = event.code           # materialize to a local variable, otherwise the value can change (and don't capture event object)
-  #   tasmota.set_timer(0, /-> oh.do_action(self, code))
-  # end
 
   #====================================================================
   #  Mapping of synthetic attributes
@@ -506,8 +508,13 @@ class lvh_obj
       end
     elif type(t) == 'string'
       import string
+      # look for 'A:name.font' style font file name
+      var drive_split = string.split(t, ':', 1)
       var fn_split = string.split(t, '-')
-      if size(fn_split) >= 2      # it does contain '-'
+      if size(drive_split) > 1 && size(drive_split[0]) == 1
+        # font is from disk
+        font = lv.load_font(t)
+      elif size(fn_split) >= 2      # it does contain '-'
         var sz = int(fn_split[-1])
         var name = fn_split[0..-2].concat('-')    # rebuild the font name
         if sz > 0 && size(name) > 0              # looks good, let's have a try
@@ -615,6 +622,12 @@ class lvh_obj
   def get_pad_all()
   end
 
+  def set_val(t)
+    self._lv_obj.set_value(t)
+  end
+  def get_val()
+    return self._lv_obj.get_value()
+  end
   #====================================================================
   #  `radius2`
   #====================================================================
@@ -639,37 +652,35 @@ class lvh_obj
   #- ------------------------------------------------------------#
   def member(k)
     import string
-    # ignore attributes
-    # print("member","self=",self,"k=",k)
+    import introspect
+
+    # print("> getmember", k)
+    var prefix = k[0..3]
+    if prefix == "set_" || prefix == "get_" return end
+    # if attribute name is in ignore list, abort
     if self._attr_ignore.find(k) != nil return end
 
-    # check if the key is known
+    # first check if there is a method named `get_X()`
+    var f = introspect.get(self, "get_" + k)  # call self method
+    if type(f) == 'function'
+      return f(self)
+    end
+
+    # next check if there is a mapping to an LVGL attribute
     if self._attr_map.contains(k)
-      # attribute is known
-      # kv: (if string)  the LVGL attribute name of the object - direct mapping
-      # kv: (if `nil`)   call `get_<kv>` method of the object
-      import introspect
       var kv = self._attr_map[k]
 
-      if kv == nil
-        # call the object's `get_X()`
-        var f = introspect.get(self, "get_" + k)  # call self method
-        if type(f) == 'function'
-          return f(self)
-        end
-      else
-        # call the native LVGL object method
-        var f = introspect.get(self._lv_obj, "get_" + kv)
-        if type(f) == 'function'                  # found and function, call it
-          if string.find(kv, "style_") == 0
-            # style function need a selector as second parameter
-            return f(self._lv_obj, 0 #- lv.PART_MAIN | lv.STATE_DEFAULT -#)
-          else
-            return f(self._lv_obj)
-          end
+      f = introspect.get(self._lv_obj, "get_" + kv)
+      if type(f) == 'function'                  # found and function, call it
+        if string.find(kv, "style_") == 0
+          # style function need a selector as second parameter
+          return f(self._lv_obj, 0 #- lv.PART_MAIN | lv.STATE_DEFAULT -#)
+        else
+          return f(self._lv_obj)
         end
       end
     end
+
     # fallback to exception if attribute unknown or not a function
     raise "value_error", "unknown attribute " + str(k)
   end
@@ -678,45 +689,44 @@ class lvh_obj
   # `setmember` virtual setter
   #- ------------------------------------------------------------#
   def setmember(k, v)
-    # print(">> setmember", k, v)
-    # print(">>", classname(self), self._attr_map)
-    # ignore attributes
+    import string
+    import introspect
+
+    # print("> setmember", k, v)
+    var prefix = k[0..3]
+    if prefix == "set_" || prefix == "get_" return end
+    # if attribute name is in ignore list, abort
     if self._attr_ignore.find(k) != nil return end
 
-    # is attribute known
+
+    # first check if there is a method named `set_X()`
+    var f = introspect.get(self, "set_" + k)
+    if type(f) == 'function'
+      f(self, v)
+      return
+    end
+
+    # next check if there is a mapping to an LVGL attribute
     if self._attr_map.contains(k)
-      import string
-      import introspect
-      var kv = self._attr_map[k]
-      # if a string is attached to the name, then set the corresponding LVGL attribute
-      if kv
-        var f = introspect.get(self._lv_obj, "set_" + kv)
-        # if the attribute contains 'color', convert to lv_color
-        if type(kv) == 'string' && self.is_color_attribute(kv)
-          v = self.parse_color(v)
-        end
-        # print("f=", f, v, kv, self._lv_obj, self)
-        if type(f) == 'function'
-          if string.find(kv, "style_") == 0
-            # style function need a selector as second parameter
-            f(self._lv_obj, v, 0 #- lv.PART_MAIN | lv.STATE_DEFAULT -#)
-          else
-            f(self._lv_obj, v)
-          end
-          return
-        else
-          print("HSP: Could not find function set_"+kv)
-        end
-      else
-        # else call the specific method from self
-        var f = introspect.get(self, "set_" + k)
-        # print("f==",f)
-        if type(f) == 'function'
-          f(self, v)
-          return
-        end
-      end
       
+      var kv = self._attr_map[k]
+      f = introspect.get(self._lv_obj, "set_" + kv)
+      # if the attribute contains 'color', convert to lv_color
+      if self.is_color_attribute(kv)
+        v = self.parse_color(v)
+      end
+      # print("f=", f, v, kv, self._lv_obj, self)
+      if type(f) == 'function'
+        if string.find(kv, "style_") == 0
+          # style function need a selector as second parameter
+          f(self._lv_obj, v, 0 #- lv.PART_MAIN | lv.STATE_DEFAULT -#)
+        else
+          f(self._lv_obj, v)
+        end
+        return
+      else
+        print("HSP: Could not find function set_"+kv)
+      end
     else
       print("HSP: unknown attribute:", k)
     end
@@ -815,12 +825,14 @@ class lvh_obj
   def text_rule_matched(val)
 
     # print(">> rule matched text", "val=", val)
-    var val_n = real(val)         # force float type
+    if type(val) == 'int'
+      val = real(val)           # force float type
+    end
 
     var func = self._text_rule_function
     if func != nil
       try
-        val_n = func(val_n)
+        val = func(val)
       except .. as e, m
         import string
         print(string.format("HSP: failed to run self._text_rule_function - %s (%s)", e, m))
@@ -830,7 +842,7 @@ class lvh_obj
     var format = self._text_rule_format
     if type(format) == 'string'
       import string
-      format = string.format(format, val_n)
+      format = string.format(format, val)
     else
       format = ""
     end
@@ -939,6 +951,82 @@ class lvh_spinner : lvh_arc
   def get_speed() end
 end
 
+#====================================================================
+#  img
+#====================================================================
+class lvh_img : lvh_obj
+  static _lv_class = lv.img
+
+  def set_angle(v)
+    v = int(v)
+    self._lv_obj.set_angle(v)
+  end
+  def get_angle()
+    return self._lv_obj.get_angle()
+  end
+end
+
+#====================================================================
+#  qrcode
+#====================================================================
+class lvh_qrcode : lvh_obj
+  static _lv_class = lv.qrcode
+
+  # init
+  # - create the LVGL encapsulated object
+  # arg1: parent object
+  # arg2: json line object
+  def init(parent, page, jline)
+    self._page = page
+
+    var size = jline.find("qr_size", 100)
+    var dark_col = self.parse_color(jline.find("qr_dark_color", "#000000"))
+    var light_col = self.parse_color(jline.find("qr_light_color", "#FFFFFF"))
+
+    self._lv_obj = lv.qrcode(parent, size, dark_col, light_col)
+    self.post_init()
+  end
+
+  # ignore attributes, spinner can't be changed once created
+  def set_qr_size(t) end
+  def get_qr_size() end
+  def set_qr_dark_color(t) end
+  def get_qr_dark_color() end
+  def set_qr_light_color(t) end
+  def get_qr_light_color() end
+  def set_qr_text(t)
+    t = str(t)
+    self._lv_obj.update(t, size(t))
+  end
+  def get_qr_text() end
+end
+
+class lvh_slider : lvh_obj
+  static _lv_class = lv.slider
+
+  def set_val(t)
+    self._lv_obj.set_value(t, 0)    # add second parameter - no animation
+  end
+end
+
+class lvh_roller : lvh_obj
+  static _lv_class = lv.roller
+
+  def set_val(t)
+    self._lv_obj.set_selected(t, 0)    # add second parameter - no animation
+  end
+  def get_val()
+    return self._lv_obj.get_selected()
+  end
+
+  def set_options(t)
+    self._lv_obj.set_options(t, lv.ROLLER_MODE_NORMAL)
+  end
+  def get_options()
+    return self._lv_obj.get_options()
+  end
+end
+
 #################################################################################
 #
 # All other subclasses than just map the LVGL object
@@ -950,10 +1038,7 @@ class lvh_btn : lvh_obj         static _lv_class = lv.btn         end
 class lvh_btnmatrix : lvh_obj   static _lv_class = lv.btnmatrix   end
 class lvh_checkbox : lvh_obj    static _lv_class = lv.checkbox    end
 class lvh_dropdown : lvh_obj    static _lv_class = lv.dropdown    end
-class lvh_img : lvh_obj         static _lv_class = lv.img         end
 class lvh_line : lvh_obj        static _lv_class = lv.line        end
-class lvh_roller : lvh_obj      static _lv_class = lv.roller      end
-class lvh_slider : lvh_obj      static _lv_class = lv.slider      end
 class lvh_textarea : lvh_obj    static _lv_class = lv.textarea    end
 # special case for scr (which is actually lv_obj)
 class lvh_scr : lvh_obj         static _lv_class = nil            end    # no class for screen
@@ -1076,6 +1161,13 @@ class lvh_page
       anim = self._oh.page_dir_to(self.id())
     end
 
+    # send page events
+    import string
+    var event_str_in = string.format('{"hasp":{"p%i":"out"}}', self._oh.lvh_page_cur_idx)
+    tasmota.set_timer(0, /-> tasmota.publish_rule(event_str_in))
+    var event_str_out = string.format('{"hasp":{"p%i":"in"}}', self._page_id)
+    tasmota.set_timer(0, /-> tasmota.publish_rule(event_str_out))
+
     # change current page
     self._oh.lvh_page_cur_idx = self._page_id
 
@@ -1102,6 +1194,9 @@ class OpenHASP
   var lvh_page_cur_idx                  # (int) current page index number
   # regex patterns
   var re_page_target                    # compiled regex for action `p<number>`
+  # specific event_cb handling for less memory usage since we are registering a lot of callbacks
+  var event                             # try to keep the event object around and reuse it
+  var event_cb                          # the low-level callback for the closure to be registered
 
   # assign lvh_page to a static attribute
   static lvh_page = lvh_page
@@ -1129,6 +1224,7 @@ class OpenHASP
  	# static lvh_linemeter = lvh_linemeter
  	# static lvh_gauge = lvh_gauge
 	static lvh_textarea = lvh_textarea    # additional?
+  static lvh_qrcode = lvh_qrcode
 
   static def_templ_name = "pages.jsonl" # default template name
 
@@ -1230,19 +1326,26 @@ class OpenHASP
     self.lvh_pages[1] = lvh_page_class(1, self)   # always create page #1
 
     var f = open(templ_name,"r")
-    var jsonl = string.split(f.read(), "\n")
+    var f_content =  f.read()
     f.close()
+    
+    var jsonl = string.split(f_content, "\n")
+    f = nil   # allow deallocation
+    f_content = nil
 
     # parse each line
-    for j:jsonl
-      var jline = json.load(j)
+    while size(jsonl) > 0
+      var jline = json.load(jsonl[0])
 
       if type(jline) == 'instance'
         self.parse_page(jline)    # parse page first to create any page related objects, may change self.lvh_page_cur_idx
         # objects are created in the current page
         self.parse_obj(jline, self.lvh_pages[self.lvh_page_cur_idx])    # then parse object within this page
       end
+      jline = nil
+      jsonl.remove(0)
     end
+    jsonl = nil     # make all of it freeable
 
     # current page is always 1 when we start
     self.lvh_page_cur_idx = 1
@@ -1337,11 +1440,11 @@ class OpenHASP
   #  Arg2: LVGL event fired
   #  Returns: nil
   #====================================================================
-  def do_action(lvh_obj, event_code)
+  def do_action(lvh_object, event_code)
     if event_code != lv.EVENT_CLICKED    return end
-    var action = lvh_obj._action
+    var action = lvh_object._action
     var cur_page = self.lvh_pages[self.lvh_page_cur_idx]
-    # print("do_action","lvh_obj",lvh_obj,"action",action,"cur_page",cur_page,self.lvh_page_cur_idx)
+    # print("do_action","lvh_object",lvh_object,"action",action,"cur_page",cur_page,self.lvh_page_cur_idx)
 
     # action can be `prev`, `next`, `back`, or `p<number>` like `p1`
     var to_page = nil
@@ -1394,6 +1497,42 @@ class OpenHASP
         lvh_page_cur.prev = int(jline.find("prev", nil))
         lvh_page_cur.next = int(jline.find("next", nil))
         lvh_page_cur.back = int(jline.find("back", nil))
+      end
+    end
+  end
+
+  #====================================================================
+  # Event CB handling
+  #====================================================================
+  def register_event(lvh_obj, event_type)
+    import cb
+    import introspect
+
+    # create the callback to the closure only once
+    if self.event_cb == nil
+      self.event_cb = cb.gen_cb(/ event_ptr_i -> self.event_dispatch(event_ptr_i))
+    end
+    # register the C callback
+    var lv_obj = lvh_obj._lv_obj
+    # we pass the cb as a comptr so it's already a C pointer
+    lv_obj.add_event_cb(self.event_cb, event_type, introspect.toptr(lvh_obj))
+  end
+
+  def event_dispatch(event_ptr_i)
+    import introspect
+    var event_ptr = introspect.toptr(event_ptr_i)   # convert to comptr, because it was a pointer in the first place
+
+    if self.event   self.event._change_buffer(event_ptr)
+    else            self.event = lv.lv_event(event_ptr)
+    end
+
+    var user_data = self.event.user_data            # it is supposed to be a pointer to the object
+    if int(user_data) != 0
+      var target_lvh_obj = introspect.fromptr(user_data)
+      if type(target_lvh_obj) == 'instance'
+        # print("CB Fired", self.event.code, target_lvh_obj)
+        target_lvh_obj.event_cb(self.event)
+        # print("CB Fired After")
       end
     end
   end

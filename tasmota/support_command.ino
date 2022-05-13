@@ -22,7 +22,7 @@ const char kTasmotaCommands[] PROGMEM = "|"  // No prefix
   D_SO_WIFINOSLEEP "|"
   // Other commands
   D_CMND_UPGRADE "|" D_CMND_UPLOAD "|" D_CMND_OTAURL "|" D_CMND_SERIALLOG "|" D_CMND_RESTART "|"
-#ifndef FIRMWARE_MINIMAL
+#ifndef FIRMWARE_MINIMAL_ONLY
   D_CMND_BACKLOG "|" D_CMND_DELAY "|" D_CMND_POWER "|" D_CMND_STATUS "|" D_CMND_STATE "|" D_CMND_SLEEP "|"
   D_CMND_POWERONSTATE "|" D_CMND_PULSETIME "|" D_CMND_BLINKTIME "|" D_CMND_BLINKCOUNT "|" D_CMND_SAVEDATA "|"
   D_CMND_SO "|" D_CMND_SETOPTION "|" D_CMND_TEMPERATURE_RESOLUTION "|" D_CMND_HUMIDITY_RESOLUTION "|" D_CMND_PRESSURE_RESOLUTION "|" D_CMND_POWER_RESOLUTION "|"
@@ -48,7 +48,7 @@ const char kTasmotaCommands[] PROGMEM = "|"  // No prefix
 #ifdef ESP32
    "|Info|" D_CMND_TOUCH_CAL "|" D_CMND_TOUCH_THRES "|" D_CMND_TOUCH_NUM "|" D_CMND_CPU_FREQUENCY
 #endif  // ESP32
-#endif   //FIRMWARE_MINIMAL
+#endif   //FIRMWARE_MINIMAL_ONLY
   ;
 
 SO_SYNONYMS(kTasmotaSynonyms,
@@ -57,7 +57,7 @@ SO_SYNONYMS(kTasmotaSynonyms,
 
 void (* const TasmotaCommand[])(void) PROGMEM = {
   &CmndUpgrade, &CmndUpgrade, &CmndOtaUrl, &CmndSeriallog, &CmndRestart,
-#ifndef FIRMWARE_MINIMAL
+#ifndef FIRMWARE_MINIMAL_ONLY
   &CmndBacklog, &CmndDelay, &CmndPower, &CmndStatus, &CmndState, &CmndSleep,
   &CmndPowerOnState, &CmndPulsetime, &CmndBlinktime, &CmndBlinkcount, &CmndSavedata,
   &CmndSetoption, &CmndSetoption, &CmndTemperatureResolution, &CmndHumidityResolution, &CmndPressureResolution, &CmndPowerResolution,
@@ -83,7 +83,7 @@ void (* const TasmotaCommand[])(void) PROGMEM = {
 #ifdef ESP32
   , &CmndInfo, &CmndTouchCal, &CmndTouchThres, &CmndTouchNum, &CmndCpuFrequency
 #endif  // ESP32
-#endif   //FIRMWARE_MINIMAL
+#endif   //FIRMWARE_MINIMAL_ONLY
   };
 
 const char kWifiConfig[] PROGMEM =
@@ -597,7 +597,7 @@ void CmndStatus(void)
                           , ESP.getBootVersion()
 #endif
                           , ESP.getSdkVersion(),
-                          ESP.getCpuFreqMHz(), GetDeviceHardware().c_str(),
+                          ESP.getCpuFreqMHz(), GetDeviceHardwareRevision().c_str(),
                           GetStatistics().c_str());
     CmndStatusResponse(2);
   }
@@ -619,18 +619,14 @@ void CmndStatus(void)
                           D_JSON_STACKLOWMARK "\":%d,\"" D_JSON_PSRMAXMEMORY "\":%d,\"" D_JSON_PSRFREEMEMORY "\":%d,\""
 #endif  // ESP32
                           D_JSON_PROGRAMFLASHSIZE "\":%d,\"" D_JSON_FLASHSIZE "\":%d"
-#ifdef ESP8266
                           ",\"" D_JSON_FLASHCHIPID "\":\"%06X\""
-#endif  // ESP8266
                           ",\"FlashFrequency\":%d,\"" D_JSON_FLASHMODE "\":%d"),
-                          ESP_getSketchSize()/1024, ESP.getFreeSketchSpace()/1024, ESP_getFreeHeap1024(),
+                          ESP_getSketchSize()/1024, ESP_getFreeSketchSpace()/1024, ESP_getFreeHeap1024(),
 #ifdef ESP32
                           uxTaskGetStackHighWaterMark(nullptr) / 1024, ESP.getPsramSize()/1024, ESP.getFreePsram()/1024,
 #endif  // ESP32
-                          ESP.getFlashChipSize()/1024, ESP.getFlashChipRealSize()/1024
-#ifdef ESP8266
-                          , ESP.getFlashChipId()
-#endif  // ESP8266
+                          ESP.getFlashChipSize()/1024, ESP_getFlashChipRealSize()/1024
+                          , ESP_getFlashChipId()
                           , ESP.getFlashChipSpeed()/1000000, ESP.getFlashChipMode());
     ResponseAppendFeatures();
     XsnsDriverState();
@@ -649,6 +645,9 @@ void CmndStatus(void)
                           (uint32_t)WiFi.localIP(), Settings->ipv4_address[1], Settings->ipv4_address[2],
                           Settings->ipv4_address[3], Settings->ipv4_address[4],
                           WiFi.macAddress().c_str());
+#ifdef USE_TASMESH
+    ResponseAppend_P(PSTR(",\"SoftAPMac\":\"%s\""), WiFi.softAPmacAddress().c_str());
+#endif  // USE_TASMESH
 #if defined(ESP32) && CONFIG_IDF_TARGET_ESP32 && defined(USE_ETHERNET)
     ResponseAppend_P(PSTR(",\"Ethernet\":{\"" D_CMND_HOSTNAME "\":\"%s\",\""
                           D_CMND_IPADDRESS "\":\"%_I\",\"" D_JSON_GATEWAY "\":\"%_I\",\"" D_JSON_SUBNETMASK "\":\"%_I\",\""
@@ -795,7 +794,7 @@ void CmndGlobalTemp(void)
   if (XdrvMailbox.data_len > 0) {
     float temperature = CharToFloat(XdrvMailbox.data);
     if (!isnan(temperature) && Settings->flag.temperature_conversion) {    // SetOption8 - Switch between Celsius or Fahrenheit
-      temperature = (temperature - 32) / 1.8;                             // Celsius
+      temperature = (temperature - 32) / 1.8f;                             // Celsius
     }
     if ((temperature >= -50.0f) && (temperature <= 100.0f)) {
       ConvertTemp(temperature);
@@ -809,7 +808,7 @@ void CmndGlobalHum(void)
 {
   if (XdrvMailbox.data_len > 0) {
     float humidity = CharToFloat(XdrvMailbox.data);
-    if ((humidity >= 0.0) && (humidity <= 100.0)) {
+    if ((humidity >= 0.0f) && (humidity <= 100.0f)) {
       ConvertHumidity(humidity);
       TasmotaGlobal.global_update = 1;  // Keep global values just entered valid
     }
@@ -838,7 +837,15 @@ void CmndUpgrade(void)
     TasmotaGlobal.ota_state_flag = 3;
     char stemp1[TOPSZ];
     Response_P(PSTR("{\"%s\":\"" D_JSON_VERSION " %s " D_JSON_FROM " %s\"}"), XdrvMailbox.command, TasmotaGlobal.version, GetOtaUrl(stemp1, sizeof(stemp1)));
-  } else {
+  }
+#if defined(ESP32) && defined(USE_WEBCLIENT_HTTPS)
+  else if (EspSingleOtaPartition() && !EspRunningFactoryPartition() && (1 == XdrvMailbox.data_len) && (2 == XdrvMailbox.payload)) {
+    TasmotaGlobal.ota_factory = true;
+    TasmotaGlobal.ota_state_flag = 3;
+    ResponseCmndChar(PSTR("Safeboot"));
+  }
+#endif  // ESP32 and WEBCLIENT_HTTPS
+  else {
     Response_P(PSTR("{\"%s\":\"" D_JSON_ONE_OR_GT "\"}"), XdrvMailbox.command, TasmotaGlobal.version);
   }
 }
@@ -854,8 +861,18 @@ void CmndOtaUrl(void)
 void CmndSeriallog(void)
 {
   if ((XdrvMailbox.payload >= LOG_LEVEL_NONE) && (XdrvMailbox.payload <= LOG_LEVEL_DEBUG_MORE)) {
+
+#ifdef ESP32
+    if (tasconsole_serial) {
+#endif  // ESP32
+
     Settings->flag.mqtt_serial = 0;       // CMND_SERIALSEND and CMND_SERIALLOG
-    SetSeriallog(XdrvMailbox.payload);
+
+#ifdef ESP32
+    }
+#endif  // ESP32
+
+    SetTasConlog(XdrvMailbox.payload);
   }
   Response_P(S_JSON_COMMAND_NVALUE_ACTIVE_NVALUE, XdrvMailbox.command, Settings->seriallog_level, TasmotaGlobal.seriallog_level);
 }
@@ -872,6 +889,14 @@ void CmndRestart(void)
     TasmotaGlobal.restart_halt = true;
     ResponseCmndChar(PSTR(D_JSON_HALTING));
     break;
+#ifdef ESP32
+  case 3:
+    if (EspPrepSwitchToOtherPartition()) {
+      TasmotaGlobal.restart_flag = 2;
+      ResponseCmndChar(PSTR("Switching"));
+    }
+    break;
+#endif  // ESP32
   case -1:
     CmndCrash();    // force a crash
     break;

@@ -27,6 +27,7 @@
 
 const char berry_prog[] =
 
+  "import global "
 #ifdef USE_BERRY_PYTHON_COMPAT
   // enable python syntax compatibility mode
   "import python_compat "
@@ -75,6 +76,10 @@ const char berry_prog[] =
 
   "import tapp "
 
+#ifdef USE_BERRY_DEBUG
+  "import debug "
+  "import solidify "
+#endif
   ;
 
 #endif  // USE_BERRY

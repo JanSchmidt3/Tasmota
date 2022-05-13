@@ -167,9 +167,9 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t display_no_splash : 1;        // bit 21 (v11.0.0.2) - SetOption135 - (Display & LVGL) forece disbabling default splash screen
     uint32_t tuyasns_no_immediate : 1;     // bit 22 (v11.0.0.4) - SetOption136 - (TuyaSNS) When ON disable publish single SNS value on Tuya Receive (keep Teleperiod)
     uint32_t tuya_exclude_from_mqtt : 1;   // bit 23 (v11.0.0.5) - SetOption137 - (Tuya) When Set, avoid the (MQTT-) publish of defined Tuya CMDs (see xdrv_16_tuyamcu.ino) if SetOption66 is active
-    uint32_t spare24 : 1;                  // bit 24
-    uint32_t spare25 : 1;                  // bit 25
-    uint32_t spare26 : 1;                  // bit 26
+    uint32_t gui_table_align : 1;          // bit 24 (v11.0.0.7) - SetOption138 - (GUI) Align (energy) table values left (0) or right (1)
+    uint32_t mm_vs_inch : 1;               // bit 25 (v11.1.0.1) - SetOption139 - (Pressure) Switch between mmHg (0) or inHg (1) when SO24 1
+    uint32_t mqtt_persistent : 1;          // bit 26 (v11.1.0.1) - SetOption140 - (MQTT) MQTT clean session (0 = default) or persistent session (1)
     uint32_t spare27 : 1;                  // bit 27
     uint32_t spare28 : 1;                  // bit 28
     uint32_t spare29 : 1;                  // bit 29
@@ -309,27 +309,42 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t mirror : 1;
     uint32_t flip : 1;
     uint32_t rtsp : 1;
-    uint32_t spare4 : 1;
-    uint32_t spare5 : 1;
-    uint32_t spare6 : 1;
-    uint32_t spare7 : 1;
-    uint32_t spare8 : 1;
-    uint32_t spare9 : 1;
-    uint32_t spare10 : 1;
-    uint32_t spare11 : 1;
-    uint32_t spare12 : 1;
-    uint32_t spare13 : 1;
-    uint32_t spare14 : 1;
+    uint32_t awb : 1;
+    uint32_t awb_gain : 1;
+    uint32_t aec : 1;
+    uint32_t aec2 : 1;
+    uint32_t agc : 1;
+    uint32_t raw_gma : 1;
+    uint32_t lenc : 1;
+    uint32_t colorbar : 1;
+    uint32_t wpc : 1;
+    uint32_t dcw : 1;
+    uint32_t bpc : 1;
     uint32_t spare15 : 1;
     uint32_t spare16 : 1;
-    uint32_t spare17 : 1;
-    uint32_t spare18 : 1;
+    uint32_t feature : 2;
     uint32_t contrast : 3;
     uint32_t brightness : 3;
     uint32_t saturation : 3;
     uint32_t resolution : 4;
   };
 } WebCamCfg;
+
+typedef union {
+  uint32_t data;
+  struct {
+    uint32_t wb_mode : 3;
+    uint32_t ae_level : 3;
+    uint32_t aec_value : 11;
+    uint32_t gainceiling : 3;
+    uint32_t agc_gain: 5;
+    uint32_t special_effect : 3;
+    uint32_t spare28 : 1;
+    uint32_t spare29 : 1;
+    uint32_t spare30 : 1;
+    uint32_t upgraded : 1;
+  };
+} WebCamCfg2;
 
 typedef union {
   uint16_t data;
@@ -351,7 +366,7 @@ typedef union {
   uint8_t data;
   struct {
     uint8_t spare0 : 1;
-    uint8_t spare1 : 1;
+    uint8_t flowratemeter_unit : 1;        // Sensor96 9,x - unit l/min (0) or m³/h (1)
     uint8_t bh1750_2_resolution : 2;
     uint8_t bh1750_1_resolution : 2;       // Sensor10 1,2,3
     uint8_t hx711_json_weight_change : 1;  // Sensor34 8,x - Enable JSON message on weight change
@@ -676,7 +691,11 @@ typedef struct {
   mytmplt8285   ex_user_template8;         // 72F  14 bytes (ESP8266) - Free since 9.0.0.1
 #endif  // ESP8266
 #ifdef ESP32
-  uint8_t       free_esp32_72f[14];        // 72F
+  uint8_t       free_esp32_72f[1];         // 72F
+
+  WebCamCfg2    webcam_config2;            // 730
+
+  uint8_t       free_esp32_734[9];         // 734
 #endif  // ESP32
 
   uint8_t       novasds_startingoffset;    // 73D
@@ -779,10 +798,11 @@ typedef struct {
   uint8_t       tcp_config;                // F5F
   uint8_t       light_step_pixels;				 // F60
 
-  uint8_t       free_f61[39];              // F61 - Decrement if adding new Setting variables just above and below
+  uint8_t       free_f61[23];              // F61 - Decrement if adding new Setting variables just above and below
 
   // Only 32 bit boundary variables below
-
+  uint16_t      flowratemeter_calibration[2];// F78
+  int32_t       energy_kWhexport_ph[3];    // F7C
   uint32_t      eth_ipv4_address[5];       // F88
   uint32_t      energy_kWhtotal;           // F9C
   SBitfield1    sbflag1;                   // FA0
@@ -837,8 +857,9 @@ typedef struct {
 
   int32_t       energy_kWhtoday_ph[3];     // 2D8
   int32_t       energy_kWhtotal_ph[3];     // 2E4
+  int32_t       energy_kWhexport_ph[3];    // 2F0
 
-                                           // 2F0 - 2FF free locations
+  uint8_t       free_2fc[4];               // 2FC
 } TRtcSettings;
 TRtcSettings RtcSettings;
 #ifdef ESP32

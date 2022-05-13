@@ -38,6 +38,7 @@ extern "C" {
 void KNX_CB_Action(message_t const &msg, void *arg);
 #endif  // USE_KNX
 
+void WifiShutdown(bool option = false);
 void DomoticzTempHumPressureSensor(float temp, float hum, float baro = -1);
 char* ToHex_P(const unsigned char * in, size_t insz, char * out, size_t outsz, char inbetween = '\0');
 extern "C" void custom_crash_callback(struct rst_info * rst_info, uint32_t stack, uint32_t stack_end);
@@ -102,6 +103,12 @@ String EthernetMacAddress(void);
 \*-------------------------------------------------------------------------------------------*/
 
 #if CONFIG_IDF_TARGET_ESP32
+
+#ifdef CORE32SOLO1
+#ifdef USE_ETHERNET
+#undef USE_ETHERNET                                // ESP32-Solo1 does not support ethernet
+#endif
+#endif  // CORE32SOLO1
 
 #else   // Disable features not present in other ESP32 like ESP32C3, ESP32S2, ESP32S3 etc.
 #ifdef USE_ETHERNET
