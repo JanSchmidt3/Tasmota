@@ -8316,7 +8316,8 @@ const char SCRIPT_MSG_GTABLEbx[] PROGMEM =
  "google.charts.setOnLoadCallback(drawChart);</script>";
 
 const char SCRIPT_MSG_GOPT1[] PROGMEM =
-"title:'%s',isStacked:false";
+"title:'%s',isStacked:%s";
+
 
 const char SCRIPT_MSG_GAUGEOPT[] PROGMEM =
 "max:%d,redFrom:%d,redTo:%d,yellowFrom:%d,yellowTo:%d";
@@ -8325,7 +8326,7 @@ const char SCRIPT_MSG_GOPT2[] PROGMEM =
 "showRowNumber:true,sort:'disable',allowHtml:true,width:'100%%',height:'100%%',cssClassNames:cssc";
 
 const char SCRIPT_MSG_GOPT3[] PROGMEM =
-"title:'%s',isStacked:false,vAxes:{0:{maxValue:%s},1:{maxValue:%s}},series:{0:{targetAxisIndex:0},1:{targetAxisIndex:1}}%s";
+"title:'%s',isStacked:%s,vAxes:{0:{maxValue:%s},1:{maxValue:%s}},series:{0:{targetAxisIndex:0},1:{targetAxisIndex:1}}%s";
 
 const char SCRIPT_MSG_GOPT4[] PROGMEM =
 //"hAxis:{minValue:new Date(0,1,1,0,0),maxValue:new Date(0,1,2,0,0),format:'HH:mm'}";
@@ -8335,7 +8336,7 @@ const char SCRIPT_MSG_GOPT5[] PROGMEM =
 "new Date(0,0,0,%d,%d)";
 
 const char SCRIPT_MSG_GOPT6[] PROGMEM =
-"title:'%s',isStacked:false,vAxis:{viewWindow:{min:%s,max:%s}}%s";
+"title:'%s',isStacked:%s,vAxis:{viewWindow:{min:%s,max:%s}}%s";
 
 const char SCRIPT_MSG_GTE1[] PROGMEM = "'%s'";
 
@@ -9022,12 +9023,17 @@ exgc:
           return lp1;
         }
 
-
-        if (gs_ctype=='l' && *lp=='f') {
+        char stacked[6];
+        strcpy_P(stacked,"false");
+        if (gs_ctype == 'l' && *lp == 'f') {
           lp++;
           func = PSTR(",curveType:'function'");
         } else {
           func = "";
+        }
+        if (gs_ctype == 'c' && *lp == 's') {
+          lp++;
+          strcpy_P(stacked,"true");
         }
         if (*lp=='2') {
           lp++;
@@ -9260,7 +9266,7 @@ exgc:
             snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT2);
             break;
           default:
-            snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT1, header);
+            snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT1, header, stacked);
             break;
         }
         // check for 2 axis option
@@ -9278,11 +9284,11 @@ exgc:
           char maxstr2[16];
           dtostrfd(max2, 3, maxstr2);
           //snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, (uint32_t)max1, (uint32_t)max2, func);
-          snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, maxstr1, maxstr2, func);
+          snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT3, header, stacked, maxstr1, maxstr2, func);
         } else {
           SCRIPT_SKIP_SPACES
-          if (gs_ctype!='g') {
-            if (*lp!=')') {
+          if (gs_ctype != 'g') {
+            if (*lp != ')') {
               float max1;
               lp = GetNumericArgument(lp, OPER_EQU, &max1, 0);
               SCRIPT_SKIP_SPACES
@@ -9294,12 +9300,12 @@ exgc:
               char maxstr2[16];
               dtostrfd(max2, 3, maxstr2);
               //nprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, (uint32_t)max1, (uint32_t)max2, func);
-              snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, maxstr1, maxstr2, func);
+              snprintf_P(options, sizeof(options), SCRIPT_MSG_GOPT6, header, stacked, maxstr1, maxstr2, func);
             }
           }
         }
 
-        if (gs_ctype=='g') {
+        if (gs_ctype == 'g') {
           float yellowFrom;
           lp = GetNumericArgument(lp, OPER_EQU, &yellowFrom, 0);
           SCRIPT_SKIP_SPACES
