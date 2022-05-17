@@ -74,6 +74,7 @@ keywords if then else endif, or, and are better readable for beginners (others m
 uint32_t EncodeLightId(uint8_t relay_id);
 uint32_t DecodeLightId(uint32_t hue_id);
 char *web_send_line(char mc, char *lp);
+int32_t web_send_file(char mc, char *file);
 
 #define SPECIAL_EEPMODE_SIZE 6200
 
@@ -5894,22 +5895,22 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             }
 #ifdef USE_SCRIPT_WEB_DISPLAY
             else if (!strncmp(lp, "wcs", 3)) {
-              lp+=4;
+              lp += 4;
               // skip one space after cmd
               web_send_line(0, lp);
-              /*
-              char tmp[256];
-              Replace_Cmd_Vars(lp ,1 , tmp, sizeof(tmp));
               WSContentFlush();
-              WSContentSend_P(PSTR("%s"),tmp);
-              */
-
+              goto next_line;
+            }
+            else if (!strncmp(lp, "wfs", 3)) {
+              lp += 4;
+              // skip one space after cmd
+              web_send_file(0, lp);
               WSContentFlush();
               goto next_line;
             }
 #endif
             else if (!strncmp(lp, "rapp", 3)) {
-              lp+=4;
+              lp += 4;
               // skip one space after cmd
               char *tmp = (char*)malloc(256);
               if (tmp) {
@@ -8552,6 +8553,11 @@ void ScriptWebShow(char mc, uint8_t page) {
           lp = scripter_sub(lp + 1, 0);
           specopt = sflg;
           //goto nextwebline;
+        } else if (!strncmp(lp, "%/", 2)) {
+          // send file
+          if (mc) {
+            web_send_file(mc, lp + 1);
+          }
         } else {
           web_send_line(mc, lp);
         }
@@ -8566,6 +8572,35 @@ nextwebline:
       }
     }
   }
+}
+
+#define WSF_BSIZE 512
+int32_t web_send_file(char mc, char *fname) {
+
+  char *buffs = (char*)special_malloc(WSF_BSIZE);
+  if (!buffs) {
+    return -1;
+  }
+  char *tmp = buffs;
+  char *lbuff = buffs + WSF_BSIZE/2;
+  Replace_Cmd_Vars(fname, 1, tmp, WSF_BSIZE/2);
+  File file = ufsp->open(tmp, FS_FILE_READ);
+  if (file) {
+    WSContentFlush();
+    while (file.available()) {
+      uint16_t len;
+      len = file.readBytesUntil('\n', lbuff, WSF_BSIZE/2);
+      lbuff[len] = 0;
+      Replace_Cmd_Vars(lbuff, 1, tmp, WSF_BSIZE/2);
+      strcat(tmp,"\r");
+      _WSContentSend(tmp);
+    }
+    file.close();
+    free(buffs);
+    return 0;
+  }
+  free(buffs);
+  return -2;
 }
 
 char *web_send_line(char mc, char *lp1) {
@@ -9163,7 +9198,11 @@ exgc:
           char lbl[16];
           if (todflg >= 0) {
             uint16_t mins = (float)(todflg % divflg) * (float)((float)60 / (float)divflg);
-            sprintf(lbl, "%d:%02d", todflg / divflg, mins);
+            if (hmflg) {
+              sprintf(lbl, "%d:%02d", todflg / divflg, mins);
+            } else {
+              sprintf(lbl, "%d", todflg / divflg);
+            }
             todflg++;
             if (hmflg == 0) {
               if (todflg >= entries) {
