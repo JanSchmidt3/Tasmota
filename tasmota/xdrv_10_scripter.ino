@@ -8456,6 +8456,7 @@ uint32_t cnt;
 #define WSO_NOCENTER 1
 #define WSO_NODIV 2
 #define WSO_FORCEPLAIN 4
+#define WSO_FORCEMAIN 8
 #define WSO_STOP_DIV 0x80
 
 void WCS_DIV(uint8_t flag) {
@@ -8575,32 +8576,41 @@ nextwebline:
   }
 }
 
-#define WSF_BSIZE 512
+#define WSF_BSIZE 256
 int32_t web_send_file(char mc, char *fname) {
+  char path[32];
 
-  char *buffs = (char*)special_malloc(WSF_BSIZE);
-  if (!buffs) {
+#ifdef USE_UFILESYS
+
+  char *lbuff = (char*)special_malloc(WSF_BSIZE);
+  if (!lbuff) {
     return -1;
   }
-  char *tmp = buffs;
-  char *lbuff = buffs + WSF_BSIZE/2;
-  Replace_Cmd_Vars(fname, 1, tmp, WSF_BSIZE/2);
-  File file = ufsp->open(tmp, FS_FILE_READ);
+
+  cpy2lf(path, sizeof(path), fname);
+  File file = ufsp->open(path, FS_FILE_READ);
   if (file) {
     WSContentFlush();
     while (file.available()) {
       uint16_t len;
-      len = file.readBytesUntil('\n', lbuff, WSF_BSIZE/2);
+      len = file.readBytesUntil('\n', lbuff, WSF_BSIZE);
       lbuff[len] = 0;
-      Replace_Cmd_Vars(lbuff, 1, tmp, WSF_BSIZE/2);
-      strcat(tmp,"\r");
-      _WSContentSend(tmp);
+      char *lp = lbuff;
+      while (*lp == ' ') lp++;
+      if (*lp == '/' && *(lp + 1) == '/') {
+        // skip comment lines
+        continue;
+      }
+      web_send_line(mc, lbuff);
     }
     file.close();
-    free(buffs);
+    free(lbuff);
     return 0;
+  } else {
+    AddLog(LOG_LEVEL_INFO, PSTR("WEB file %s not found"), path);
   }
-  free(buffs);
+  free(lbuff);
+#endif
   return -2;
 }
 
@@ -8613,8 +8623,24 @@ const char *gc_str;
   Replace_Cmd_Vars(lp1, 1, tmp, sizeof(tmp));
 
   char *lin = tmp;
-  if ((!mc && (*lin != '$')) || (mc == 'w' && (*lin != '$'))) {
+
+  if (!strncmp(lin, "so(", 3)) {
+    // set options
+    float var;
+    lin = GetNumericArgument(lin + 3, OPER_EQU, &var, 0);
+    specopt = var;
+    return lin;
+  }
+
+  if (specopt & WSO_NOCENTER) {
+    center[0] = 0;
+  } else {
+    strcpy_P(center, PSTR("<center>"));
+  }
+
+  if ( ((!mc && (*lin != '$')) || (mc == 'w' && (*lin != '$'))) && (!(specopt&WSO_FORCEMAIN)) ) {
     // normal web section
+    //AddLog(LOG_LEVEL_INFO, PSTR("normal %s"), lin);
     if (*lin == '@') {
       lin++;
       optflg = 1;
@@ -8628,21 +8654,7 @@ const char *gc_str;
       strcpy_P(center, PSTR("<center>"));
     }
 
-    if (!strncmp(lin, "so(", 3)) {
-      // set options
-      char *lp = lin;
-      float var;
-      lp = GetNumericArgument(lp + 3, OPER_EQU, &var, 0);
-      SCRIPT_SKIP_SPACES
-      lp++;
-      specopt = var;
-      // bit 0 = center mode
-      if (specopt & WSO_NOCENTER) {
-        center[0] = 0;
-      } else {
-        strcpy_P(center, PSTR("<center>"));
-      }
-    } else if (!strncmp(lin, "sl(", 3)) {
+    if (!strncmp(lin, "sl(", 3)) {
       // insert slider sl(min max var left mid right)
       char *lp = lin;
       float min;
@@ -8967,11 +8979,14 @@ const char *gc_str;
     // end standard web interface
   } else {
     //  main section interface
-    if (*lin == mc || mc == 'z') {
+    //AddLog(LOG_LEVEL_INFO, PSTR("main %s"), lin);
+    if ( (*lin == mc) || (mc == 'z') || (specopt&WSO_FORCEMAIN)) {
 
 #ifdef USE_GOOGLE_CHARTS
       if (mc != 'z') {
-        lin++;
+        if (!(specopt&WSO_FORCEMAIN)) {
+          lin++;
+        }
       }
 exgc:
       char *lp;
@@ -9328,7 +9343,9 @@ exgc:
         WSContentSend_PD(PSTR("%s"), lin);
       }
 #else
-      lin++;
+      if (!(specopt&WSO_FORCEMAIN)) {
+        lin++;
+      }
       WSContentSend_PD(PSTR("%s"), lin);
     } else {
           //  WSContentSend_PD(PSTR("%s"),lin);
