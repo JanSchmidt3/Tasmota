@@ -1,19 +1,19 @@
-# OpenHASP compatibility module
+# HASPMota - OpenHASP compatibility module
 #
-# use `import openhasp` and set the JSONL definitions in `pages.jsonl`
+# use `import haspmota` and set the JSONL definitions in `pages.jsonl`
 #
 # As an optimization `0 #- lv.PART_MAIN | lv.STATE_DEFAULT -#` is replaced with `0`
 #
-# rm openhasp.tapp; zip -j -0 openhasp.tapp openhasp_core/*
+# rm haspmota.tapp; zip -j -0 haspmota.tapp haspmota_core/*
 #################################################################################
 # How to solidify (needs an ESP32 with PSRAM)
 #-
 
 import path 
-path.remove("openhasp.bec")
+path.remove("haspmota.bec")
 import solidify
-var openhasp
-load('openhasp.be')
+var haspmota
+load('haspmota.be')
 
 var classes = [
   "page", "obj", "scr",
@@ -23,12 +23,12 @@ var classes = [
   "qrcode"
 ]
 for c:classes
-  solidify.dump(openhasp.OpenHASP.("lvh_"+c), true)
+  solidify.dump(haspmota.HASPmota.("lvh_"+c), true)
 end
-solidify.dump(openhasp, true)
+solidify.dump(haspmota, true)
 
 -#
-var openhasp = module("openhasp")
+var haspmota = module("haspmota")
 
 #################################################################################
 #################################################################################
@@ -37,7 +37,7 @@ var openhasp = module("openhasp")
 # Provide a mapping for virtual members
 # Stores the associated page and object id
 #
-# Adds specific virtual members used by OpenHASP
+# Adds specific virtual members used by HASPmota
 #################################################################################
 #################################################################################
 class lvh_obj
@@ -62,7 +62,7 @@ class lvh_obj
   # and the Berry or LVGL attribute to set
   #
   # We try to map directly an attribute to the LVGL
-  # Ex: OpenHASP attribute `w` is mapped to LVGL `width`
+  # Ex: HASPmota attribute `w` is mapped to LVGL `width`
   #
   # If mapping is null, we use set_X and get_X from our own class
   static _attr_map = {
@@ -150,7 +150,7 @@ class lvh_obj
   var _lv_obj                               # native lvgl object
   var _lv_label                             # sub-label if exists
   var _page                                 # parent page object
-  var _action                               # value of the OpenHASP `action` attribute, shouldn't be called `self.action` since we want to trigger the set/member functions
+  var _action                               # value of the HASPmota `action` attribute, shouldn't be called `self.action` since we want to trigger the set/member functions
 
   #====================================================================
   # Rule engine to map value and text to rules
@@ -173,6 +173,21 @@ class lvh_obj
   static def is_color_attribute(t)
     import re
     return bool(re.search("color$", str(t)))
+  end
+
+  #- remove trailing NULL chars from a bytes buffer before converting to string -#
+  #- Berry strings can contain NULL, but this messes up C-Berry interface -#
+  static def remove_trailing_zeroes(b)
+    var sz = size(b)
+    var i = 0
+    while i < sz
+      if b[-1-i] != 0   break end
+      i += 1
+    end
+    if i > 0
+      b.resize(size(b)-i)
+    end
+    return b
   end
 
   #################################################################################
@@ -227,10 +242,10 @@ class lvh_obj
   end
 
   #====================================================================
-  # init OpenHASP object from its jsonl definition
+  # init HASPmota object from its jsonl definition
   #
   # arg1: LVGL parent object (used to create a sub-object)
-  # arg2: `jline` JSONL definition of the object from OpenHASP template (used in sub-classes)
+  # arg2: `jline` JSONL definition of the object from HASPmota template (used in sub-classes)
   # arg3: (opt) LVGL object if it already exists and was created prior to init()
   #====================================================================
   def init(parent, page, jline, obj)
@@ -308,7 +323,7 @@ class lvh_obj
     # the callback avoids doing anything sophisticated in the cb
     # defer the actual action to the Tasmota event loop
     # print("-> CB fired","self",self,"obj",obj,"event",event.tomap(),"code",event.code)
-    var oh = self._page._oh         # openhasp global object
+    var oh = self._page._oh         # haspmota global object
     var code = event.code           # materialize to a local variable, otherwise the value can change (and don't capture event object)
     if self.action != "" && code == lv.EVENT_CLICKED
       # if clicked and action is declared, do the page change event
@@ -324,7 +339,13 @@ class lvh_obj
         try
           # try to get the new val
           var val = self.val
-          tas_event_more = string.format(',"val":%i', val)
+          if val != nil   tas_event_more = string.format(',"val":%i', val) end
+          var text = self.text
+          if text != nil
+            import json
+            tas_event_more += ',"text":'
+            tas_event_more += json.dump(text)
+          end
         except ..
         end
       end
@@ -486,7 +507,7 @@ class lvh_obj
   #====================================================================
   #  `text_font`
   #
-  # For OpenHASP compatiblity, default to "robotocondensed-latin1"
+  # For HASPmota compatiblity, default to "robotocondensed-latin1"
   # However we propose an extension to allow for other font names
   #
   # Arg1: (int) font size for `robotocondensed-latin1`
@@ -1001,6 +1022,9 @@ class lvh_qrcode : lvh_obj
   def get_qr_text() end
 end
 
+#====================================================================
+#  slider
+#====================================================================
 class lvh_slider : lvh_obj
   static _lv_class = lv.slider
 
@@ -1009,6 +1033,9 @@ class lvh_slider : lvh_obj
   end
 end
 
+#====================================================================
+#  roller
+#====================================================================
 class lvh_roller : lvh_obj
   static _lv_class = lv.roller
 
@@ -1025,6 +1052,84 @@ class lvh_roller : lvh_obj
   def get_options()
     return self._lv_obj.get_options()
   end
+
+  def set_text(t)
+    raise "attribute_error", "set_text unsupported on roller"
+  end
+  def get_text()
+    # allocate a bytes buffer
+    var b = bytes().resize(256)      # force 256 bytes
+    self._lv_obj.get_selected_str(b._buffer(), 256)
+    b = self.remove_trailing_zeroes(b)
+    return b.asstring()
+  end
+end
+
+#====================================================================
+#  dropdown
+#====================================================================
+class lvh_dropdown : lvh_obj
+  static _lv_class = lv.dropdown
+  static _dir = [ lv.DIR_BOTTOM, lv.DIR_TOP, lv.DIR_LEFT, lv.DIR_RIGHT ] # 0 = down, 1 = up, 2 = left, 3 = right
+
+  def set_val(t)
+    self._lv_obj.set_selected(t, 0)    # add second parameter - no animation
+  end
+  def get_val()
+    return self._lv_obj.get_selected()
+  end
+
+  def set_options(t)
+    self._lv_obj.set_options(t, lv.ROLLER_MODE_NORMAL)
+  end
+  def get_options()
+    return self._lv_obj.get_options()
+  end
+
+  def set_text(t)
+    # set_text sets a static text displayed whatever the value
+    # use `nil` to set back the text of the selected value
+    self._lv_obj.set_text(t)
+  end
+  def get_text()
+    var static_text = self._lv_obj.get_text()
+    if static_text == nil
+      # allocate a bytes buffer
+      var b = bytes().resize(256)      # force 256 bytes
+      self._lv_obj.get_selected_str(b._buffer(), 256)
+      b = self.remove_trailing_zeroes(b)
+      return b.asstring()
+    else
+      return static_text
+    end
+  end
+
+  # direction needs a conversion from HASPmota numbers and LVGL's
+  def set_direction(t)
+    # 0 = down, 1 = up, 2 = left, 3 = right
+    self._lv_obj.set_dir(self._dir[int(t)])
+  end
+  def get_direction()
+    var dir = self._lv_obj.get_dir()
+    var i = 0
+    while i < size(self._dir)
+      if dir == self._dir[i]    return i end
+      i += 1
+    end
+    return -1
+  end
+
+  # show_selected (bool) is a HASPmota addition
+  # only meaningful if set to `true`, setting to false requires a call to `set_text`
+  def set_show_selected(t)
+    if t
+      self._lv_obj.set_text(nil)  # undo static text
+    end
+  end
+  def get_show_selected()
+    var static_text = self._lv_obj.get_text()
+    return (static_text == nil)
+  end
 end
 
 #################################################################################
@@ -1037,7 +1142,6 @@ class lvh_bar : lvh_obj         static _lv_class = lv.bar         end
 class lvh_btn : lvh_obj         static _lv_class = lv.btn         end
 class lvh_btnmatrix : lvh_obj   static _lv_class = lv.btnmatrix   end
 class lvh_checkbox : lvh_obj    static _lv_class = lv.checkbox    end
-class lvh_dropdown : lvh_obj    static _lv_class = lv.dropdown    end
 class lvh_line : lvh_obj        static _lv_class = lv.line        end
 class lvh_textarea : lvh_obj    static _lv_class = lv.textarea    end
 # special case for scr (which is actually lv_obj)
@@ -1055,22 +1159,22 @@ class lvh_page
   var _obj_id               # (map) of `lvh_obj` objects by id numbers
   var _page_id              # (int) id number of this page
   var _lv_scr               # (lv_obj) lvgl screen object
-  var _oh                   # OpenHASP global object
-  # openhasp attributes for page are on item `#0`
+  var _oh                   # HASPmota global object
+  # haspmota attributes for page are on item `#0`
   var prev, next, back      # (int) id values for `prev`, `next`, `back` buttons
 
   #====================================================================
   #  `init`
   #
-  # arg1: `page_number` (int) OpenHASP page id
+  # arg1: `page_number` (int) HASPmota page id
   #        defaults to `1` if not specified
   #        page 0 is special, visible on all pages. Internally uses `layer_top`
-  # arg2: `oh` global OpenHASP monad object
-  #  page_number: openhasp page number, defaults to `1` if not specified
+  # arg2: `oh` global HASPmota monad object
+  #  page_number: haspmota page number, defaults to `1` if not specified
   #====================================================================
   def init(page_number, oh)
     import global
-    self._oh = oh                   # memorize OpenHASP parent object
+    self._oh = oh                   # memorize HASPmota parent object
 
     # if no parameter, default to page #1
     page_number = int(page_number)
@@ -1179,17 +1283,17 @@ end
 
 #################################################################################
 #
-# class `OpenHASP` to initialize the OpenHASP parsing
+# class `HASPmota` to initialize the HASPmota parsing
 #
 #################################################################################
 
 # main class controller, meant to be a singleton and the only externally used class
-class OpenHASP
+class HASPmota
   var dark                              # (bool) use dark theme?
   var hres, vres                        # (int) resolution
   var scr                               # (lv_obj) default LVGL screen
   var r16                               # (lv_font) robotocondensed fonts size 16
-  # openhasp objects
+  # haspmota objects
   var lvh_pages                         # (list of lvg_page) list of pages
   var lvh_page_cur_idx                  # (int) current page index number
   # regex patterns
@@ -1272,8 +1376,8 @@ class OpenHASP
       self.r16 = lv.font_embedded("montserrat", 14)  # TODO what if does not exist
     end
 
-    # set the theme for OpenHASP
-    var th2 = lv.theme_openhasp_init(0, lv.color(0xFF00FF), lv.color(0x303030), self.dark, self.r16)
+    # set the theme for HASPmota
+    var th2 = lv.theme_haspmota_init(0, lv.color(0xFF00FF), lv.color(0x303030), self.dark, self.r16)
     self.scr.get_disp().set_theme(th2)
     self.scr.set_style_bg_color(self.dark ? lv.color(0x000000) : lv.color(0xFFFFFF),0)    # set background to white
     # apply theme to layer_top, but keep it transparent
@@ -1571,7 +1675,7 @@ class OpenHASP
         return
       end
 
-      # extract openhasp class, prefix with `lvh_`. Ex: `btn` becomes `lvh_btn`
+      # extract haspmota class, prefix with `lvh_`. Ex: `btn` becomes `lvh_btn`
       # extract parent
       var parent_lvgl
       var parent_id = int(jline.find("parentid"))
@@ -1642,20 +1746,20 @@ class OpenHASP
     end
   end
 end
-openhasp.OpenHASP = OpenHASP
+haspmota.HASPmota = HASPmota
 
 #################################################################################
 # General module initilization
 #################################################################################
 
-# automatically instanciate the OpenHASP() monad
+# automatically instanciate the HASPmota() monad
 # note: value is cached in the module cache
-#  and is returned whenever you call `import openhasp` again
+#  and is returned whenever you call `import haspmota` again
 # This means that the object is never garbage collected
 #
-openhasp.init = def (m)         # `init(m)` is called during first `import openhasp`
-  var oh = m.OpenHASP
+haspmota.init = def (m)         # `init(m)` is called during first `import haspmota`
+  var oh = m.HASPmota
   return oh()
 end
 
-return openhasp
+return haspmota

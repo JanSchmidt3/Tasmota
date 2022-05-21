@@ -32,7 +32,7 @@
  * Each SPM-4Relay has 4 bistable relays with their own CSE7761 energy monitoring device handled by an ARM processor.
  * Green led is controlled by ARM processor indicating SD-Card access.
  * ESP32 is used as interface between eWelink and ARM processor in SPM-Main unit communicating over proprietary serial protocol.
- * Power on sequence for two SPM-4Relay modules is 00-00-15-10-(0F)-(13)-(13)-(19)-0C-09-04-09-04-0B-0B
+ * Power on sequence for two SPM-4Relay modules is 00-00-15-10-(0F)-(13)-(13)-(19)-0C-09-04-[25]-09-04-[25]-0B-0B
  * Up to 180 days of daily energy are stored on the SD-Card. Previous data is lost.
  * Tasmota support is based on Sonoff SPM v1.0.0 ARM firmware.
  * Energy history cannot be guaranteed using either SD-Card or internal flash. As a solution Tasmota stores the total energy and yesterday energy just after midnight.
@@ -122,7 +122,7 @@
 #define XDRV_86                      86
 
 #define SSPM_MAX_MODULES             8       // Currently supports up to 8 SPM-4RELAY units for a total of 32 relays restricted by 32-bit power_t size
-#define SSPM_SERIAL_BUFFER_SIZE      512     // Needs to accomodate Energy total history for 180 days (408 bytes)
+#define SSPM_SERIAL_BUFFER_SIZE      548     // Needs to accomodate firmware upload data blocks (546 bytes)
 
 //#define SSPM_SIMULATE                2       // Simulate additional 4Relay modules based on first detected 4Relay module (debugging purposes only!!)
 
@@ -137,12 +137,16 @@
 #define SSPM_FUNC_SET_TIME           12      // 0x0C
 #define SSPM_FUNC_IAMHERE            13      // 0x0D
 #define SSPM_FUNC_INIT_SCAN          16      // 0x10
+#define SSPM_FUNC_UPLOAD_HEADER      20      // 0x14 - SPI Upload header
 #define SSPM_FUNC_UNITS              21      // 0x15
 #define SSPM_FUNC_GET_ENERGY_TOTAL   22      // 0x16
 #define SSPM_FUNC_GET_ENERGY         24      // 0x18
 #define SSPM_FUNC_GET_LOG            26      // 0x1A
 #define SSPM_FUNC_ENERGY_PERIOD      27      // 0x1B
 #define SSPM_FUNC_RESET              28      // 0x1C - Remove device from eWelink and factory reset
+#define SSPM_FUNC_UPLOAD_DATA        31      // 0x1F - SPI Upload incremental data blocks of max 512 bytes to ARM
+#define SSPM_FUNC_UPLOAD_DONE        33      // 0x21 - SPI Finish upload
+#define SSPM_FUNC_GET_NEW1           37      // 0x25
 
 // From ARM to ESP
 #define SSPM_FUNC_ENERGY_RESULT      6       // 0x06
@@ -150,21 +154,29 @@
 #define SSPM_FUNC_SCAN_START         15      // 0x0F
 #define SSPM_FUNC_SCAN_RESULT        19      // 0x13
 #define SSPM_FUNC_SCAN_DONE          25      // 0x19
+#define SSPM_FUNC_UPLOAD_DONE_ACK    30      // 0x1E - Restart ARM
 
 // Unknown
-#define SSPM_FUNC_01
-#define SSPM_FUNC_02
-#define SSPM_FUNC_05
-#define SSPM_FUNC_14
-#define SSPM_FUNC_17
-#define SSPM_FUNC_18
-#define SSPM_FUNC_20
-#define SSPM_FUNC_23
+#define SSPM_FUNC_01                 1       // 0x01
+#define SSPM_FUNC_02                 2       // 0x02
+#define SSPM_FUNC_05                 5       // 0x05
+#define SSPM_FUNC_14                 14      // 0x0E
+#define SSPM_FUNC_17                 17      // 0x11
+#define SSPM_FUNC_18                 18      // 0x12
+#define SSPM_FUNC_23                 23      // 0x17
+#define SSPM_FUNC_29                 29      // 0x1D
+#define SSPM_FUNC_32                 32      // 0x20
+#define SSPM_FUNC_34                 34      // 0x22
+#define SSPM_FUNC_35                 35      // 0x23
+#define SSPM_FUNC_36                 36      // 0x24
 
 #define SSPM_GPIO_ARM_RESET          15
 #define SSPM_GPIO_LED_ERROR          33
 
 #define SSPM_MODULE_NAME_SIZE        12
+
+#define SSPM_MAIN_V1_0_0             0x00010000
+#define SSPM_MAIN_V1_2_0             0x00010200
 
 /*********************************************************************************************/
 
@@ -176,9 +188,10 @@ enum SspmMachineStates { SPM_NONE,                 // Do nothing
                          SPM_WAIT,                 // Wait 100ms
                          SPM_RESET,                // Toggle ARM reset pin
                          SPM_POLL_ARM,             // Wait for first acknowledge from ARM after reset
-                         SPM_POLL_ARM_SPI,         // Wait for first acknowledge from ARM SPI after reset
-                         SPM_POLL_ARM_2,           // Wait for second acknowledge from ARM after reset
-                         SPM_POLL_ARM_3,           // Wait for second acknowledge from ARM after reset
+// Removed to accomodate v1.2.0 too
+//                         SPM_POLL_ARM_SPI,         // Wait for first acknowledge from ARM SPI after reset
+//                         SPM_POLL_ARM_2,           // Wait for second acknowledge from ARM after reset
+//                         SPM_POLL_ARM_3,           // Wait for second acknowledge from ARM after reset
                          SPM_SEND_FUNC_UNITS,      // Get number of units
                          SPM_START_SCAN,           // Start module scan sequence
                          SPM_WAIT_FOR_SCAN,        // Wait for scan sequence to complete
@@ -250,6 +263,7 @@ typedef struct {
   float overload_max_current;
 
   uint32_t timeout;
+  uint32_t main_version;
   power_t old_power;
   power_t power_on_state;
   uint16_t last_totals;
@@ -520,6 +534,20 @@ void SSPMSendCmnd(uint32_t command) {
 }
 
 /*********************************************************************************************/
+
+void SSPMSendFindAck(void) {
+  /*
+   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22
+  AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 80 00 00 01 00 00 FC 73
+  Marker  |Module id                          |Ac|Cm|Size |  |Ix|Chksm|
+  */
+  SSPMInitSend();
+  SspmBuffer[15] = 0x80;  // Ack
+//  SspmBuffer[16] = SSPM_FUNC_FIND;  // 0x00
+  SspmBuffer[18] = 1;
+  SspmBuffer[19] = 0;
+  SSPMSend(23);
+}
 
 void SSPMSendOPS(uint32_t relay) {
   /*
@@ -894,6 +922,23 @@ void SSPMSendGetEnergyPeriod(uint32_t relay) {
 
 }
 
+void SSPMSendGetNew1(uint32_t module) {
+  /*
+   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21
+  aa 55 01 6b 7e 32 37 39 37 34 13 4b 35 36 37 00 25 00 00 08 c0 0a
+  Marker  |Module id                          |Ac|Cm|Size |Ix|Chksm|
+  */
+  if (module >= Sspm->module_max) { return; }
+
+  SSPMInitSend();
+  memcpy(SspmBuffer +3, Sspm->module[SSPMGetMappedModuleId(module)], SSPM_MODULE_NAME_SIZE);
+  SspmBuffer[16] = SSPM_FUNC_GET_NEW1;  // 0x25
+  Sspm->command_sequence++;
+  SspmBuffer[19] = Sspm->command_sequence;
+
+  SSPMSend(22);
+}
+
 /*********************************************************************************************/
 
 void SSPMAddModule(void) {
@@ -1051,11 +1096,15 @@ void SSPMHandleReceivedData(void) {
           MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR("SSPMOverload"));
           Sspm->overload_relay = 255;
         } else {
-          Sspm->module_selected--;
-          if (Sspm->module_selected > 0) {
-            SSPMSendGetModuleState(Sspm->module_selected -1);
+          if (Sspm->main_version > SSPM_MAIN_V1_0_0) {
+            SSPMSendGetNew1(Sspm->module_selected -1);
           } else {
-            SSPMSendGetScheme(Sspm->module_selected);
+            Sspm->module_selected--;
+            if (Sspm->module_selected > 0) {
+              SSPMSendGetModuleState(Sspm->module_selected -1);
+            } else {
+              SSPMSendGetScheme(Sspm->module_selected);
+            }
           }
         }
         break;
@@ -1101,9 +1150,14 @@ void SSPMHandleReceivedData(void) {
       case SSPM_FUNC_SET_TIME:
         /* 0x0C
         AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 80 0c 00 01 00 04 3e 62
+        v1.2.0: adds response from each 4-relay module
+        AA 55 01 8b 34 32 37 39 37 34 13 4b 35 36 37 80 0c 00 01 00 19 4c 09
         */
-        TasmotaGlobal.devices_present = 0;
-        SSPMSendGetModuleState(Sspm->module_selected -1);
+        if (0 == SspmBuffer[3]) {
+          // Discard v1.2.0 additions
+          TasmotaGlobal.devices_present = 0;
+          SSPMSendGetModuleState(Sspm->module_selected -1);
+        }
         break;
       case SSPM_FUNC_INIT_SCAN:
         /* 0x10
@@ -1117,7 +1171,11 @@ void SSPMHandleReceivedData(void) {
         AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 80 15 00 04 00 01 00 00 01 81 b1
                                                                 |St|FwVersio|
                                                                 |  |   1.0.0|
+        v1.2.0:
+        AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 80 15 00 04 00 01 02 00 01 41 10
+                                                                |  |   1.2.0|
         */
+        Sspm->main_version = SspmBuffer[20] << 16 | SspmBuffer[21] << 8 | SspmBuffer[22];  // 0x00010000 or 0x00010200
         AddLog(LOG_LEVEL_INFO, PSTR("SPM: Main version %d.%d.%d found"), SspmBuffer[20], SspmBuffer[21], SspmBuffer[22]);
 
         Sspm->mstate = SPM_START_SCAN;
@@ -1313,6 +1371,19 @@ void SSPMHandleReceivedData(void) {
         AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 80 1c 00 01 00 0b f9 e3
         */
 //        TasmotaGlobal.restart_flag = 2;
+        break;
+      case SSPM_FUNC_GET_NEW1:
+        /* 0x25 v1.2.0
+         0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 21 22 23
+        AA 55 01 8b 34 32 37 39 37 34 13 4b 35 36 37 80 25 00 01 01 06 98 06
+        Marker  |Module id                          |Ac|Cm|Size |St|Ix|Chksm|
+        */
+        Sspm->module_selected--;
+        if (Sspm->module_selected > 0) {
+          SSPMSendGetModuleState(Sspm->module_selected -1);
+        } else {
+          SSPMSendGetScheme(Sspm->module_selected);
+        }
         break;
     }
   } else {
@@ -1515,9 +1586,18 @@ void SSPMHandleReceivedData(void) {
           AddLog(LOG_LEVEL_DEBUG, PSTR("SPM: Relay scan done - none found"));
 
           Sspm->mstate = SPM_NONE;
+          Sspm->error_led_blinks = 255;
         }
 
         SSPMSendSetTime();
+        break;
+      case SSPM_FUNC_UPLOAD_DONE_ACK:
+        /* 0x1E
+        0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22
+        aa 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 1e 00 01 00 01 fe 05
+        Marker  |                                   |  |Cm|Size |  |Ix|Chksm|
+        */
+        SSPMSendFindAck();
         break;
     }
   }
@@ -1650,6 +1730,54 @@ bool SSPMSendSPIFind(void) {
   return false;
 }
 
+void SSPMSendSPIUploadHeader(void) {
+  /*
+   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+  AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 14 00 0b 09 09 00 1b e5 a4 c7 00 02 88 74 00 6d df
+  Marker  |                                   |  |Cm|Size |        |Checksum   |UploadSize |Ix|Chksm|
+  */
+  SSPMInitSend();
+  SspmBuffer[16] = SSPM_FUNC_UPLOAD_HEADER;  // 0x14
+  SspmBuffer[18] = 0x0B;
+
+
+  SspmBuffer[30] = 0;
+  SSPMSendSPI(33);
+}
+
+void SSPMSendSPIUpload(void) {
+  /*
+   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38    539 540 541 542 543 544 545
+  AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 1f 02 0c 00 00 00 00 00 00 02 00 a2 99 c3 22 00 00 01 20 cd 95 01 08 ... 04  48  af  f3  01  xx  yy
+  AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 1f 02 0c 00 00 02 00 00 00 02 00 27 f7 24 87 00 80 01 23 23 70 10 bd ... 21  fa  04  f3  02  xx  yy
+  ...
+  AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 1f 02 0c 00 02 86 00 00 00 02 00 f8 f5 25 6d f1 61 00 08 02 01 ff 00 ...                 44  xx  yy
+  AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 1f 00 80 00 02 88 00 00 00 00 74 95 4e 01 c1 c5 e5 02 08 c5 e5 02 08 ...                 45  xx  yy
+  Marker  |                                   |  |Cm|Size |Address    |UploadSize |Checksum   |512 data bytes                            |Ix |Chksm  |
+  */
+  SSPMInitSend();
+  SspmBuffer[16] = SSPM_FUNC_UPLOAD_DATA;  // 0x1F
+
+
+
+  Sspm->command_sequence++;
+  SspmBuffer[543] = Sspm->command_sequence;
+  SSPMSendSPI(546);
+}
+
+void SSPMSendSPIUploadDone(void) {
+  /*
+   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21
+  AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 21 00 00 46 32 da
+  Marker  |                                   |  |Cm|Size |Ix|Chksm|
+  */
+  SSPMInitSend();
+  SspmBuffer[16] = SSPM_FUNC_UPLOAD_DONE;  // 0x21
+  Sspm->command_sequence++;
+  SspmBuffer[19] = Sspm->command_sequence;
+  SSPMSendSPI(22);
+}
+
 /*********************************************************************************************/
 
 void SSPMInit(void) {
@@ -1732,7 +1860,7 @@ void SSPMEvery100ms(void) {
   // Fix race condition if the ARM doesn't respond
   if ((Sspm->mstate > SPM_NONE) && (Sspm->mstate < SPM_SEND_FUNC_UNITS)) {
     Sspm->counter++;
-    if (Sspm->counter > 20) {
+    if (Sspm->counter > 30) {
       Sspm->mstate = SPM_NONE;
       Sspm->error_led_blinks = 255;
     }
@@ -1755,6 +1883,8 @@ void SSPMEvery100ms(void) {
       // Wait for first acknowledge from ARM after reset
       SSPMSendCmnd(SSPM_FUNC_FIND);
       break;
+/*
+    // Removed to accomodate v1.2.0 too
     case SPM_POLL_ARM_SPI:
       SSPMSendSPIFind();
       Sspm->mstate = SPM_POLL_ARM_2;
@@ -1766,6 +1896,7 @@ void SSPMEvery100ms(void) {
     case SPM_POLL_ARM_3:
       // Wait for second acknowledge from ARM after reset
       break;
+*/
     case SPM_SEND_FUNC_UNITS:
       // Get number of units
       SSPMSendCmnd(SSPM_FUNC_UNITS);
@@ -2027,13 +2158,13 @@ const char kSSPMCommands[] PROGMEM = "SSPM|"  // Prefix
   "Display|Dump|"                             // SetOptions
   "Log|Energy|History|Scan|IamHere|"
   "Reset|Map|Overload|"
-  D_CMND_ENERGYTOTAL "|" D_CMND_ENERGYYESTERDAY;
+  D_CMND_ENERGYTOTAL "|" D_CMND_ENERGYYESTERDAY "|Send";
 
 void (* const SSPMCommand[])(void) PROGMEM = {
   &CmndSSPMDisplay, &CmndSSPMDump,
   &CmndSSPMLog, &CmndSSPMEnergy, &CmndSSPMHistory, &CmndSSPMScan, &CmndSSPMIamHere,
   &CmndSSPMReset, &CmndSSPMMap, &CmndSSPMOverload,
-  &CmndSpmEnergyTotal, &CmndSpmEnergyYesterday };
+  &CmndSpmEnergyTotal, &CmndSpmEnergyYesterday, &CmndSSPMSend };
 
 void CmndSSPMDisplay(void) {
   // Select either all relays or only powered on relays
@@ -2255,6 +2386,26 @@ void CmndSSPMMap(void) {
       ResponseAppend_P(PSTR("%s%d"), (i)?",":"", SSPMGetModuleNumberFromMap(SSMPGetModuleId(i)) +1);
     }
     ResponseAppend_P(PSTR("]}"));
+  }
+}
+
+void CmndSSPMSend(void) {
+  // Want to send AA 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 21 00 00 ix ch ks
+  // SspmSend 00 00 00 00 00 00 00 00 00 00 00 00 00 21 00 00
+  char data[TOPSZ];
+  if ((XdrvMailbox.data_len > 0) && (XdrvMailbox.data_len < sizeof(data))) {
+    strlcpy(data, XdrvMailbox.data, sizeof(data));
+    uint32_t len = (XdrvMailbox.data_len +1) / 3;
+    char *p = data;
+    SSPMInitSend();
+    for (uint32_t i = 0; i < len; i++) {
+      SspmBuffer[i +3] = strtol(p, &p, 16);
+    }
+    Sspm->command_sequence++;
+    SspmBuffer[len +3] = Sspm->command_sequence;
+    SSPMSend(len +6);
+
+    ResponseCmndIdxChar(ToHex_P((unsigned char *)SspmBuffer, len +6, data, sizeof(data), ' '));
   }
 }
 
