@@ -8007,9 +8007,10 @@ char buff[512];
           Webserver->client().write((const char*)lbuf, Settings->display_width * 3);
         }
       } else {
-        for (uint32_t lins = 0; lins<Settings->display_height; lins++) {
+        for (uint32_t lins = 0; lins < Settings->display_height; lins++) {
           lbp = lbuf + (Settings->display_width * 3);
           if (bpp == 4) {
+            // 16 gray scales
             for (uint32_t cols = 0; cols < Settings->display_width; cols += 2) {
               uint8_t pixel;
               if (!dmflg) {
@@ -8041,6 +8042,7 @@ char buff[512];
               bp++;
             }
           } else {
+            // one bit
             for (uint32_t cols = 0; cols < Settings->display_width; cols += 8) {
               uint8_t bits = 0x80;
               while (bits) {
