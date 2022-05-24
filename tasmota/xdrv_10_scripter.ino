@@ -7937,6 +7937,8 @@ void script_download_task(void *path) {
 }
 #endif // USE_DLTASK
 
+#define REVERT_M5EPD
+
 void SendFile_sub(char *fname) {
 char buff[512];
   uint8_t sflg = 0;
@@ -7983,7 +7985,9 @@ char buff[512];
       memset(lbuf, 0, Settings->display_width * 3);
       if (!lbuf) return;
       uint8_t dmflg = 0;
-      if (renderer->disp_bpp & 0x40) dmflg = 1;
+      if (renderer->disp_bpp & 0x40) {
+        dmflg = 1;
+      }
       int8_t bpp = renderer->disp_bpp & 0xbf;;
       uint8_t *lbp;
       uint8_t fileHeader[fileHeaderSize];
@@ -8011,6 +8015,12 @@ char buff[512];
           lbp = lbuf + (Settings->display_width * 3);
           if (bpp == 4) {
             // 16 gray scales
+#ifdef REVERT_M5EPD
+            if (dmflg) {
+              bp = &renderer->framebuffer[(Settings->display_height - lins) * (Settings->display_width / 2)];
+              bp--;
+            }
+#endif
             for (uint32_t cols = 0; cols < Settings->display_width; cols += 2) {
               uint8_t pixel;
               if (!dmflg) {
@@ -8025,10 +8035,14 @@ char buff[512];
                   *--lbp = pixel;
                   *--lbp = pixel;
                 }
-
+                bp++;
               } else {
                 for (uint32_t cnt = 0; cnt <= 1; cnt++) {
+#ifdef REVERT_M5EPD
+                  if (cnt & 1) {
+#else
                   if (!(cnt & 1)) {
+#endif
                     pixel = *bp >> 4;
                   } else {
                     pixel = *bp & 0xf;
@@ -8038,8 +8052,12 @@ char buff[512];
                   *--lbp = pixel;
                   *--lbp = pixel;
                 }
+#ifdef REVERT_M5EPD
+                bp--;
+#else
+                bp++;
+#endif
               }
-              bp++;
             }
           } else {
             // one bit
