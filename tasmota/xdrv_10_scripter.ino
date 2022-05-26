@@ -2313,6 +2313,26 @@ chknext:
           fvar = alend;
           goto nfuncexit;
         }
+
+        if (!strncmp(lp, "af(", 3)) {
+          // array to float
+          uint16_t alend;
+          float *fpd;
+          lp = get_array_by_name(lp + 3, &fpd, &alend, 0);
+          SCRIPT_SKIP_SPACES
+          if (fpd) {
+            uint8_t fbytes[4];
+            fbytes[0] = *fpd++;
+            fbytes[1] = *fpd++;
+            fbytes[2] = *fpd++;
+            fbytes[3] = *fpd++;
+            fpd = (float*)fbytes;
+            fvar = *fpd;
+          } else {
+            fvar = 0;
+          }
+          goto nfuncexit;
+        }
         break;
 
       case 'b':
