@@ -2024,6 +2024,10 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
             iob = '\n';
           } else if (*lp == 'r') {
             iob = '\r';
+          } else if (*lp == '0' && *(lp+1) == 'x') {
+            lp += 2;
+            iob = strtol(lp, 0, 16);
+            lp++;
           } else if (*lp == '\\') {
             iob = '\\';
           } else {
@@ -4074,6 +4078,27 @@ extern char *SML_GetSVal(uint32_t index);
           goto exit;
         }
         // serial read array
+        if (!strncmp(lp, "swa(", 4)) {
+          fvar = -1;
+          if (glob_script_mem.sp) {
+            uint16_t alen;
+            float *array;
+            lp = get_array_by_name(lp + 4, &array, &alen, 0);
+            if (!array) {
+              goto exit;
+            }
+            float len;
+            lp = GetNumericArgument(lp, OPER_EQU, &len, 0);
+            if (len > alen) len = alen;
+            if (len < 1) len = 1;
+            while (len) {
+              glob_script_mem.sp->write((uint8_t)*array++);
+              len--;
+            }
+          }
+          goto nfuncexit;
+        }
+        // serial read array
         if (!strncmp(lp, "sra(", 4)) {
           fvar = -1;
           if (glob_script_mem.sp) {
@@ -4104,9 +4129,7 @@ extern char *SML_GetSVal(uint32_t index);
             }
 #endif
           }
-          lp++;
-          len = 0;
-          goto exit;
+          goto nfuncexit;
         }
 #ifdef USE_SML_M
         // serial modbus write float, 010404ffffffffxxxx
@@ -6878,8 +6901,7 @@ void SaveScriptEnd(void) {
   }
 }
 
-#define WEB_PAGE_WS 8
-#define WEB_PAGE_WM 9
+
 
 void set_callbacks() {
   if (Run_Scripter1(">F", -2, 0) == 99) {glob_script_mem.fast_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.fast_script = 0;}
@@ -6887,17 +6909,31 @@ void set_callbacks() {
   if (Run_Scripter1(">C", -2, 0) == 99) {glob_script_mem.html_script = glob_script_mem.section_ptr + 2;} else {glob_script_mem.html_script = 0;}
 }
 
+void set_wpages(char *id, uint16_t index) {
+  uint16_t idlen = strlen(id);
+  uint16_t idl2 = idlen;
+  if (id[idlen - 1] ==' ') idl2--;
+  if (Run_Scripter1(id, -idlen, 0) == 99) {glob_script_mem.web_pages[index] = glob_script_mem.section_ptr + idl2;} else {glob_script_mem.web_pages[index] = 0;}
+}
+
+#define WEB_PAGE_WS 8
+#define WEB_PAGE_WM 9
+
+const char SWPAGES[] PROGMEM = {"W|w |w1 |w2 |w3 |w4 |w5 |w6 |WS|WM|$"};
+
 void script_set_web_pages(void) {
-  if (Run_Scripter1(">W", -2, 0) == 99) {glob_script_mem.web_pages[0] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[0] = 0;}
-  if (Run_Scripter1(">w ", -3, 0) == 99) {glob_script_mem.web_pages[1] = glob_script_mem.section_ptr + 2;} else {glob_script_mem.web_pages[1] = 0;}
-  if (Run_Scripter1(">w1 ", -4, 0) == 99) {glob_script_mem.web_pages[2] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[2] = 0;}
-  if (Run_Scripter1(">w2 ", -4, 0) == 99) {glob_script_mem.web_pages[3] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[3] = 0;}
-  if (Run_Scripter1(">w3 ", -4, 0) == 99) {glob_script_mem.web_pages[4] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[4] = 0;}
-  if (Run_Scripter1(">w4 ", -4, 0) == 99) {glob_script_mem.web_pages[5] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[5] = 0;}
-  if (Run_Scripter1(">w5 ", -4, 0) == 99) {glob_script_mem.web_pages[6] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[6] = 0;}
-  if (Run_Scripter1(">w6 ", -4, 0) == 99) {glob_script_mem.web_pages[7] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[7] = 0;}
-  if (Run_Scripter1(">WS", -3, 0) == 99) {glob_script_mem.web_pages[WEB_PAGE_WS] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[WEB_PAGE_WS] = 0;}
-  if (Run_Scripter1(">WM", -3, 0) == 99) {glob_script_mem.web_pages[WEB_PAGE_WM] = glob_script_mem.section_ptr + 3;} else {glob_script_mem.web_pages[WEB_PAGE_WM] = 0;}
+  char lbl[6];
+  lbl[0] = '>';
+
+  uint16_t index = 0;
+  while (1) {
+    GetTextIndexed(&lbl[1], sizeof(lbl) - 1, index, SWPAGES);
+    if (lbl[1] == '$') {
+      break;
+    }
+    set_wpages(lbl, index);
+    index++;
+  }
 }
 
 #endif // USE_WEBSERVER
