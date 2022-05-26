@@ -29,6 +29,11 @@
 
 #define AXP202_INT        35
 
+
+void rtc_clk_cpu_freq_set(uint32_t in) {
+  
+}
+
 struct TTGO_ADC {
   float vbus_v;
   float vbus_c;
