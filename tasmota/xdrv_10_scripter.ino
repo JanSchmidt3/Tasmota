@@ -9038,7 +9038,7 @@ exgc:
         uint16_t alend;
         uint16_t ipos;
         lp = get_array_by_name(cp + 5, &fpd, &alend, &ipos);
-        if (ipos >= alend) ipos = 0; 
+        if (ipos >= alend) ipos = 0;
         if (fpd) {
           for (uint32_t cnt = 0; cnt < alend; cnt++) {
             dtostrfd(fpd[ipos], 3, valstr);
@@ -9054,6 +9054,19 @@ exgc:
           }
         }
         lp++;
+        WSContentSend_PD(PSTR("%s"), lp);
+        return lp;
+      }
+
+      cp = strstr_P(lin, PSTR("=#"));
+      if (cp) {
+        // insert from subroutine
+        char valstr[128];
+        uint16_t len = (uint32_t)cp - (uint32_t)lin;
+        strncpy(valstr, lin, len);
+        valstr[len] = 0;
+        WSContentSend_PD(PSTR("%s"), valstr);
+        lp = scripter_sub(cp , 0);
         WSContentSend_PD(PSTR("%s"), lp);
         return lp;
       }
