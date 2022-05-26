@@ -4077,23 +4077,61 @@ extern char *SML_GetSVal(uint32_t index);
           len = 0;
           goto exit;
         }
-        // serial read array
+        // serial write array
         if (!strncmp(lp, "swa(", 4)) {
           fvar = -1;
           if (glob_script_mem.sp) {
+            uint8_t modbus_buffer[64];
             uint16_t alen;
             float *array;
             lp = get_array_by_name(lp + 4, &array, &alen, 0);
+            SCRIPT_SKIP_SPACES
             if (!array) {
               goto exit;
             }
             float len;
             lp = GetNumericArgument(lp, OPER_EQU, &len, 0);
+            SCRIPT_SKIP_SPACES
             if (len > alen) len = alen;
             if (len < 1) len = 1;
-            while (len) {
-              glob_script_mem.sp->write((uint8_t)*array++);
-              len--;
+            if (*lp != ')') {
+              float opts = 0;
+              lp = GetNumericArgument(lp, OPER_EQU, &opts, 0);
+              SCRIPT_SKIP_SPACES
+              // calc modbus checksum
+#ifdef USE_SML_M
+              // calc modbus checksum
+              if (len > sizeof(modbus_buffer)) len = sizeof(modbus_buffer);
+              for (uint32_t cnt = 0; cnt < len; cnt++) {
+                modbus_buffer[cnt] = *array++;
+              }
+              uint16_t crc = 0xffff;
+              uint8_t *mbp = modbus_buffer;
+              if (opts == 1) {
+                mbp++;
+                crc = 0;
+              }
+              crc = MBUS_calculateCRC(mbp, mbp[2] + 3, crc);
+              if (opts == 1) {
+                mbp[mbp[2] + 3] = highByte(crc);
+                mbp[mbp[2] + 4] = lowByte(crc);
+              } else {
+                mbp[mbp[2] + 3] = lowByte(crc);
+                mbp[mbp[2] + 4] = highByte(crc);
+              }
+#endif
+              uint8_t *ucp = modbus_buffer;
+              while (len) {
+                glob_script_mem.sp->write(*ucp);
+                //AddLog(LOG_LEVEL_INFO,PSTR(">> %02x"),*ucp);
+                ucp++;
+                len--;
+              }
+            } else {
+              while (len) {
+                glob_script_mem.sp->write((uint8_t)*array++);
+                len--;
+              }
             }
           }
           goto nfuncexit;
@@ -4122,7 +4160,7 @@ extern char *SML_GetSVal(uint32_t index);
               for (uint8_t cnt = 0; cnt < 8; cnt++) {
                 modbus_response[cnt] = array[cnt];
               }
-              uint16_t crc = MBUS_calculateCRC(modbus_response, 6);
+              uint16_t crc = MBUS_calculateCRC(modbus_response, 6, 0xFFFF);
               if  ( (lowByte(crc) != modbus_response[6]) || (highByte(crc) != modbus_response[7]) ) {
                 fvar = -2;
               }
@@ -4212,12 +4250,12 @@ extern char *SML_GetSVal(uint32_t index);
               }
 
             // calc modbus checksum
-            uint16_t crc = MBUS_calculateCRC(modbus_response, modbus_response[2] + 3);
+            uint16_t crc = MBUS_calculateCRC(modbus_response, modbus_response[2] + 3, 0xFFFF);
             modbus_response[modbus_response[2] + 3] = lowByte(crc);
             modbus_response[modbus_response[2] + 4] = highByte(crc);
             glob_script_mem.sp->write(modbus_response, mb_index + 2);
             fvar = 0;
-#if 1
+#if 0
             // show response
             char hexbuff[256];
             sprintf(hexbuff,"%02x%02x%02x - ",modbus_response[0],modbus_response[1],modbus_response[2]);
