@@ -1245,6 +1245,7 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
 char *get_array_by_name(char *lp, float **fp, uint16_t *alen, uint16_t *ipos) {
   struct T_INDEX ind;
   uint8_t vtype;
+  while (*lp == ' ') lp++;
   lp = isvar(lp, &vtype, &ind, 0, 0, 0);
   if (vtype==VAR_NV) return 0;
   if (vtype&STYPE) return 0;
@@ -4394,7 +4395,7 @@ extern char *SML_GetSVal(uint32_t index);
             case 1:
               // set cs
               lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
-              index = fvar;
+              index = fvar - 1;
               index &= 3;
               lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
               glob_script_mem.spi.cs[index] = fvar;
@@ -4408,11 +4409,10 @@ extern char *SML_GetSVal(uint32_t index);
             case 2:
               // transfer bytes
               lp = GetNumericArgument(lp , OPER_EQU, &fvar, 0);
-              int8_t index = fvar;
+              int8_t index = fvar - 1;
 
               float *fpd = 0;
               uint16_t alend;
-              uint16_t ipos;
               lp = get_array_by_name(lp, &fpd, &alend, 0);
 
               // len
@@ -6470,10 +6470,12 @@ uint32_t script_sspi_trans(int32_t cs_index, float *array, uint32_t len, uint32_
     if (size < 1 || size > 3) size = 1;
     for (uint32_t cnt = 0; cnt < len; cnt++) {
       uint32_t bit = 1 << ((size * 8) - 1);
+      out = 0;
+      uint32_t uvar = *array;
       while (bit) {
         digitalWrite(glob_script_mem.spi.sclk, 0);
         if (glob_script_mem.spi.mosi >= 0) {
-          if ((uint32_t)*array & bit) digitalWrite(glob_script_mem.spi.mosi, 1);
+          if (uvar & bit) digitalWrite(glob_script_mem.spi.mosi, 1);
           else   digitalWrite(glob_script_mem.spi.mosi, 0);
         }
         digitalWrite(glob_script_mem.spi.sclk, 1);
