@@ -2320,6 +2320,15 @@ chknext:
           float *fpd;
           lp = get_array_by_name(lp + 3, &fpd, &alend, 0);
           SCRIPT_SKIP_SPACES
+          if (*lp != ')') {
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
+            uint16_t offset = 0;
+            offset = fvar;
+            if (offset > (alend - 4)) {
+              offset = alend - 4;
+            }
+            fpd += offset;
+          }
           if (fpd) {
             uint8_t fbytes[4];
             fbytes[0] = *fpd++;
@@ -3984,7 +3993,7 @@ extern char *SML_GetSVal(uint32_t index);
           if (*lp!=')') {
               lp = GetNumericArgument(lp, OPER_EQU, &rxbsiz, gv);
           }
-          fvar= -1;
+          fvar = -1;
           if (glob_script_mem.sp) {
             fvar == -1;
           } else {
@@ -4161,12 +4170,20 @@ extern char *SML_GetSVal(uint32_t index);
           fvar = -1;
           if (glob_script_mem.sp) {
             uint16_t alen;
-            float *array;
+            float *array = 0;
             lp = get_array_by_name(lp + 4, &array, &alen, 0);
+            SCRIPT_SKIP_SPACES
             if (!array) {
               goto exit;
             }
-            uint16_t index;
+            float opts = -1;
+            if (*lp != ')') {
+              lp = GetNumericArgument(lp, OPER_EQU, &opts, 0);
+              SCRIPT_SKIP_SPACES
+              // calc modbus checksum
+            }
+
+            uint16_t index = 0;
             for (index = 0; index < alen; index++) {
               if (!glob_script_mem.sp->available()) {
                 break;
@@ -4175,14 +4192,29 @@ extern char *SML_GetSVal(uint32_t index);
             }
             fvar = index;
 #ifdef USE_SML_M
-            if (index == 8) {
-              uint8_t modbus_response[10];
-              for (uint8_t cnt = 0; cnt < 8; cnt++) {
-                modbus_response[cnt] = array[cnt];
-              }
-              uint16_t crc = MBUS_calculateCRC(modbus_response, 6, 0xFFFF);
-              if  ( (lowByte(crc) != modbus_response[6]) || (highByte(crc) != modbus_response[7]) ) {
-                fvar = -2;
+            if (index == 8 || opts >= 0) {
+              uint8_t *modbus_response = (uint8_t*)special_malloc(alen);
+              if (modbus_response) {
+                for (uint8_t cnt = 0; cnt < alen; cnt++) {
+                  modbus_response[cnt] = array[cnt];
+                }
+                uint16_t crc = 0xffff;
+                uint8_t *mbp = modbus_response;
+                if (opts == 1) {
+                  mbp++;
+                  crc = 0;
+                }
+                crc = MBUS_calculateCRC(mbp, mbp[2] + 3, crc);
+                if (opts == 1) {
+                  if ((mbp[mbp[2] + 3] != highByte(crc)) || (mbp[mbp[2] + 4] != lowByte(crc))) {
+                    fvar = -2;
+                  }
+                } else {
+                  if ((mbp[mbp[2] + 3] != lowByte(crc)) || (mbp[mbp[2] + 4] != highByte(crc))) {
+                    fvar = -2;
+                  }
+                }
+                free(modbus_response);
               }
             }
 #endif
