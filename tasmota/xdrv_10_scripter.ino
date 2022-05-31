@@ -4167,7 +4167,7 @@ extern char *SML_GetSVal(uint32_t index);
               }
               char *cp = glob_script_mem.hstr;
               *cp++ = 'r';
-              
+
               uint8_t *mbp = modbus_buffer;
               for (uint32_t cnt = 0; cnt < len; cnt++) {
                 sprintf(cp,"%02x",*mbp++);
@@ -9220,6 +9220,17 @@ exgc:
         uint16_t alend;
         uint16_t ipos;
         lp = get_array_by_name(cp + 5, &fpd, &alend, &ipos);
+        SCRIPT_SKIP_SPACES
+        if (*lp != ')') {
+          // limit array lenght
+          float val;
+          lp = GetNumericArgument(lp, OPER_EQU, &val, 0);
+          if (val > alend) {
+            val = alend;
+          }
+          alend = val;
+        }
+
         if (ipos >= alend) ipos = 0;
         if (fpd) {
           for (uint32_t cnt = 0; cnt < alend; cnt++) {
@@ -9248,8 +9259,11 @@ exgc:
         strncpy(valstr, lin, len);
         valstr[len] = 0;
         WSContentSend_PD(PSTR("%s"), valstr);
-        lp = scripter_sub(cp , 0);
-        WSContentSend_PD(PSTR("%s"), lp);
+        scripter_sub(cp , 0);
+        cp = strchr(cp, ')');
+        if (cp) {
+          WSContentSend_PD(PSTR("%s"), cp + 1);
+        }
         return lp;
       }
 
