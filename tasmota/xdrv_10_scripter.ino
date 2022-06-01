@@ -7593,7 +7593,7 @@ bool Script_SubCmd(void) {
   strcpy(cp, command);
   uint8_t tlen = strlen(command);
   cp += tlen;
-  if (XdrvMailbox.data_len>0) {
+  if (XdrvMailbox.data_len > 0) {
     *cp++ = '(';
     strncpy(cp, XdrvMailbox.data,XdrvMailbox.data_len);
     cp += XdrvMailbox.data_len;
@@ -7607,7 +7607,7 @@ bool Script_SubCmd(void) {
     return false;
   }
   else {
-    cp=XdrvMailbox.data;
+    cp = XdrvMailbox.data;
     while (*cp==' ') cp++;
     if (isdigit(*cp) || *cp=='-') {
       Response_P(S_JSON_COMMAND_NVALUE, command, XdrvMailbox.payload);
