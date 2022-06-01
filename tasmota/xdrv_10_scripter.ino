@@ -3736,8 +3736,10 @@ chknext:
           if (fvar1<0) {
             fvar1 = strlen(str) + fvar1;
           }
-          memcpy(sp, &str[(uint8_t)fvar1], (uint8_t)fvar2);
-          sp[(uint8_t)fvar2] = '\0';
+          if (sp) {
+            memcpy(sp, &str[(uint8_t)fvar1], (uint8_t)fvar2);
+            sp[(uint8_t)fvar2] = '\0';
+          }
           goto strexit;
         }
         if (!strncmp(lp, "st(", 3)) {
