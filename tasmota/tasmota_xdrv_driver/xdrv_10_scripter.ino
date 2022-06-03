@@ -8415,7 +8415,13 @@ void Script_Check_HTML_Setvars(void) {
 
   if (!HttpCheckPriviledgedAccess()) { return; }
 
+  //if (Webserver->hasArg("gv")) {
+    // get variable
+  //  String stmp = Webserver->arg("gv");
+  //}
+
   if (Webserver->hasArg("sv")) {
+    // set variable
     String stmp = Webserver->arg("sv");
     //Serial.printf("fwp has arg dv %s\n", stmp.c_str());
     char cmdbuf[64];
