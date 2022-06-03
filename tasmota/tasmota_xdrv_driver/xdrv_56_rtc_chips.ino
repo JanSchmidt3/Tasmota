@@ -6,6 +6,8 @@
   SPDX-License-Identifier: GPL-3.0-only
 */
 
+#define USE_RTC_CHIPS
+
 #ifdef USE_I2C
 #ifdef USE_RTC_CHIPS
 /*********************************************************************************************\
@@ -21,10 +23,7 @@
 struct {
   uint32_t (* ReadTime)(void);
   void (* SetTime)(uint32_t);
-  int32_t (* MemRead)(uint8_t *, uint32_t);
-  int32_t (* MemWrite)(uint8_t *, uint32_t);
   bool detected;
-  int8_t mem_size = -1;
   uint8_t address;
   uint8_t bus;
   char name[10];
@@ -39,7 +38,9 @@ struct {
 
 #define XI2C_26             26      // See I2CDEVICES.md
 
+#ifndef DS3231_ADDRESS
 #define DS3231_ADDRESS      0x68    // DS3231 I2C Address
+#endif
 
 // DS3231 Register Addresses
 #define DS3231_SECONDS      0x00
@@ -97,9 +98,6 @@ void DS3231SetTime(uint32_t epoch_time) {
   I2cWrite8(RtcChip.address, DS3231_STATUS, I2cRead8(RtcChip.address, DS3231_STATUS) & ~_BV(DS3231_OSF));  // Clear the Oscillator Stop Flag
 }
 
-/*-------------------------------------------------------------------------------------------*\
- * Detection
-\*-------------------------------------------------------------------------------------------*/
 void DS3231Detected(void) {
   if (!RtcChip.detected && I2cEnabled(XI2C_26)) {
     RtcChip.address = DS3231_ADDRESS;
@@ -109,7 +107,6 @@ void DS3231Detected(void) {
         strcpy_P(RtcChip.name, PSTR("DS3231"));
         RtcChip.ReadTime = &DS3231ReadTime;
         RtcChip.SetTime = &DS3231SetTime;
-        RtcChip.mem_size = -1;
       }
     }
   }
@@ -167,9 +164,9 @@ void BM8563SetUtc(uint32_t epoch_time) {
   bm8563_driver.Rtc.SetDate(&RTCdate);
 }
 
-/*-------------------------------------------------------------------------------------------*\
- * Detection
-\*-------------------------------------------------------------------------------------------*/
+BM8563 *Get_BM8563(void) {
+  return &bm8563_driver.Rtc;
+}
 void BM8563Detected(void) {
   if (!RtcChip.detected && I2cEnabled(XI2C_59)) {
     RtcChip.address = BM8563_ADRESS;
@@ -188,7 +185,6 @@ void BM8563Detected(void) {
       strcpy_P(RtcChip.name, PSTR("BM8563"));
       RtcChip.ReadTime = &BM8563GetUtc;
       RtcChip.SetTime = &BM8563SetUtc;
-      RtcChip.mem_size = -1;
     }
   }
 }
@@ -296,20 +292,6 @@ void Pcf85363Dump(void) {
 }
 */
 
-/*-------------------------------------------------------------------------------------------*\
- * Memory block functions
-\*-------------------------------------------------------------------------------------------*/
-int32_t Pcf8563MemRead(uint8_t *buffer, uint32_t size) {
-  return I2cReadBuffer(RtcChip.address, 0x40, buffer, size);
-}
-
-int32_t Pcf8563MemWrite(uint8_t *buffer, uint32_t size) {
-  return I2cWriteBuffer(RtcChip.address, 0x40, (uint8_t *)buffer, size);
-}
-
-/*-------------------------------------------------------------------------------------------*\
- * Detection
-\*-------------------------------------------------------------------------------------------*/
 void Pcf85363Detected(void) {
   if (!RtcChip.detected && I2cEnabled(XI2C_66)) {
     RtcChip.address = PCF85363_ADDRESS;
@@ -318,9 +300,6 @@ void Pcf85363Detected(void) {
       strcpy_P(RtcChip.name, PSTR("PCF85363"));
       RtcChip.ReadTime = &Pcf85363ReadTime;
       RtcChip.SetTime = &Pcf85363SetTime;
-      RtcChip.mem_size = 64;
-      RtcChip.MemRead = &Pcf8563MemRead;
-      RtcChip.MemWrite = &Pcf8563MemWrite;
     }
   }
 }
@@ -363,24 +342,6 @@ void RtcChipTimeSynced(void) {
     RtcChip.SetTime(Rtc.utc_time);                                // Update time
     AddLog(LOG_LEVEL_DEBUG, PSTR("RTC: %s re-synced (" D_UTC_TIME ") %s"), RtcChip.name, GetDateAndTime(DT_UTC).c_str());
   }
-}
-
-int32_t RtcChipMemSize(void) {
-  return RtcChip.mem_size;                                        // Not supported or max size
-}
-
-int32_t RtcChipMemRead(uint8_t *buffer, uint32_t size) {
-  if (size <= RtcChip.mem_size) {
-    return RtcChip.MemRead(buffer, size);
-  }
-  return -1;                                                      // Not supported or too large
-}
-
-int32_t RtcChipMemWrite(uint8_t *buffer, uint32_t size) {
-  if (size <= RtcChip.mem_size) {
-    return RtcChip.MemWrite(buffer, size);
-  }
-  return -1;                                                      // Not supported or too large
 }
 
 /*********************************************************************************************\

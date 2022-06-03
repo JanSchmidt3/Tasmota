@@ -471,6 +471,9 @@ struct SCRIPT_MEM {
 #ifdef USE_SCRIPT_SPI
     struct SCRIPT_SPI spi;
 #endif
+#if defined(USE_SML_M) && defined(USE_SML_SCRIPT_CMD) && defined(USE_SCRIPT_SERIAL)
+    char *hstr;
+#endif
 
 } glob_script_mem;
 
@@ -3733,8 +3736,10 @@ chknext:
           if (fvar1<0) {
             fvar1 = strlen(str) + fvar1;
           }
-          memcpy(sp, &str[(uint8_t)fvar1], (uint8_t)fvar2);
-          sp[(uint8_t)fvar2] = '\0';
+          if (sp) {
+            memcpy(sp, &str[(uint8_t)fvar1], (uint8_t)fvar2);
+            sp[(uint8_t)fvar2] = '\0';
+          }
           goto strexit;
         }
         if (!strncmp(lp, "st(", 3)) {
@@ -4110,54 +4115,84 @@ extern char *SML_GetSVal(uint32_t index);
         // serial write array
         if (!strncmp(lp, "swa(", 4)) {
           fvar = -1;
-          if (glob_script_mem.sp) {
-            uint8_t modbus_buffer[64];
-            uint16_t alen;
-            float *array;
-            lp = get_array_by_name(lp + 4, &array, &alen, 0);
+          uint8_t modbus_buffer[64];
+          uint16_t alen;
+          float *array;
+          lp = get_array_by_name(lp + 4, &array, &alen, 0);
+          SCRIPT_SKIP_SPACES
+          if (!array) {
+            goto exit;
+          }
+          float len;
+          lp = GetNumericArgument(lp, OPER_EQU, &len, 0);
+          SCRIPT_SKIP_SPACES
+          if (len > alen) len = alen;
+          if (len < 1) len = 1;
+          if (*lp != ')') {
+            float opt;
+            lp = GetNumericArgument(lp, OPER_EQU, &opt, 0);
             SCRIPT_SKIP_SPACES
-            if (!array) {
-              goto exit;
-            }
-            float len;
-            lp = GetNumericArgument(lp, OPER_EQU, &len, 0);
-            SCRIPT_SKIP_SPACES
-            if (len > alen) len = alen;
-            if (len < 1) len = 1;
-            if (*lp != ')') {
-              float opts = 0;
-              lp = GetNumericArgument(lp, OPER_EQU, &opts, 0);
-              SCRIPT_SKIP_SPACES
-              // calc modbus checksum
+            uint16_t opts = opt;
+            // calc modbus checksum
+            uint16_t meter = opts >> 4;
+            opts &= 3;
 #ifdef USE_SML_M
-              // calc modbus checksum
-              if (len > sizeof(modbus_buffer)) len = sizeof(modbus_buffer);
-              for (uint32_t cnt = 0; cnt < len; cnt++) {
-                modbus_buffer[cnt] = *array++;
-              }
-              uint16_t crc = 0xffff;
-              uint8_t *mbp = modbus_buffer;
-              if (opts == 1) {
-                mbp++;
-                crc = 0;
-              }
-              crc = MBUS_calculateCRC(mbp, mbp[2] + 3, crc);
-              if (opts == 1) {
-                mbp[mbp[2] + 3] = highByte(crc);
-                mbp[mbp[2] + 4] = lowByte(crc);
-              } else {
-                mbp[mbp[2] + 3] = lowByte(crc);
-                mbp[mbp[2] + 4] = highByte(crc);
-              }
-#endif
-              uint8_t *ucp = modbus_buffer;
-              while (len) {
-                glob_script_mem.sp->write(*ucp);
-                //AddLog(LOG_LEVEL_INFO,PSTR(">> %02x"),*ucp);
-                ucp++;
-                len--;
-              }
+            // calc modbus checksum
+            if (len > sizeof(modbus_buffer)) len = sizeof(modbus_buffer);
+            for (uint32_t cnt = 0; cnt < len; cnt++) {
+              modbus_buffer[cnt] = *array++;
+            }
+            uint16_t crc = 0xffff;
+            uint8_t *mbp = modbus_buffer;
+            if (opts == 1) {
+              mbp++;
+              crc = 0;
+            }
+            uint8_t index = 6;
+            crc = MBUS_calculateCRC(mbp, index, crc);
+            if (opts == 1) {
+              mbp[index] = highByte(crc);
+              mbp[index + 1] = lowByte(crc);
             } else {
+              mbp[index] = lowByte(crc);
+              mbp[index + 1] = highByte(crc);
+            }
+
+#define SCRIPT_HSTR_LEN 32
+#ifdef USE_SML_SCRIPT_CMD
+            if (meter) {
+              if (!glob_script_mem.hstr) {
+                glob_script_mem.hstr = (char*)malloc(SCRIPT_HSTR_LEN);
+              }
+              if (len > SCRIPT_HSTR_LEN/2) {
+                len = SCRIPT_HSTR_LEN/2;
+              }
+              char *cp = glob_script_mem.hstr;
+              *cp++ = 'r';
+
+              uint8_t *mbp = modbus_buffer;
+              for (uint32_t cnt = 0; cnt < len; cnt++) {
+                sprintf(cp,"%02x",*mbp++);
+                cp += 2;
+              }
+              //01 06 00 03 00 20 78 12 00 02 81 c1
+              SML_Set_WStr(meter, glob_script_mem.hstr);
+            }
+#endif
+#endif
+            if (!meter) {
+              uint8_t *ucp = modbus_buffer;
+              if (glob_script_mem.sp) {
+                while (len) {
+                  glob_script_mem.sp->write(*ucp);
+                  //AddLog(LOG_LEVEL_INFO,PSTR(">> %02x"),*ucp);
+                  ucp++;
+                  len--;
+                }
+              }
+            }
+          } else {
+            if (glob_script_mem.sp) {
               while (len) {
                 glob_script_mem.sp->write((uint8_t)*array++);
                 len--;
@@ -7558,7 +7593,7 @@ bool Script_SubCmd(void) {
   strcpy(cp, command);
   uint8_t tlen = strlen(command);
   cp += tlen;
-  if (XdrvMailbox.data_len>0) {
+  if (XdrvMailbox.data_len > 0) {
     *cp++ = '(';
     strncpy(cp, XdrvMailbox.data,XdrvMailbox.data_len);
     cp += XdrvMailbox.data_len;
@@ -7572,7 +7607,7 @@ bool Script_SubCmd(void) {
     return false;
   }
   else {
-    cp=XdrvMailbox.data;
+    cp = XdrvMailbox.data;
     while (*cp==' ') cp++;
     if (isdigit(*cp) || *cp=='-') {
       Response_P(S_JSON_COMMAND_NVALUE, command, XdrvMailbox.payload);
@@ -9187,6 +9222,17 @@ exgc:
         uint16_t alend;
         uint16_t ipos;
         lp = get_array_by_name(cp + 5, &fpd, &alend, &ipos);
+        SCRIPT_SKIP_SPACES
+        if (*lp != ')') {
+          // limit array lenght
+          float val;
+          lp = GetNumericArgument(lp, OPER_EQU, &val, 0);
+          if (val > alend) {
+            val = alend;
+          }
+          alend = val;
+        }
+
         if (ipos >= alend) ipos = 0;
         if (fpd) {
           for (uint32_t cnt = 0; cnt < alend; cnt++) {
@@ -9215,8 +9261,11 @@ exgc:
         strncpy(valstr, lin, len);
         valstr[len] = 0;
         WSContentSend_PD(PSTR("%s"), valstr);
-        lp = scripter_sub(cp , 0);
-        WSContentSend_PD(PSTR("%s"), lp);
+        scripter_sub(cp , 0);
+        cp = strchr(cp, ')');
+        if (cp) {
+          WSContentSend_PD(PSTR("%s"), cp + 1);
+        }
         return lp;
       }
 
@@ -10629,6 +10678,10 @@ bool Xdrv10(uint8_t function)
 #if defined(USE_SCRIPT_HUE) && defined(USE_WEBSERVER) && defined(USE_EMULATION) && defined(USE_EMULATION_HUE) && defined(USE_LIGHT)
         Script_Check_Hue(0);
 #endif //USE_SCRIPT_HUE
+
+#if defined(USE_SML_M) && defined(USE_SML_SCRIPT_CMD) && defined(USE_SCRIPT_SERIAL)
+      glob_script_mem.hstr = 0;
+#endif
       }
       break;
     case FUNC_EVERY_100_MSECOND:
