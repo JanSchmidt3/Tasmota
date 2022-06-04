@@ -1029,6 +1029,14 @@ char *script;
 }
 
 
+int32_t udp_call(char *url, uint32_t port, char *sbuf) {
+  WiFiUDP udp;
+  udp.beginPacket(IPAddress(url), port);
+  udp.write((const uint8_t*)sbuf, strlen(sbuf));
+  udp.endPacket();
+  return 0;
+}
+
 #ifdef USE_SCRIPT_GLOBVARS
 #define SCRIPT_UDP_BUFFER_SIZE 128
 #define SCRIPT_UDP_PORT 1999
@@ -4648,6 +4656,16 @@ extern char *SML_GetSVal(uint32_t index);
             }
           }
           goto notfound;
+        }
+        if (!strncmp(lp, "udp(", 4)) {
+          char url[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 4, OPER_EQU, url, 0);
+          float port;
+          lp = GetNumericArgument(lp, OPER_EQU, &port, gv);
+          char payload[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp, OPER_EQU, payload, 0);
+          fvar = udp_call(url, port, payload);
+          goto nfuncexit;
         }
         break;
 
