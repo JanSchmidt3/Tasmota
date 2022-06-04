@@ -1031,7 +1031,8 @@ char *script;
 
 int32_t udp_call(char *url, uint32_t port, char *sbuf) {
   WiFiUDP udp;
-  udp.beginPacket(IPAddress(url), port);
+  IPAddress adr = adr.fromString(url);
+  udp.beginPacket(adr, port);
   udp.write((const uint8_t*)sbuf, strlen(sbuf));
   udp.endPacket();
   return 0;
@@ -6233,6 +6234,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                         sysv_type = 0;
                       }
                       numeric = 1;
+                      SCRIPT_SKIP_SPACES
                       lp = getop(lp, &lastop);
 #ifdef SCRIPT_LM_SUB
                       if (*lp=='#') {
@@ -6341,6 +6343,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                     saindex = gv->strind;
                     // string result
                     char str[SCRIPT_MAXSSIZE];
+                    SCRIPT_SKIP_SPACES
                     lp = getop(lp, &lastop);
 #ifdef SCRIPT_LM_SUB
                     if (*lp=='#') {
@@ -7708,14 +7711,33 @@ bool ScriptCommand(void) {
         float fvar;
         char str[SCRIPT_MAXSSIZE];
         glob_script_mem.glob_error = 0;
-        GetNumericArgument(lp, OPER_EQU, &fvar, 0);
-        if (glob_script_mem.glob_error==1) {
-          // was string, not number
-          GetStringArgument(lp, OPER_EQU, str, 0);
-          Response_P(PSTR("{\"script\":{\"%s\":\"%s\"}}"), lp, str);
+        float *fpd = 0;
+        uint16_t alend;
+        char *cp = get_array_by_name(lp, &fpd, &alend, 0);
+        if (fpd && cp) {
+          // is array
+          Response_P(PSTR("{\"script\":{\"%s\":["), lp);
+          for (uint16_t cnt = 0; cnt < alend; cnt++) {
+            ext_snprintf_P(str, sizeof(str), PSTR("%*_f"), -glob_script_mem.script_dprec, fpd);
+            fpd++;
+            if (cnt) {
+              ResponseAppend_P(PSTR(",%s"), str);
+            } else {
+              ResponseAppend_P(PSTR("%s"), str);
+            }
+          }
+          ResponseAppend_P(PSTR("]}}"));
         } else {
-          dtostrfd(fvar, 6, str);
-          Response_P(PSTR("{\"script\":{\"%s\":%s}}"), lp, str);
+          glob_script_mem.glob_error = 0;
+          GetNumericArgument(lp, OPER_EQU, &fvar, 0);
+          if (glob_script_mem.glob_error==1) {
+            // was string, not number
+            GetStringArgument(lp, OPER_EQU, str, 0);
+            Response_P(PSTR("{\"script\":{\"%s\":\"%s\"}}"), lp, str);
+          } else {
+            ext_snprintf_P(str, sizeof(str), PSTR("%*_f"), -glob_script_mem.script_dprec, &fvar);
+            Response_P(PSTR("{\"script\":{\"%s\":%s}}"), lp, str);
+          }
         }
       }
       return serviced;
