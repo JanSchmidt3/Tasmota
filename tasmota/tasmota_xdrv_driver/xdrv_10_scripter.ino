@@ -2142,26 +2142,16 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
       // look for json input
 
 #ifdef USE_SCRIPT_FULL_JSON_PARSER
+  // epoch offset missing in this version
       char str_value[SCRIPT_MAXSSIZE];
       str_value[0]=0;
       float fv;
       uint32_t res = JsonParsePath(gv->jo, vname, '#', &fv, str_value, sizeof(str_value));
-
-      //AddLog(LOG_LEVEL_INFO, PSTR("json string: %s %s"),tmp,  sbuf);
-
       if (!res) {
         goto chknext;
       }
       if (res == 1) {
         // numeric
-        /*
-        if (fp) {
-          if (!strncmp(vn.c_str(), "Epoch", 5)) {
-            *fp = atoi(str_value) - (uint32_t)glob_script_mem.epoch_offset;
-          } else {
-            *fp = CharToFloat((char*)str_value);
-          }
-        }*/
 nexit:
         if (fp) *fp = fv;
         *vtype = NUM_RES;
