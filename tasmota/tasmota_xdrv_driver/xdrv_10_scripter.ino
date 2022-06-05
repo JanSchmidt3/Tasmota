@@ -2134,21 +2134,58 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
         }
     }
 
-#define USE_JSON
+#define USE_SCRIPT_JSON
+//#define USE_SCRIPT_FULL_JSON_PARSER
 
-#ifdef USE_JSON
+#ifdef USE_SCRIPT_JSON
     if (gv && gv->jo) {
       // look for json input
 
-#if 0
-      char sbuf[SCRIPT_MAXSSIZE];
-      sbuf[0]=0;
-      char tmp[128];
-      Replace_Cmd_Vars(lp, 1, tmp, sizeof(tmp));
-      uint32_t res = JsonParsePath(gv->jo, tmp, '#', NULL, sbuf, sizeof(sbuf)); // software_version
-      AddLog(LOG_LEVEL_INFO, PSTR("json string: %s %s"),tmp,  sbuf);
-#endif
+#ifdef USE_SCRIPT_FULL_JSON_PARSER
+      char str_value[SCRIPT_MAXSSIZE];
+      str_value[0]=0;
+      float fv;
+      uint32_t res = JsonParsePath(gv->jo, vname, '#', &fv, str_value, sizeof(str_value));
 
+      //AddLog(LOG_LEVEL_INFO, PSTR("json string: %s %s"),tmp,  sbuf);
+
+      if (!res) {
+        goto chknext;
+      }
+      if (res == 1) {
+        // numeric
+        /*
+        if (fp) {
+          if (!strncmp(vn.c_str(), "Epoch", 5)) {
+            *fp = atoi(str_value) - (uint32_t)glob_script_mem.epoch_offset;
+          } else {
+            *fp = CharToFloat((char*)str_value);
+          }
+        }*/
+nexit:
+        if (fp) *fp = fv;
+        *vtype = NUM_RES;
+        tind->bits.constant = 1;
+        tind->bits.is_string = 0;
+        return lp + len;
+      } else {
+        // string
+        if (!strncmp(str_value, "ON", 2)) {
+          if (fp) *fp = 1;
+          goto nexit;
+        } else if (!strncmp(str_value, "OFF", 3)) {
+          if (fp) *fp = 0;
+          goto nexit;
+        } else {
+          *vtype = STR_RES;
+          tind->bits.constant = 1;
+          tind->bits.is_string = 1;
+          if (sp) strlcpy(sp, str_value, SCRIPT_MAXSSIZE);
+          return lp + len;
+        }
+      }
+
+#else
       JsonParserObject *jpo = gv->jo;
       char jvname[64];
       strcpy(jvname, vname);
@@ -2250,7 +2287,10 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
           }
         }
       }
+#endif
+
     }
+
 #endif
 
 
