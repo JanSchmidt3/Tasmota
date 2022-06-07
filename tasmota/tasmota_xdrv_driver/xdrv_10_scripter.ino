@@ -1296,10 +1296,17 @@ float Get_MFVal(uint8_t index, int16_t bind) {
         if (!bind) {
           return mflp->index;
         }
-        if (bind<0) {
+        if (bind == -1) {
           return maxind;
         }
-        if (bind < 1 || bind > maxind ) bind = 1;
+        if (bind == -2) {
+          float summ = 0;
+          for (uint32_t cnt = 0; cnt < maxind; cnt++) {
+            summ += mflp->rbuff[cnt];
+          }
+          return summ / maxind;
+        }
+        if (bind < -2 || bind > maxind ) bind = 1;
         return mflp->rbuff[bind - 1];
     }
     mp += sizeof(struct M_FILT) + ((mflp->numvals & AND_FILT_MASK) - 1) * sizeof(float);
