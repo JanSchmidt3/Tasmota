@@ -205,9 +205,8 @@ int16_t PN532_getResponseLength(uint8_t buf[], uint8_t len, uint16_t timeout) {
   return length;
 }
 
-
-int16_t PN532_readResponse(uint8_t buf[], uint8_t len)
-{
+int16_t PN532_readResponse(uint8_t buf[], uint8_t len, uint16_t timeout = 50) {
+//int16_t PN532_readResponse(uint8_t buf[], uint8_t len){
   uint16_t time = 0;
   uint8_t length;
   uint8_t timeout = 10;
@@ -292,8 +291,8 @@ int8_t PN532_readAckFrame(void)
   return 0;
 }
 
-int8_t PN532_writeCommand(const uint8_t *header, uint8_t hlen)
-{
+int8_t PN532_writeCommand(const uint8_t *header, uint8_t hlen, const uint8_t *body = 0, uint8_t blen = 0) {
+//int8_t PN532_writeCommand(const uint8_t *header, uint8_t hlen) {
   pn532_i2c_command = header[0];
   Wire.beginTransmission(PN532_I2C_ADDRESS);
   Wire.write(PN532_PREAMBLE);
@@ -388,8 +387,8 @@ void PN532_Detect(void)
   }
 }
 
-boolean PN532_readPassiveTargetID(uint8_t cardbaudrate, uint8_t *uid, uint8_t *uidLength)
-{
+bool PN532_readPassiveTargetID(uint8_t cardbaudrate, uint8_t *uid, uint8_t *uidLength, uint16_t timeout = 50) {
+//boolean PN532_readPassiveTargetID(uint8_t cardbaudrate, uint8_t *uid, uint8_t *uidLength) {
   pn532_i2c_packetbuffer[0] = PN532_COMMAND_INLISTPASSIVETARGET;
   pn532_i2c_packetbuffer[1] = 1;
   pn532_i2c_packetbuffer[2] = cardbaudrate;
