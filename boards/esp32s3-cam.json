@@ -16,23 +16,24 @@
   "connectivity": [
     "wifi",
     "bluetooth",
-    "ethernet"
+    "ethernet",
+    "can"
   ],
   "debug": {
     "openocd_target": "esp32s3.cfg"
   },
   "frameworks": [
-    "espidf",
-    "arduino"
+    "arduino",
+    "espidf"
   ],
-  "name": "Espressif Generic ESP32-S3 16M Flash, Tasmota 2944k Code/OTA, 10M FS",
+  "name": "ESP32S3-CAM, 16M Flash 8MB PSRAM, Tasmota 2944k Code/OTA, 10M FS",
   "upload": {
-    "flash_size": "16MB",
-    "maximum_ram_size": 327680,
-    "maximum_size": 16777216,
-    "require_upload_port": true,
-    "speed": 460800
+     "flash_size": "16MB",
+     "maximum_ram_size": 327680,
+     "maximum_size": 16777216,
+     "require_upload_port": true,
+     "speed": 460800
   },
-  "url": "https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/hw-reference/esp32s3/",
+  "url": "https://wiki.ai-thinker.com/esp32-cam",
   "vendor": "Espressif"
 }
