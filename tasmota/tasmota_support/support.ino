@@ -1719,7 +1719,7 @@ void TemplateJson(void)
   ResponseAppend_P(PSTR("],\"" D_JSON_FLAG "\":%d,\"" D_JSON_BASE "\":%d}"), Settings->user_template.flag, Settings->user_template_base +1);
 }
 
-#if ( defined(USE_SCRIPT) && defined(SUPPORT_MQTT_EVENT) ) || defined (USE_DT_VARS)
+#if ( defined(USE_SCRIPT) && defined(SUPPORT_MQTT_EVENT) ) || defined (USE_DT_VARS) || defined(USE_SCRIPT_FULL_JSON_PARSER)
 
 /*********************************************************************************************\
  * Parse json paylod with path
