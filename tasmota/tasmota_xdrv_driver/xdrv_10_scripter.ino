@@ -3147,49 +3147,6 @@ chknext:
           if (sp) strlcpy(sp, SettingsText(SET_FRIENDLYNAME1), glob_script_mem.max_ssize);
           goto strexit;
         }
-
-#ifdef ESP32_FAST_MUX
-        if (!strncmp(lp, "fmux(", 5)) {
-          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
-          if (fvar == 0) {
-            // start
-            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-            uint16_t alen;
-            float *fa;
-            lp = get_array_by_name(lp, &fa, &alen, 0);
-            if (!fa) {
-              fvar = -1;
-              goto nfuncexit;
-            }
-            float falen;
-            lp = GetNumericArgument(lp, OPER_EQU, &falen, gv);
-            if (falen > alen) {
-              falen = alen;
-            }
-            fvar = fast_mux(0, fvar, fa, falen);
-          } else if (fvar == 1) {
-            // stop
-            fvar = fast_mux(1, 0, 0, 0);
-          } else if (fvar == 2) {
-            // set array
-            uint16_t alen;
-            float *fa;
-            lp = get_array_by_name(lp, &fa, &alen, 0);
-            if (!fa) {
-              fvar = -1;
-              goto nfuncexit;
-            }
-            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-            if (fvar > alen) {
-              fvar = alen;
-            }
-            fvar = fast_mux(2, 0, fa, fvar);
-          } else {
-            fvar = fast_mux(3, 0, 0, 0);
-          }
-          goto nfuncexit;
-        }
-#endif
         break;
 
       case 'g':
@@ -3638,6 +3595,48 @@ chknext:
           goto strexit;
         }
 #endif //USE_MORITZ
+#ifdef ESP32_FAST_MUX
+        if (!strncmp(lp, "mux(", 4)) {
+          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
+          if (fvar == 0) {
+            // start
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+            uint16_t alen;
+            float *fa;
+            lp = get_array_by_name(lp, &fa, &alen, 0);
+            if (!fa) {
+              fvar = -1;
+              goto nfuncexit;
+            }
+            float falen;
+            lp = GetNumericArgument(lp, OPER_EQU, &falen, gv);
+            if (falen > alen) {
+              falen = alen;
+            }
+            fvar = fast_mux(0, fvar, fa, falen);
+          } else if (fvar == 1) {
+            // stop
+            fvar = fast_mux(1, 0, 0, 0);
+          } else if (fvar == 2) {
+            // set array
+            uint16_t alen;
+            float *fa;
+            lp = get_array_by_name(lp, &fa, &alen, 0);
+            if (!fa) {
+              fvar = -1;
+              goto nfuncexit;
+            }
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+            if (fvar > alen) {
+              fvar = alen;
+            }
+            fvar = fast_mux(2, 0, fa, fvar);
+          } else {
+            fvar = fast_mux(3, 0, 0, 0);
+          }
+          goto nfuncexit;
+        }
+#endif
         break;
 
       case 'n':
@@ -9850,6 +9849,7 @@ struct FAST_PIN_MUX {
   volatile uint8_t scan_cnt;
   uint8_t scan_buff[MUX_SIZE];
   uint8_t scan_buff_size;
+  uint32_t pins;
   hw_timer_t * scan_timer = NULL;
   portMUX_TYPE scan_timerMux = portMUX_INITIALIZER_UNLOCKED;
 } fast_pin_mux;
@@ -9860,8 +9860,12 @@ void IRAM_ATTR fast_mux_irq() {
   // this could be optimized for multiple pins
   while (fast_pin_mux.scan_cnt < fast_pin_mux.scan_buff_size) {
     uint8_t iob = fast_pin_mux.scan_buff[fast_pin_mux.scan_cnt];
-    uint8_t mode = (iob >> 6) & 1;
-    digitalWrite(iob & 0x1f, mode);
+    if (iob & 0x20) {
+      GPIO.out_w1tc = fast_pin_mux.pins;
+    } else {
+      uint8_t mode = (iob >> 6) & 1;
+      digitalWrite(iob & 0x1f, mode);
+    }
     fast_pin_mux.scan_cnt++;
     if (iob & 0x80) {
       break;
@@ -9887,10 +9891,13 @@ int32_t retval;
     if (len > MUX_SIZE) {
       len = MUX_SIZE;
     }
+    fast_pin_mux.pins = 0;
     for (uint32_t cnt = 0; cnt < len; cnt++) {
       uint8_t iob = *buf++;
       fast_pin_mux.scan_buff[cnt] = iob;
-      pinMode(iob & 0x1f, OUTPUT);
+      iob &= 0x1f;
+      pinMode(iob, OUTPUT);
+      fast_pin_mux.pins |= (1<<iob);
     }
     fast_pin_mux.scan_buff_size = len;
 
