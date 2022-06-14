@@ -3147,6 +3147,49 @@ chknext:
           if (sp) strlcpy(sp, SettingsText(SET_FRIENDLYNAME1), glob_script_mem.max_ssize);
           goto strexit;
         }
+
+#ifdef ESP32_FAST_MUX
+        if (!strncmp(lp, "fmux(", 5)) {
+          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
+          if (fvar == 0) {
+            // start
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+            uint16_t alen;
+            float *fa;
+            lp = get_array_by_name(lp, &fa, &alen, 0);
+            if (!fa) {
+              fvar = -1;
+              goto nfuncexit;
+            }
+            float falen;
+            lp = GetNumericArgument(lp, OPER_EQU, &falen, gv);
+            if (falen > alen) {
+              falen = alen;
+            }
+            fvar = fast_mux(0, fvar, fa, falen);
+          } else if (fvar == 1) {
+            // stop
+            fvar = fast_mux(1, 0, 0, 0);
+          } else if (fvar == 2) {
+            // set array
+            uint16_t alen;
+            float *fa;
+            lp = get_array_by_name(lp, &fa, &alen, 0);
+            if (!fa) {
+              fvar = -1;
+              goto nfuncexit;
+            }
+            lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+            if (fvar > alen) {
+              fvar = alen;
+            }
+            fvar = fast_mux(2, 0, fa, fvar);
+          } else {
+            fvar = fast_mux(3, 0, 0, 0);
+          }
+          goto nfuncexit;
+        }
+#endif
         break;
 
       case 'g':
@@ -9798,6 +9841,85 @@ bool RulesProcessEvent(const char *json_event) {
   }
   return true;
 }
+
+#ifdef ESP32
+#ifdef ESP32_FAST_MUX
+
+#define MUX_SIZE 128
+struct FAST_PIN_MUX {
+  volatile uint8_t scan_cnt;
+  uint8_t scan_buff[MUX_SIZE];
+  uint8_t scan_buff_size;
+  hw_timer_t * scan_timer = NULL;
+  portMUX_TYPE scan_timerMux = portMUX_INITIALIZER_UNLOCKED;
+} fast_pin_mux;
+
+
+void IRAM_ATTR fast_mux_irq() {
+  portENTER_CRITICAL_ISR(&fast_pin_mux.scan_timerMux);
+  // this could be optimized for multiple pins
+  while (fast_pin_mux.scan_cnt < fast_pin_mux.scan_buff_size) {
+    uint8_t iob = fast_pin_mux.scan_buff[fast_pin_mux.scan_cnt];
+    uint8_t mode = (iob >> 6) & 1;
+    digitalWrite(iob & 0x1f, mode);
+    fast_pin_mux.scan_cnt++;
+    if (iob & 0x80) {
+      break;
+    }
+  }
+  if (fast_pin_mux.scan_cnt >= fast_pin_mux.scan_buff_size) {
+    fast_pin_mux.scan_cnt = 0;
+  }
+
+  portEXIT_CRITICAL_ISR(&fast_pin_mux.scan_timerMux);
+}
+
+/* uint8_t pin nr, 0x40 = value, 0x80 = next
+*/
+
+int32_t fast_mux(uint32_t flag, uint32_t time, float *buf, uint32_t len) {
+int32_t retval;
+  if (!flag) {
+    fast_pin_mux.scan_timer = timerBegin(3, 1000, true);
+    if (!fast_pin_mux.scan_timer) {
+      return -1;
+    }
+    if (len > MUX_SIZE) {
+      len = MUX_SIZE;
+    }
+    for (uint32_t cnt = 0; cnt < len; cnt++) {
+      uint8_t iob = *buf++;
+      fast_pin_mux.scan_buff[cnt] = iob;
+      pinMode(iob & 0x1f, OUTPUT);
+    }
+    fast_pin_mux.scan_buff_size = len;
+
+    timerAttachInterrupt(fast_pin_mux.scan_timer, &fast_mux_irq, true);
+    timerSetAutoReload(fast_pin_mux.scan_timer, true);
+    timerStart(fast_pin_mux.scan_timer);
+    timerAlarmWrite(fast_pin_mux.scan_timer, time, true);
+    timerAlarmEnable(fast_pin_mux.scan_timer);
+  } else if (flag == 1) {
+    timerStop(fast_pin_mux.scan_timer);
+    timerDetachInterrupt(fast_pin_mux.scan_timer);
+    timerEnd(fast_pin_mux.scan_timer);
+  } else if (flag == 2) {
+    portENTER_CRITICAL(&fast_pin_mux.scan_timerMux);
+    for (uint32_t cnt = 0; cnt < len; cnt++) {
+      fast_pin_mux.scan_buff[cnt] = *buf++;
+    }
+    fast_pin_mux.scan_buff_size = len;
+    portEXIT_CRITICAL(&fast_pin_mux.scan_timerMux);
+  } else {
+    portENTER_CRITICAL(&fast_pin_mux.scan_timerMux);
+    retval = fast_pin_mux.scan_cnt;
+    portEXIT_CRITICAL(&fast_pin_mux.scan_timerMux);
+    return retval;
+  }
+  return 0;
+}
+#endif // ESP32_FAST_MUX
+#endif // ESP32
 
 #ifdef ESP32
 #ifdef USE_SCRIPT_TASK
