@@ -3597,7 +3597,7 @@ chknext:
 #endif //USE_MORITZ
 #ifdef ESP32_FAST_MUX
         if (!strncmp(lp, "mux(", 4)) {
-          lp = GetNumericArgument(lp + 5, OPER_EQU, &fvar, gv);
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           if (fvar == 0) {
             // start
             lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
@@ -9849,7 +9849,8 @@ struct FAST_PIN_MUX {
   volatile uint8_t scan_cnt;
   uint8_t scan_buff[MUX_SIZE];
   uint8_t scan_buff_size;
-  uint32_t pins;
+  uint32_t low_pins;
+  uint32_t high_pins;
   hw_timer_t * scan_timer = NULL;
   portMUX_TYPE scan_timerMux = portMUX_INITIALIZER_UNLOCKED;
 } fast_pin_mux;
@@ -9858,23 +9859,29 @@ struct FAST_PIN_MUX {
 void IRAM_ATTR fast_mux_irq() {
   portENTER_CRITICAL_ISR(&fast_pin_mux.scan_timerMux);
   // this could be optimized for multiple pins
-  while (fast_pin_mux.scan_cnt < fast_pin_mux.scan_buff_size) {
-    uint8_t iob = fast_pin_mux.scan_buff[fast_pin_mux.scan_cnt];
-    if (iob & 0x20) {
-      GPIO.out_w1tc = fast_pin_mux.pins;
-    } else {
-      uint8_t mode = (iob >> 6) & 1;
-      digitalWrite(iob & 0x1f, mode);
+  if (fast_pin_mux.scan_buff_size) {
+    while (fast_pin_mux.scan_cnt < fast_pin_mux.scan_buff_size) {
+      uint8_t iob = fast_pin_mux.scan_buff[fast_pin_mux.scan_cnt];
+      if (iob & 0x20) {
+        if (iob & 1) {
+          GPIO.out_w1tc = fast_pin_mux.low_pins;
+        }
+        if (iob & 2) {
+          GPIO.out_w1ts = fast_pin_mux.high_pins;
+        }
+      } else {
+        uint8_t mode = (iob >> 6) & 1;
+        digitalWrite(iob & 0x1f, mode);
+      }
+      fast_pin_mux.scan_cnt++;
+      if (iob & 0x80) {
+        break;
+      }
     }
-    fast_pin_mux.scan_cnt++;
-    if (iob & 0x80) {
-      break;
+    if (fast_pin_mux.scan_cnt >= fast_pin_mux.scan_buff_size) {
+      fast_pin_mux.scan_cnt = 0;
     }
   }
-  if (fast_pin_mux.scan_cnt >= fast_pin_mux.scan_buff_size) {
-    fast_pin_mux.scan_cnt = 0;
-  }
-
   portEXIT_CRITICAL_ISR(&fast_pin_mux.scan_timerMux);
 }
 
@@ -9891,15 +9898,22 @@ int32_t retval;
     if (len > MUX_SIZE) {
       len = MUX_SIZE;
     }
-    fast_pin_mux.pins = 0;
+    fast_pin_mux.high_pins = 0;
+    fast_pin_mux.low_pins = 0;
     for (uint32_t cnt = 0; cnt < len; cnt++) {
       uint8_t iob = *buf++;
       fast_pin_mux.scan_buff[cnt] = iob;
-      iob &= 0x1f;
-      pinMode(iob, OUTPUT);
-      fast_pin_mux.pins |= (1<<iob);
+      uint8_t pin = iob & 0x1f;
+      pinMode(pin, OUTPUT);
+      if (iob & 0x40) {
+        digitalWrite(pin, 1);
+        fast_pin_mux.high_pins |= (1 << pin);
+      } else {
+        digitalWrite(pin, 0);
+        fast_pin_mux.low_pins |= (1 << pin);
+      }
     }
-    fast_pin_mux.scan_buff_size = len;
+    fast_pin_mux.scan_buff_size = 0;
 
     timerAttachInterrupt(fast_pin_mux.scan_timer, &fast_mux_irq, true);
     timerSetAutoReload(fast_pin_mux.scan_timer, true);
