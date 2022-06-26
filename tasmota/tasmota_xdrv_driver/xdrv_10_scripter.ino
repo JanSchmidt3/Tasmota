@@ -9849,6 +9849,7 @@ struct FAST_PIN_MUX {
   volatile uint8_t scan_cnt;
   uint8_t scan_buff[MUX_SIZE];
   uint8_t scan_buff_size;
+  uint8_t time;
   uint32_t low_pins;
   uint32_t high_pins;
   hw_timer_t * scan_timer = NULL;
@@ -9868,6 +9869,11 @@ void IRAM_ATTR fast_mux_irq() {
         }
         if (iob & 2) {
           GPIO.out_w1ts = fast_pin_mux.high_pins;
+        }
+        if (iob & 4) {
+          // modify mux timer
+          uint8_t fac = (iob & 0x1f) >> 2;
+          timerAlarmWrite(fast_pin_mux.scan_timer, fast_pin_mux.time * fac, true);
         }
       } else {
         uint8_t mode = (iob >> 6) & 1;
@@ -9891,10 +9897,6 @@ void IRAM_ATTR fast_mux_irq() {
 int32_t fast_mux(uint32_t flag, uint32_t time, float *buf, uint32_t len) {
 int32_t retval;
   if (!flag) {
-    fast_pin_mux.scan_timer = timerBegin(3, 1000, true);
-    if (!fast_pin_mux.scan_timer) {
-      return -1;
-    }
     if (len > MUX_SIZE) {
       len = MUX_SIZE;
     }
@@ -9915,15 +9917,28 @@ int32_t retval;
     }
     fast_pin_mux.scan_buff_size = 0;
 
+    if (fast_pin_mux.scan_timer) {
+      timerStop(fast_pin_mux.scan_timer);
+      timerDetachInterrupt(fast_pin_mux.scan_timer);
+      timerEnd(fast_pin_mux.scan_timer);
+    }
+    fast_pin_mux.scan_timer = timerBegin(3, 1000, true);
+    if (!fast_pin_mux.scan_timer) {
+      return -1;
+    }
+    fast_pin_mux.time = time;
     timerAttachInterrupt(fast_pin_mux.scan_timer, &fast_mux_irq, true);
     timerSetAutoReload(fast_pin_mux.scan_timer, true);
-    timerStart(fast_pin_mux.scan_timer);
-    timerAlarmWrite(fast_pin_mux.scan_timer, time, true);
+    timerAlarmWrite(fast_pin_mux.scan_timer, fast_pin_mux.time, true);
     timerAlarmEnable(fast_pin_mux.scan_timer);
+    timerStart(fast_pin_mux.scan_timer);
   } else if (flag == 1) {
-    timerStop(fast_pin_mux.scan_timer);
-    timerDetachInterrupt(fast_pin_mux.scan_timer);
-    timerEnd(fast_pin_mux.scan_timer);
+    if (fast_pin_mux.scan_timer) {
+      timerStop(fast_pin_mux.scan_timer);
+      timerDetachInterrupt(fast_pin_mux.scan_timer);
+      timerEnd(fast_pin_mux.scan_timer);
+      fast_pin_mux.scan_timer = 0;
+    }
   } else if (flag == 2) {
     portENTER_CRITICAL(&fast_pin_mux.scan_timerMux);
     for (uint32_t cnt = 0; cnt < len; cnt++) {
@@ -10753,6 +10768,9 @@ bool Xdrv10(uint8_t function)
   switch (function) {
     //case FUNC_PRE_INIT:
     case FUNC_INIT:
+
+      //bitWrite(Settings->rule_enabled, 0, 0); // >>>>>>>>>>>
+
       // set defaults to rules memory
       //bitWrite(Settings->rule_enabled,0,0);
       glob_script_mem.script_ram = Settings->rules[0];
