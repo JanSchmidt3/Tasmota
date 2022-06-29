@@ -79,6 +79,26 @@
 #define DAC_IIS_DOUT      2
 #endif  // USE_M5STACK_CORE2
 
+
+#ifdef ESP32S3_BOX
+#undef AUDIO_PWR_ON
+#undef AUDIO_PWR_OFF
+#define AUDIO_PWR_ON S3boxAudioPower(true);
+#define AUDIO_PWR_OFF S3boxAudioPower(false);
+
+#undef DAC_IIS_BCK
+#undef DAC_IIS_WS
+#undef DAC_IIS_DOUT
+#define DAC_IIS_BCK       17
+#define DAC_IIS_WS        2
+#define DAC_IIS_DOUT      15
+
+void S3boxAudioPower(uint8_t pwr) {
+  pinMode(46 , OUTPUT);
+  digitalWrite(46, pwr);
+}
+#endif // ESP32S3_BOX
+
 AudioGeneratorMP3 *mp3 = nullptr;
 AudioFileSourceFS *file;
 #ifdef USE_I2S_NO_DAC
