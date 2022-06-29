@@ -93,10 +93,6 @@
 #define DAC_IIS_WS        2
 #define DAC_IIS_DOUT      15
 
-void S3boxAudioPower(uint8_t pwr) {
-  pinMode(46 , OUTPUT);
-  digitalWrite(46, pwr);
-}
 #endif // ESP32S3_BOX
 
 AudioGeneratorMP3 *mp3 = nullptr;
