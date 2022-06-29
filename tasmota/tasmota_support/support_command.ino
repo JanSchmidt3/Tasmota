@@ -30,10 +30,10 @@ const char kTasmotaCommands[] PROGMEM = "|"  // No prefix
   D_CMND_MODULE "|" D_CMND_MODULES "|" D_CMND_GPIO "|" D_CMND_GPIOS "|" D_CMND_TEMPLATE "|" D_CMND_PWM "|" D_CMND_PWMFREQUENCY "|" D_CMND_PWMRANGE "|"
   D_CMND_BUTTONDEBOUNCE "|" D_CMND_SWITCHDEBOUNCE "|" D_CMND_SYSLOG "|" D_CMND_LOGHOST "|" D_CMND_LOGPORT "|"
   D_CMND_SERIALBUFFER "|" D_CMND_SERIALSEND "|" D_CMND_BAUDRATE "|" D_CMND_SERIALCONFIG "|" D_CMND_SERIALDELIMITER "|"
-  D_CMND_IPADDRESS "|" D_CMND_NTPSERVER "|" D_CMND_AP "|" D_CMND_SSID "|" D_CMND_PASSWORD "|" D_CMND_HOSTNAME "|" D_CMND_WIFICONFIG "|" D_CMND_WIFI "|"
+  D_CMND_IPADDRESS "|" D_CMND_NTPSERVER "|" D_CMND_AP "|" D_CMND_SSID "|" D_CMND_PASSWORD "|" D_CMND_HOSTNAME "|" D_CMND_WIFICONFIG "|" D_CMND_WIFI "|" D_CMND_DNSTIMEOUT "|"
   D_CMND_DEVICENAME "|" D_CMND_FN "|" D_CMND_FRIENDLYNAME "|" D_CMND_SWITCHMODE "|" D_CMND_INTERLOCK "|" D_CMND_TELEPERIOD "|" D_CMND_RESET "|" D_CMND_TIME "|" D_CMND_TIMEZONE "|" D_CMND_TIMESTD "|"
   D_CMND_TIMEDST "|" D_CMND_ALTITUDE "|" D_CMND_LEDPOWER "|" D_CMND_LEDSTATE "|" D_CMND_LEDMASK "|" D_CMND_LEDPWM_ON "|" D_CMND_LEDPWM_OFF "|" D_CMND_LEDPWM_MODE "|"
-  D_CMND_WIFIPOWER "|" D_CMND_TEMPOFFSET "|" D_CMND_HUMOFFSET "|" D_CMND_SPEEDUNIT "|" D_CMND_GLOBAL_TEMP "|" D_CMND_GLOBAL_HUM"|" D_CMND_SWITCHTEXT "|"
+  D_CMND_WIFIPOWER "|" D_CMND_TEMPOFFSET "|" D_CMND_HUMOFFSET "|" D_CMND_SPEEDUNIT "|" D_CMND_GLOBAL_TEMP "|" D_CMND_GLOBAL_HUM"|" D_CMND_GLOBAL_PRESS "|" D_CMND_SWITCHTEXT "|"
 #ifdef USE_I2C
   D_CMND_I2CSCAN "|" D_CMND_I2CDRIVER "|"
 #endif
@@ -65,10 +65,10 @@ void (* const TasmotaCommand[])(void) PROGMEM = {
   &CmndModule, &CmndModules, &CmndGpio, &CmndGpios, &CmndTemplate, &CmndPwm, &CmndPwmfrequency, &CmndPwmrange,
   &CmndButtonDebounce, &CmndSwitchDebounce, &CmndSyslog, &CmndLoghost, &CmndLogport,
   &CmndSerialBuffer, &CmndSerialSend, &CmndBaudrate, &CmndSerialConfig, &CmndSerialDelimiter,
-  &CmndIpAddress, &CmndNtpServer, &CmndAp, &CmndSsid, &CmndPassword, &CmndHostname, &CmndWifiConfig, &CmndWifi,
+  &CmndIpAddress, &CmndNtpServer, &CmndAp, &CmndSsid, &CmndPassword, &CmndHostname, &CmndWifiConfig, &CmndWifi, &CmndDnsTimeout,
   &CmndDevicename, &CmndFriendlyname, &CmndFriendlyname, &CmndSwitchMode, &CmndInterlock, &CmndTeleperiod, &CmndReset, &CmndTime, &CmndTimezone, &CmndTimeStd,
   &CmndTimeDst, &CmndAltitude, &CmndLedPower, &CmndLedState, &CmndLedMask, &CmndLedPwmOn, &CmndLedPwmOff, &CmndLedPwmMode,
-  &CmndWifiPower, &CmndTempOffset, &CmndHumOffset, &CmndSpeedUnit, &CmndGlobalTemp, &CmndGlobalHum, &CmndSwitchText,
+  &CmndWifiPower, &CmndTempOffset, &CmndHumOffset, &CmndSpeedUnit, &CmndGlobalTemp, &CmndGlobalHum, &CmndGlobalPress, &CmndSwitchText,
 #ifdef USE_I2C
   &CmndI2cScan, &CmndI2cDriver,
 #endif
@@ -789,31 +789,68 @@ void CmndHumOffset(void)
   ResponseCmndFloat((float)(Settings->hum_comp) / 10, 1);
 }
 
-void CmndGlobalTemp(void)
-{
-  if (XdrvMailbox.data_len > 0) {
-    float temperature = CharToFloat(XdrvMailbox.data);
-    if (!isnan(temperature) && Settings->flag.temperature_conversion) {    // SetOption8 - Switch between Celsius or Fahrenheit
-      temperature = (temperature - 32) / 1.8f;                             // Celsius
+void CmndGlobalTemp(void) {
+  if (2 == XdrvMailbox.index) {
+    if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 251)) {
+      Settings->global_sensor_index[0] = XdrvMailbox.payload;
+      TasmotaGlobal.user_globals[0] = 0;
     }
-    if ((temperature >= -50.0f) && (temperature <= 100.0f)) {
-      ConvertTemp(temperature);
-      TasmotaGlobal.global_update = 1;  // Keep global values just entered valid
+    ResponseCmndIdxNumber(Settings->global_sensor_index[0]);
+  } else {
+    if (XdrvMailbox.data_len > 0) {
+      // Set temperature based on SO8 (Celsius or Fahrenheit)
+      float temperature = ConvertTempToCelsius(CharToFloat(XdrvMailbox.data));
+      // Temperature is now Celsius
+      if ((temperature >= -50.0f) && (temperature <= 100.0f)) {
+        TasmotaGlobal.temperature_celsius = temperature;
+        TasmotaGlobal.global_update = TasmotaGlobal.uptime;
+        TasmotaGlobal.user_globals[0] = 1;
+      }
     }
+    ResponseCmndFloat(TasmotaGlobal.temperature_celsius, 1);
   }
-  ResponseCmndFloat(TasmotaGlobal.temperature_celsius, 1);
 }
 
-void CmndGlobalHum(void)
-{
-  if (XdrvMailbox.data_len > 0) {
-    float humidity = CharToFloat(XdrvMailbox.data);
-    if ((humidity >= 0.0f) && (humidity <= 100.0f)) {
-      ConvertHumidity(humidity);
-      TasmotaGlobal.global_update = 1;  // Keep global values just entered valid
+void CmndGlobalHum(void) {
+  if (2 == XdrvMailbox.index) {
+    if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 251)) {
+      Settings->global_sensor_index[1] = XdrvMailbox.payload;
+      TasmotaGlobal.user_globals[1] = 0;
     }
+    ResponseCmndIdxNumber(Settings->global_sensor_index[1]);
+  } else {
+    if (XdrvMailbox.data_len > 0) {
+      float humidity = CharToFloat(XdrvMailbox.data);
+      if ((humidity >= 0.0f) && (humidity <= 100.0f)) {
+        TasmotaGlobal.humidity = humidity;
+        TasmotaGlobal.global_update = TasmotaGlobal.uptime;
+        TasmotaGlobal.user_globals[1] = 1;
+      }
+    }
+    ResponseCmndFloat(TasmotaGlobal.humidity, 1);
   }
-  ResponseCmndFloat(TasmotaGlobal.humidity, 1);
+}
+
+void CmndGlobalPress(void) {
+  if (2 == XdrvMailbox.index) {
+    if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 251)) {
+      Settings->global_sensor_index[2] = XdrvMailbox.payload;
+      TasmotaGlobal.user_globals[2] = 0;
+    }
+    ResponseCmndIdxNumber(Settings->global_sensor_index[2]);
+  } else {
+    if (XdrvMailbox.data_len > 0) {
+      // Set pressure based on SO24 (hPa or mmHg (or inHg based on SO139))
+      float pressure = ConvertHgToHpa(CharToFloat(XdrvMailbox.data));
+      // Pressure is now hPa
+      if ((pressure >= 0.0f) && (pressure <= 1200.0f)) {
+        TasmotaGlobal.pressure_hpa = pressure;
+        TasmotaGlobal.global_update = TasmotaGlobal.uptime;
+        TasmotaGlobal.user_globals[2] = 1;
+      }
+    }
+    ResponseCmndFloat(TasmotaGlobal.pressure_hpa, 1);
+  }
 }
 
 void CmndSleep(void)
@@ -999,7 +1036,7 @@ void CmndBlinktime(void)
 
 void CmndBlinkcount(void)
 {
-  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload < 65536)) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 32000)) {
     Settings->blinkcount = XdrvMailbox.payload;  // 0 - 65535
     if (TasmotaGlobal.blink_counter) { TasmotaGlobal.blink_counter = Settings->blinkcount *2; }
   }
@@ -2262,13 +2299,28 @@ void CmndWifi(void)
 {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
     Settings->flag4.network_wifi = XdrvMailbox.payload;
-    if (Settings->flag4.network_wifi) { WifiEnable(); }
+    if (Settings->flag4.network_wifi) {
+#ifdef ESP32
+      WifiConnect();
+#else
+      WifiEnable();
+#endif
+    }
 #ifdef ESP8266
   } else if ((XdrvMailbox.payload >= 2) && (XdrvMailbox.payload <= 4)) {
     WiFi.setPhyMode(WiFiPhyMode_t(XdrvMailbox.payload - 1));  // 1-B/2-BG/3-BGN
 #endif
   }
   Response_P(PSTR("{\"" D_JSON_WIFI "\":\"%s\",\"" D_JSON_WIFI_MODE "\":\"11%c\"}"), GetStateText(Settings->flag4.network_wifi), pgm_read_byte(&kWifiPhyMode[WiFi.getPhyMode() & 0x3]) );
+}
+
+void CmndDnsTimeout(void) {
+  // Set timeout between 100 and 20000 mSec
+  if ((XdrvMailbox.payload >= 100) && (XdrvMailbox.payload <= 20000)) {
+    Settings->dns_timeout = XdrvMailbox.payload;
+    DnsClient.setTimeout(Settings->dns_timeout);
+  }
+  ResponseCmndNumber(Settings->dns_timeout);
 }
 
 #ifdef USE_I2C

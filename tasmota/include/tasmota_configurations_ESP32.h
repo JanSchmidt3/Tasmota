@@ -180,6 +180,7 @@
 #define USE_WEBSERVER
 #define USE_WEBCLIENT
 #define USE_WEBCLIENT_HTTPS
+#define USE_SERIAL_BRIDGE                        // Add support for software Serial Bridge console Tee (+0k8 code)
 
 #endif  // FIRMWARE_SAFEBOOT
 
@@ -405,6 +406,7 @@
 //#define USE_AM2320                             // [I2cDriver60] Enable AM2320 temperature and humidity Sensor (I2C address 0x5C) (+1k code)
 //#define USE_T67XX                              // [I2cDriver61] Enable Telaire T67XX CO2 sensor (I2C address 0x15) (+1k3 code)
 //#define USE_DS3502                             // [I2CDriver67] Enable DS3502 digital potentiometer (I2C address 0x28 - 0x2B) (+0k4 code)
+//#define USE_HYT                                // [I2CDriver68] Enable HYTxxx temperature and humidity sensor (I2C address 0x28) (+0k5 code)
 
 //#define USE_RTC_CHIPS                          // Enable RTC chip support and NTP server - Select only one
 //  #define USE_DS3231                           // [I2cDriver26] Enable DS3231 RTC (I2C address 0x68) (+1k2 code)
@@ -428,7 +430,6 @@
 //#define USE_DYP                                  // Add support for DYP ME-007 ultrasonic distance sensor, serial port version (+0k5 code)
 #define USE_SERIAL_BRIDGE                        // Add support for software Serial Bridge (+0k8 code)
 //#define USE_MP3_PLAYER                           // Use of the DFPlayer Mini MP3 Player RB-DFR-562 commands: play, volume and stop
-  #define MP3_VOLUME           30                // Set the startup volume on init, the range can be 0..100(max)
 //#define USE_AZ7798                               // Add support for AZ-Instrument 7798 CO2 datalogger
 //#define USE_PN532_HSU                            // Add support for PN532 using HSU (Serial) interface (+1k8 code, 140 bytes mem)
 //#define USE_ZIGBEE                               // Enable serial communication with Zigbee CC2530 flashed with ZNP
@@ -438,6 +439,72 @@
 
 #endif  // FIRMWARE_TASMOTA_LVGL *******************************************************************
 
+/*********************************************************************************************\
+ * [tasmota32-zbbrdgpro]
+ * Provide an image for Sonoff Zigbee Bridge Pro
+\*********************************************************************************************/
+
+#ifdef FIRMWARE_ZBBRDGPRO
+
+#undef CODE_IMAGE_STR
+#define CODE_IMAGE_STR "zbbrdgpro"
+
+#undef MODULE
+#define MODULE                 WEMOS             // [Module] Select default module from tasmota_template.h
+#undef FALLBACK_MODULE
+#define FALLBACK_MODULE        WEMOS             // [Module2] Select default module on fast reboot where USER_MODULE is user template
+
+#undef USE_DOMOTICZ
+#undef USE_HOME_ASSISTANT
+#define USE_TASMOTA_DISCOVERY                    // Enable Tasmota Discovery support (+2k code)
+
+#define USE_WEBCLIENT_HTTPS
+
+#define USE_ZIGBEE
+#define USE_TCP_BRIDGE
+
+#define USE_ENHANCED_GUI_WIFI_SCAN
+
+#undef USE_ARMTRONIX_DIMMERS                    // Disable support for Armtronix Dimmers (+1k4 code)
+#undef USE_PS_16_DZ                             // Disable support for PS-16-DZ Dimmer (+2k code)
+#undef USE_SONOFF_IFAN                          // Disable support for Sonoff iFan02 and iFan03 (+2k code)
+//#define USE_BUZZER                               // Add support for a buzzer (+0k6 code)
+#undef USE_ARILUX_RF                            // Disable support for Arilux RF remote controller (+0k8 code, 252 iram (non 2.3.0))
+//#define USE_DEEPSLEEP                            // Add support for deepsleep (+1k code)
+#undef USE_EXS_DIMMER                           // Disable support for EX-Store WiFi Dimmer
+#undef USE_KEELOQ                               // Disable support for Jarolift rollers by Keeloq algorithm (+4k5 code)
+#undef USE_SONOFF_D1                            // Disable support for Sonoff D1 Dimmer (+0k7 code)
+#undef USE_SHELLY_DIMMER                        // Disable support for Shelly Dimmer (+3k code)
+
+#define USE_I2C                                  // I2C using library wire (+10k code, 0k2 mem, 124 iram)
+#define USE_SPI                                // Hardware SPI using GPIO12(MISO), GPIO13(MOSI) and GPIO14(CLK) in addition to two user selectable GPIOs(CS and DC)
+
+#define USE_ETHERNET                             // Add support for ethernet (+20k code)
+
+//#ifndef USE_KNX
+//#define USE_KNX                                  // Enable KNX IP Protocol Support (+23k code, +3k3 mem)
+//#endif
+
+#endif // FIRMWARE_ZBBRDGPRO
+
+/*********************************************************************************************\
+ * [tasmota32-nspanel]
+ * Provide an image for ths Sonoff NsPanel
+\*********************************************************************************************/
+
+#ifdef FIRMWARE_NSPANEL
+
+#undef CODE_IMAGE_STR
+#define CODE_IMAGE_STR "nspanel"
+
+#undef MODULE
+#define MODULE                 WEMOS             // [Module] Select default module from tasmota_template.h
+#undef FALLBACK_MODULE
+#define FALLBACK_MODULE        WEMOS             // [Module2] Select default module on fast reboot where USER_MODULE is user template
+
+#define FIRMWARE_TASMOTA32
+
+#endif // FIRMWARE_NSPANEL
 
 /*********************************************************************************************\
  * [tasmota32.bin]
@@ -544,6 +611,7 @@
 //#define USE_EZOPMP                             // [I2cDriver55] Enable support for EZO's PMP sensor (+0k3 code) - Shared EZO code required for any EZO device (+1k2 code)
 //#define USE_SEESAW_SOIL                        // [I2cDriver56] Enable Capacitice Soil Moisture & Temperature Sensor (I2C addresses 0x36 - 0x39) (+1k3 code)
 //#define USE_DS3502                             // [I2CDriver67] Enable DS3502 digital potentiometer (I2C address 0x28 - 0x2B) (+0k4 code)
+//#define USE_HYT                                // [I2CDriver68] Enable HYTxxx temperature and humidity sensor (I2C address 0x28) (+0k5 code)
 
 //#define USE_RTC_CHIPS                          // Enable RTC chip support and NTP server - Select only one
 //  #define USE_DS3231                           // [I2cDriver26] Enable DS3231 RTC (I2C address 0x68) (+1k2 code)
@@ -570,7 +638,6 @@
 //#define USE_DYP                                  // Add support for DYP ME-007 ultrasonic distance sensor, serial port version (+0k5 code)
 #define USE_SERIAL_BRIDGE                        // Add support for software Serial Bridge (+0k8 code)
 #define USE_MP3_PLAYER                           // Use of the DFPlayer Mini MP3 Player RB-DFR-562 commands: play, volume and stop
-  #define MP3_VOLUME           30                // Set the startup volume on init, the range can be 0..100(max)
 //#define USE_AZ7798                               // Add support for AZ-Instrument 7798 CO2 datalogger
 #define USE_PN532_HSU                            // Add support for PN532 using HSU (Serial) interface (+1k8 code, 140 bytes mem)
 //#define USE_ZIGBEE                               // Enable serial communication with Zigbee CC2530 flashed with ZNP
@@ -629,7 +696,6 @@
 #define USE_HRE                                  // Add support for Badger HR-E Water Meter (+1k4 code)
 //#define USE_A4988_STEPPER                        // Add support for A4988/DRV8825 stepper-motor-driver-circuit (+10k5 code)
 //#define USE_THERMOSTAT                           // Add support for Thermostat
-
 #define USE_ETHERNET                             // Add support for ethernet (+20k code)
 
 #ifndef USE_KNX

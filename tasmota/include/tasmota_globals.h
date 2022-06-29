@@ -45,6 +45,9 @@ extern "C" void custom_crash_callback(struct rst_info * rst_info, uint32_t stack
 extern "C" void resetPins();
 extern "C" int startWaveformClockCycles(uint8_t pin, uint32_t highCcys, uint32_t lowCcys,
   uint32_t runTimeCcys, int8_t alignPhase, uint32_t phaseOffsetCcys, bool autoPwm);
+#ifdef USE_SERIAL_BRIDGE
+void SerialBridgePrintf(PGM_P formatP, ...);
+#endif
 #ifdef USE_INFLUXDB
 void InfluxDbProcess(bool use_copy = false);
 #endif
@@ -264,6 +267,10 @@ String EthernetMacAddress(void);
 #define TASM_FILE_ZIGBEE_DATA       "/zbdata"          // Zigbee last known values of devices
 #define TASM_FILE_AUTOEXEC          "/autoexec.bat"    // Commands executed after restart
 #define TASM_FILE_CONFIG            "/config.sys"      // Settings executed after restart
+
+#ifndef DNS_TIMEOUT
+#define DNS_TIMEOUT                 1000       // Milliseconds
+#endif
 
 #ifndef MQTT_MAX_PACKET_SIZE
 #define MQTT_MAX_PACKET_SIZE        1200       // Bytes

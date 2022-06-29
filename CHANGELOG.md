@@ -3,16 +3,61 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [11.1.0.4]
+## [12.0.2.2]
 ### Added
+- Command ``GlobalTemp2 1..250`` to select Global Temperature source indexed from teleperiod occurance data (#15834)
+- Command ``GlobalHum2 1..250`` to select Global Humidity source indexed from teleperiod occurance data (#15834)
+- Command ``GlobalPress2 1..250`` to select Global Pressure source indexed from teleperiod occurance data (#15834)
 
 ### Changed
-- Restructured tasmota source directories taking benefit from PlatformIO Core v6.0.2
 
 ### Fixed
 
 ### Removed
 
+## [12.0.2.1] 20220622
+### Added
+- Support for 5-channel light dimmer driver SM2335 used in SwitchBot Color Bulbs (#15839)
+
+### Fixed
+- ESP32 SendMail not working over ethernet (#15794)
+
+## [Released]
+
+## [12.0.2] 20220620
+- Release Paul
+
+## [12.0.1.2] 20220620
+### Added
+- Command ``DnsTimeout 100..20000`` to change default DNS timeout from 1000 msec blocking if no DNS server found
+
+### Fixed
+- MQTT rc -4 on connections regression from v12.0.0 (#15809)
+
+## [12.0.1] 20220617
+- Release Paul
+
+### Fixed
+- Resolving NTP and/or MQTT server names regression from v12.0.0 (#15816)
+
+## [12.0.0] 20220615
+- Release Paul
+
+## [11.1.0.4] 20220615
+### Added
+- Support for HYTxxx temperature and humidity sensor (#15715)
+- Support for Sensirion SHT4X using define USE_SHT3X (#15349)
+- Command ``SSerialSend9 1`` to enable Serial Bridge console Tee for debugging purposes
+- Command ``SetOption142 1`` to wait 1 second for wifi connection solving some FRITZ!Box modem issues (#14985)
+
+### Changed
+- Restructured tasmota source directories taking benefit from PlatformIO Core v6.0.2
+- ESP32 increase Serial Bridge input buffer from 130 to 520 characters
+
+### Fixed
+- ESP32 Arduino Core WiFi timeout is changed from msec to seconds
+- Reduce blocking by adding WifiPollDns before resolving NTP and/or MQTT server names (#14394)
+- SHT1X driver hangs and wrong values on ESP32 (#15790)
 
 ## [11.1.0.3] 20220602
 ### Added
@@ -52,8 +97,6 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - Arduino IDE support
-
-## [Released]
 
 ## [11.1.0] 20220413
 - Release Ostara

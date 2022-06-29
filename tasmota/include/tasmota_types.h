@@ -169,7 +169,7 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t mm_vs_inch : 1;               // bit 25 (v11.1.0.1) - SetOption139 - (Pressure) Switch between mmHg (0) or inHg (1) when SO24 1
     uint32_t mqtt_persistent : 1;          // bit 26 (v11.1.0.1) - SetOption140 - (MQTT) MQTT clean session (0 = default) or persistent session (1)
     uint32_t gui_module_name : 1;          // bit 27 (v11.1.0.3) - SetOption141 - (GUI) Disable display of GUI module name (1)
-    uint32_t spare28 : 1;                  // bit 28
+    uint32_t wait_for_wifi_result : 1;     // bit 28 (v11.1.0.4) - SetOption142 - (Wifi) Wait 1 second for wifi connection solving some FRITZ!Box modem issues (1)
     uint32_t spare29 : 1;                  // bit 29
     uint32_t spare30 : 1;                  // bit 30
     uint32_t spare31 : 1;                  // bit 31
@@ -289,7 +289,7 @@ typedef union {
     uint32_t sspm_display : 1;             // bit 8  (v10.0.0.4) - CMND_SSPMDISPLAY - Enable gui display of powered on relays only
     uint32_t local_ntp_server : 1;         // bit 9  (v11.0.0.4) - CMND_RTCNTPSERVER - Enable local NTP server
     uint32_t influxdb_sensor : 1;          // bit 10 (v11.0.0.5) - CMND_IFXSENSOR - Enable sensor support in addition to teleperiod support
-    uint32_t spare11 : 1;                  // bit 11
+    uint32_t serbridge_console : 1;        // bit 11 (v11.1.0.4) - CMND_SSERIALSEND9 - Enable logging tee to serialbridge
     uint32_t spare12 : 1;                  // bit 12
     uint32_t spare13 : 1;                  // bit 13
     uint32_t spare14 : 1;                  // bit 14
@@ -674,9 +674,8 @@ typedef struct {
   uint16_t      light_wakeup;              // 4A6
   uint8_t       knx_CB_registered;         // 4A8  Number of Group Address to write
   uint8_t       switchmode[MAX_SWITCHES_SET];  // 4A9
-
-  uint8_t       free_4c5[5];               // 4C5
-
+  uint8_t       global_sensor_index[3];    // 4C5
+  uint16_t      dns_timeout;               // 4C8
   uint8_t       ds3502_state[MAX_DS3502];  // 4CA
   uint16_t      influxdb_port;             // 4CE
   power_t       interlock[MAX_INTERLOCKS_SET];  // 4D0 MAX_INTERLOCKS = MAX_RELAYS / 2

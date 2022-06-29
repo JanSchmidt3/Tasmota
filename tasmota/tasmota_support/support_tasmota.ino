@@ -845,6 +845,60 @@ String GetSwitchText(uint32_t i) {
   return switch_text;
 }
 
+const char kGlobalValues[] PROGMEM = D_JSON_TEMPERATURE "|" D_JSON_HUMIDITY "|" D_JSON_PRESSURE;
+
+void GetSensorValues(void) {
+  char *start = ResponseData();
+  int data_start = ResponseLength();
+
+  XsnsCall(FUNC_JSON_APPEND);
+  XdrvCall(FUNC_JSON_APPEND);
+
+  if (data_start == ResponseLength()) { return; }
+
+  for (uint32_t type = 0; type < 3; type++) {
+    if (!Settings->global_sensor_index[type] || TasmotaGlobal.user_globals[type]) { continue; }
+
+    char key[20];
+    GetTextIndexed(key, sizeof(key), type, kGlobalValues);
+
+    float value = -9999;
+    uint32_t idx = 0;
+//    char *data = ResponseData();
+    char *data = start;  // Invalid JSON ,"HTU21":{"Temperature":30.7,"Humidity":39.0,"DewPoint":15.2},"BME680":{"Temperature":30.0,"Humidity":50.4,"DewPoint":18.5,"Pressure":1009.6,"Gas":1660.52},"ESP32":{"Temperature":53.3}
+    while (data) {
+      data = strstr(data, key);
+      if (data) {
+        idx++;
+        data += strlen(key) + 2;
+        float new_value = CharToFloat(data);
+        if (1 == idx) { value = new_value; }
+
+//        AddLog(LOG_LEVEL_DEBUG, PSTR("DBG: %s value%d = %2_f"), key, idx, &new_value);
+
+        if (idx == Settings->global_sensor_index[type]) {
+          value = new_value;
+          break;
+        }
+      }
+    }
+    if (value != -9999) {
+      switch (type) {
+        case 0:  // Temperature
+          TasmotaGlobal.temperature_celsius = ConvertTempToCelsius(value);
+          break;
+        case 1:  // Humidity
+          TasmotaGlobal.humidity = value;
+          break;
+        case 2:  // Pressure
+          TasmotaGlobal.pressure_hpa = ConvertHgToHpa(value);
+          break;
+      }
+      TasmotaGlobal.global_update = TasmotaGlobal.uptime;
+    }
+  }
+}
+
 void MqttAppendSensorUnits(void)
 {
   if (ResponseContains_P(PSTR(D_JSON_PRESSURE))) {
@@ -858,8 +912,7 @@ void MqttAppendSensorUnits(void)
   }
 }
 
-bool MqttShowSensor(bool call_show_sensor)
-{
+bool MqttShowSensor(bool call_show_sensor) {
   ResponseAppendTime();
 
   int json_data_start = ResponseLength();
@@ -872,10 +925,10 @@ bool MqttShowSensor(bool call_show_sensor)
       ResponseAppend_P(PSTR(",\"%s\":\"%s\""), GetSwitchText(i).c_str(), GetStateText(SwitchState(i)));
     }
   }
-  XsnsCall(FUNC_JSON_APPEND);
-  XdrvCall(FUNC_JSON_APPEND);
 
-  if (TasmotaGlobal.global_update && Settings->flag.mqtt_add_global_info) {
+  GetSensorValues();
+
+  if (TasmotaGlobal.global_update && Settings->flag.mqtt_add_global_info) {  // SetOption2 (MQTT) Add global temperature/humidity/pressure info to JSON sensor message
     if ((TasmotaGlobal.humidity > 0) || !isnan(TasmotaGlobal.temperature_celsius) || (TasmotaGlobal.pressure_hpa != 0)) {
       uint32_t add_comma = 0;
       ResponseAppend_P(PSTR(",\"Global\":{"));
@@ -1009,6 +1062,7 @@ void PerformEverySecond(void)
     digitalWrite(Pin(GPIO_HEARTBEAT), TasmotaGlobal.heartbeat_inverted);
   }
 
+  // Teleperiod
   if (Settings->tele_period || (3601 == TasmotaGlobal.tele_period)) {
     if (TasmotaGlobal.tele_period >= 9999) {
       if (!TasmotaGlobal.global_state.network_down) {
@@ -1024,6 +1078,15 @@ void PerformEverySecond(void)
 
         XsnsCall(FUNC_AFTER_TELEPERIOD);
         XdrvCall(FUNC_AFTER_TELEPERIOD);
+      } else {
+        // Global values (Temperature, Humidity and Pressure) update every 10 seconds
+        if (!(TasmotaGlobal.tele_period % 10)) {
+          for (uint32_t type = 0; type < 3; type++) {
+            if (!Settings->global_sensor_index[type] || TasmotaGlobal.user_globals[type]) { continue; }
+            GetSensorValues();
+            break;
+          }
+        }
       }
     }
   }
@@ -1634,38 +1697,38 @@ void SerialInput(void)
 
 /*-------------------------------------------------------------------------------------------*/
 
-    if (TasmotaGlobal.serial_in_byte > 127 && !Settings->flag.mqtt_serial_raw) {                // Discard binary data above 127 if no raw reception allowed - CMND_SERIALSEND3
+    if (TasmotaGlobal.serial_in_byte > 127 && !Settings->flag.mqtt_serial_raw) {   // Discard binary data above 127 if no raw reception allowed - CMND_SERIALSEND3
       TasmotaGlobal.serial_in_byte_counter = 0;
       Serial.flush();
       return;
     }
-    if (!Settings->flag.mqtt_serial) {                                            // SerialSend active - CMND_SERIALSEND and CMND_SERIALLOG
-      if (isprint(TasmotaGlobal.serial_in_byte)) {                                             // Any char between 32 and 127
-        if (TasmotaGlobal.serial_in_byte_counter < INPUT_BUFFER_SIZE -1) {       // Add char to string if it still fits
+    if (!Settings->flag.mqtt_serial) {                                             // SerialSend active - CMND_SERIALSEND and CMND_SERIALLOG
+      if (isprint(TasmotaGlobal.serial_in_byte)) {                                 // Any char between 32 and 127
+        if (TasmotaGlobal.serial_in_byte_counter < INPUT_BUFFER_SIZE -1) {         // Add char to string if it still fits
           TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter++] = TasmotaGlobal.serial_in_byte;
         } else {
-          serial_buffer_overrun = true;                                          // Signal overrun but continue reading input to flush until '\n' (EOL)
+          serial_buffer_overrun = true;                                            // Signal overrun but continue reading input to flush until '\n' (EOL)
         }
       }
     } else {
-      if (TasmotaGlobal.serial_in_byte || Settings->flag.mqtt_serial_raw) {                     // Any char between 1 and 127 or any char (0 - 255) - CMND_SERIALSEND3
-        bool in_byte_is_delimiter =                                              // Char is delimiter when...
+      if (TasmotaGlobal.serial_in_byte || Settings->flag.mqtt_serial_raw) {        // Any char between 1 and 127 or any char (0 - 255) - CMND_SERIALSEND3
+        bool in_byte_is_delimiter =                                                // Char is delimiter when...
           (((Settings->serial_delimiter < 128) && (TasmotaGlobal.serial_in_byte == Settings->serial_delimiter)) || // Any char between 1 and 127 and being delimiter
           ((Settings->serial_delimiter == 128) && !isprint(TasmotaGlobal.serial_in_byte))) &&   // Any char not between 32 and 127
-          !Settings->flag.mqtt_serial_raw;                                        // In raw mode (CMND_SERIALSEND3) there is never a delimiter
+          !Settings->flag.mqtt_serial_raw;                                         // In raw mode (CMND_SERIALSEND3) there is never a delimiter
 
-        if ((TasmotaGlobal.serial_in_byte_counter < INPUT_BUFFER_SIZE -1) &&     // Add char to string if it still fits and ...
-            !in_byte_is_delimiter) {                                             // Char is not a delimiter
+        if ((TasmotaGlobal.serial_in_byte_counter < INPUT_BUFFER_SIZE -1) &&       // Add char to string if it still fits and ...
+            !in_byte_is_delimiter) {                                               // Char is not a delimiter
           TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter++] = TasmotaGlobal.serial_in_byte;
         }
 
-        if ((TasmotaGlobal.serial_in_byte_counter >= INPUT_BUFFER_SIZE -1) ||    // Send message when buffer is full or ...
-            in_byte_is_delimiter) {                                              // Char is delimiter
-          serial_polling_window = 0;                                             // Reception done - send mqtt
+        if ((TasmotaGlobal.serial_in_byte_counter >= INPUT_BUFFER_SIZE -1) ||      // Send message when buffer is full or ...
+            in_byte_is_delimiter) {                                                // Char is delimiter
+          serial_polling_window = 0;                                               // Reception done - send mqtt
           break;
         }
 
-        serial_polling_window = millis();                                        // Wait for next char
+        serial_polling_window = millis();                                          // Wait for next char
       }
     }
 
@@ -1674,8 +1737,8 @@ void SerialInput(void)
  * Sonoff SC 19200 baud serial interface
 \*-------------------------------------------------------------------------------------------*/
     if (SONOFF_SC == TasmotaGlobal.module_type) {
-      if (TasmotaGlobal.serial_in_byte == '\x1B') {                                            // Sonoff SC status from ATMEGA328P
-        TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;              // Serial data completed
+      if (TasmotaGlobal.serial_in_byte == '\x1B') {                                // Sonoff SC status from ATMEGA328P
+        TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;  // Serial data completed
         SonoffScSerialInput(TasmotaGlobal.serial_in_buffer);
         TasmotaGlobal.serial_in_byte_counter = 0;
         Serial.flush();
@@ -1689,8 +1752,8 @@ void SerialInput(void)
     if (tasconsole_serial) {
 #endif  // ESP32
 
-    if (!Settings->flag.mqtt_serial && (TasmotaGlobal.serial_in_byte == '\n')) {                // CMND_SERIALSEND and CMND_SERIALLOG
-      TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;                // Serial data completed
+    if (!Settings->flag.mqtt_serial && (TasmotaGlobal.serial_in_byte == '\n')) {   // CMND_SERIALSEND and CMND_SERIALLOG
+      TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;    // Serial data completed
       TasmotaGlobal.seriallog_level = (Settings->seriallog_level < LOG_LEVEL_INFO) ? (uint8_t)LOG_LEVEL_INFO : Settings->seriallog_level;
       if (serial_buffer_overrun) {
         AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_COMMAND "Serial buffer overrun"));
@@ -1711,7 +1774,7 @@ void SerialInput(void)
   }  // endWhile
 
   if (Settings->flag.mqtt_serial && TasmotaGlobal.serial_in_byte_counter && (millis() > (serial_polling_window + SERIAL_POLLING))) {  // CMND_SERIALSEND and CMND_SERIALLOG
-    TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;                  // Serial data completed
+    TasmotaGlobal.serial_in_buffer[TasmotaGlobal.serial_in_byte_counter] = 0;      // Serial data completed
     bool assume_json = (!Settings->flag.mqtt_serial_raw && (TasmotaGlobal.serial_in_buffer[0] == '{'));
 
     if (serial_buffer_overrun) {
@@ -1758,13 +1821,13 @@ void TasConsoleInput(void) {
         console_buffer_overrun = true;                    // Signal overrun but continue reading input to flush until '\n' (EOL)
       }
     }
-    if (console_in_byte == '\n') {
+    else if (console_in_byte == '\n') {
       TasmotaGlobal.seriallog_level = (Settings->seriallog_level < LOG_LEVEL_INFO) ? (uint8_t)LOG_LEVEL_INFO : Settings->seriallog_level;
       if (console_buffer_overrun) {
-        AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_COMMAND "Console buffer overrun"));
+        AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_COMMAND "USB buffer overrun"));
       } else {
         AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_COMMAND "%s"), console_buffer.c_str());
-        ExecuteCommand(console_buffer.c_str(), SRC_SERIAL);
+        ExecuteCommand(console_buffer.c_str(), SRC_USBCONSOLE);
       }
       console_buffer = "";
       console_buffer_overrun = false;

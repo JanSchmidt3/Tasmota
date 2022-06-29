@@ -33,7 +33,7 @@
 #define WIFI_RESCAN_MINUTES     44         // Number of minutes between wifi network rescan
 #endif
 #ifndef WIFI_RETRY_SECONDS
-#define WIFI_RETRY_SECONDS      12         // Number of seconds connection to wifi network will retry
+#define WIFI_RETRY_SECONDS      20         // Number of seconds connection to wifi network will retry
 #endif
 
 const uint8_t WIFI_CONFIG_SEC = 180;       // seconds before restart
@@ -237,7 +237,9 @@ void WifiBegin(uint8_t flag, uint8_t channel)
   AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_WIFI D_CONNECTING_TO_AP "%d %s%s " D_IN_MODE " 11%c " D_AS " %s..."),
     Settings->sta_active +1, SettingsText(SET_STASSID1 + Settings->sta_active), stemp, pgm_read_byte(&kWifiPhyMode[WiFi.getPhyMode() & 0x3]), TasmotaGlobal.hostname);
 
-  WiFi.waitForConnectResult(1000);
+  if (Settings->flag5.wait_for_wifi_result) {  // SetOption142 - (Wifi) Wait 1 second for wifi connection solving some FRITZ!Box modem issues (1)
+    WiFi.waitForConnectResult(1000);  // https://github.com/arendst/Tasmota/issues/14985
+  }
 
 #if LWIP_IPV6
   for (bool configured = false; !configured;) {
@@ -421,7 +423,7 @@ void WifiCheckIp(void) {
   } else {
     WifiSetState(0);
     uint8_t wifi_config_tool = Settings->sta_config;
-    Wifi.status = WiFi.status();
+    Wifi.status = (Wifi.retry &1) ? WiFi.status() : 0;  // Skip every second to reset result WiFi.status()
     switch (Wifi.status) {
       case WL_CONNECTED:
         AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_WIFI D_CONNECT_FAILED_NO_IP_ADDRESS));
@@ -483,13 +485,12 @@ void WifiCheckIp(void) {
           WifiBegin(2, 0);        // Select alternate SSID
         }
       }
-      Wifi.counter = 1;
       Wifi.retry--;
     } else {
       WifiConfig(wifi_config_tool);
-      Wifi.counter = 1;
       Wifi.retry = Wifi.retry_init;
     }
+    Wifi.counter = 1;             // Re-check in 1 second
   }
 }
 
@@ -728,6 +729,22 @@ void wifiKeepAlive(void) {
 }
 #endif  // ESP8266
 
+bool WifiHostByName(const char* aHostname, IPAddress& aResult) {
+  // Use this instead of WiFi.hostByName or connect(host_name,.. to block less if DNS server is not found
+  uint32_t dns_address = (!TasmotaGlobal.global_state.eth_down) ? Settings->eth_ipv4_address[3] : Settings->ipv4_address[3];
+  DnsClient.begin((IPAddress)dns_address);
+  if (DnsClient.getHostByName(aHostname, aResult) != 1) {
+    AddLog(LOG_LEVEL_DEBUG, PSTR("DNS: Unable to resolve '%s'"), aHostname);
+    return false;
+  }
+  return true;
+}
+
+bool WifiDnsPresent(const char* aHostname) {
+  IPAddress aResult;
+  return WifiHostByName(aHostname, aResult);
+}
+
 void WifiPollNtp() {
   static uint8_t ntp_sync_minute = 0;
   static uint32_t ntp_run_time = 0;
@@ -767,38 +784,29 @@ void WifiPollNtp() {
 uint32_t WifiGetNtp(void) {
   static uint8_t ntp_server_id = 0;
 
+//  AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: Start NTP Sync %d ..."), ntp_server_id);
+
   IPAddress time_server_ip;
 
   char fallback_ntp_server[16];
   snprintf_P(fallback_ntp_server, sizeof(fallback_ntp_server), PSTR("%d.pool.ntp.org"), random(0,3));
 
   char* ntp_server;
-  bool resolved_ip = false;
   for (uint32_t i = 0; i <= MAX_NTP_SERVERS; i++) {
-    if (ntp_server_id > 2) { ntp_server_id = 0; }
-    if (i < MAX_NTP_SERVERS) {
-      ntp_server = SettingsText(SET_NTPSERVER1 + ntp_server_id);
-    } else {
-      ntp_server = fallback_ntp_server;
-    }
+    if (ntp_server_id > MAX_NTP_SERVERS) { ntp_server_id = 0; }
+    ntp_server = (ntp_server_id < MAX_NTP_SERVERS) ? SettingsText(SET_NTPSERVER1 + ntp_server_id) : fallback_ntp_server;
     if (strlen(ntp_server)) {
-      resolved_ip = (WiFi.hostByName(ntp_server, time_server_ip) == 1);  // DNS timeout set to (ESP8266) 10s / (ESP32) 14s
-      if ((255 == time_server_ip[0]) ||                                                                // No valid name resolved (255.255.255.255)
-          ((255 == time_server_ip[1]) && (255 == time_server_ip[2]) && (255 == time_server_ip[3]))) {  // No valid name resolved (x.255.255.255)
-        resolved_ip = false;
-      }
-      yield();
-      if (resolved_ip) { break; }
-//      AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: Unable to resolve '%s'"), ntp_server);
+      break;
     }
     ntp_server_id++;
   }
-  if (!resolved_ip) {
-    AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: Unable to resolve IP address"));
+  if (!WifiHostByName(ntp_server, time_server_ip)) {
+    ntp_server_id++;
+//    AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: Unable to resolve '%s'"), ntp_server);
     return 0;
   }
 
-//  AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: Host %s IP %_I"), ntp_server, (uint32_t)time_server_ip);
+//  AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: NtpServer '%s' IP %_I"), ntp_server, (uint32_t)time_server_ip);
 
   WiFiUDP udp;
 
@@ -868,7 +876,7 @@ uint32_t WifiGetNtp(void) {
     delay(10);
   }
   // Timeout.
-  AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: No reply"));
+  AddLog(LOG_LEVEL_DEBUG, PSTR("NTP: No reply from %_I"), (uint32_t)time_server_ip);
   udp.stop();
   ntp_server_id++;                                  // Next server next time
   return 0;

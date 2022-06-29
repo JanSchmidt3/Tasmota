@@ -35,6 +35,7 @@
 // Libraries
 #include <ESP8266HTTPClient.h>              // Ota
 #include <ESP8266httpUpdate.h>              // Ota
+#include <DnsClient.h>                      // Any getHostByName
 #ifdef ESP32
   #ifdef USE_TLS
   #include "HTTPUpdateLight.h"              // Ota over HTTPS for ESP32
@@ -125,8 +126,7 @@ typedef struct {
   int32_t       energy_kWhtoday_ph[3];     // 2D8
   int32_t       energy_kWhtotal_ph[3];     // 2E4
   int32_t       energy_kWhexport_ph[3];    // 2F0
-
-  uint8_t       free_2fc[4];               // 2FC
+  uint32_t      utc_time;                  // 2FC
 } TRtcSettings;
 TRtcSettings RtcSettings;
 #ifdef ESP32
@@ -159,6 +159,7 @@ struct XDRVMAILBOX {
   char         *command;
 } XdrvMailbox;
 
+DNSClient DnsClient;
 WiFiUDP PortUdp;                            // UDP Syslog and Alexa
 
 #ifdef ESP32
@@ -169,8 +170,8 @@ WiFiUDP PortUdp;                            // UDP Syslog and Alexa
 */
 #if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
 
-//#if CONFIG_TINYUSB_CDC_ENABLED              // This define is not recognized here so use USE_USB_SERIAL_CONSOLE
-#ifdef USE_USB_SERIAL_CONSOLE
+//#if CONFIG_TINYUSB_CDC_ENABLED              // This define is not recognized here so use USE_USB_CDC_CONSOLE
+#ifdef USE_USB_CDC_CONSOLE
 //#warning **** TasConsole use USB ****
 
 #if ARDUINO_USB_MODE
@@ -186,11 +187,11 @@ bool tasconsole_serial = false;
 //#warning **** TasConsole uses USBCDC ****
 #endif  // ARDUINO_USB_MODE
 
-#else   // No USE_USB_SERIAL_CONSOLE
+#else   // No USE_USB_CDC_CONSOLE
 HardwareSerial TasConsole = Serial;         // Fallback serial interface for ESP32C3, S2 and S3 if no USB_SERIAL defined
 bool tasconsole_serial = true;
 //#warning **** TasConsole uses Serial ****
-#endif  // USE_USB_SERIAL_CONSOLE
+#endif  // USE_USB_CDC_CONSOLE
 
 #else   // No ESP32C3, S2 or S3
 HardwareSerial TasConsole = Serial;         // Fallback serial interface for non ESP32C3, S2 and S3
@@ -240,6 +241,15 @@ struct TasmotaGlobal_t {
   int16_t save_data_counter;                // Counter and flag for config save to Flash
   RulesBitfield rules_flag;                 // Rule state flags (16 bits)
 
+  StateBitfield global_state;               // Global states (currently Wifi and Mqtt) (8 bits)
+  uint16_t pwm_inverted;                    // PWM inverted flag (1 = inverted) - extended to 16 bits for ESP32
+#ifdef ESP32
+  int16_t pwm_cur_value[MAX_PWMS];          // Current effective values of PWMs as applied to GPIOs
+  int16_t pwm_cur_phase[MAX_PWMS];          // Current phase values of PWMs as applied to GPIOs
+  int16_t pwm_value[MAX_PWMS];              // Wanted values of PWMs after update - -1 means no change
+  int16_t pwm_phase[MAX_PWMS];              // Wanted phase of PWMs after update - -1 means no change
+#endif // ESP32
+
   bool serial_local;                        // Handle serial locally
   bool fallback_topic_flag;                 // Use Topic or FallbackTopic
   bool backlog_nodelay;                     // Execute all backlog commands with no delay
@@ -260,14 +270,7 @@ struct TasmotaGlobal_t {
   bool no_autoexec;                         // Disable autoexec
   bool enable_logging;                      // Enable logging
 
-  StateBitfield global_state;               // Global states (currently Wifi and Mqtt) (8 bits)
-  uint16_t pwm_inverted;                    // PWM inverted flag (1 = inverted) - extended to 16 bits for ESP32
-#ifdef ESP32
-  int16_t pwm_cur_value[MAX_PWMS];          // Current effective values of PWMs as applied to GPIOs
-  int16_t pwm_cur_phase[MAX_PWMS];          // Current phase values of PWMs as applied to GPIOs
-  int16_t pwm_value[MAX_PWMS];              // Wanted values of PWMs after update - -1 means no change
-  int16_t pwm_phase[MAX_PWMS];              // Wanted phase of PWMs after update - -1 means no change
-#endif // ESP32
+  uint8_t user_globals[3];                  // User set global temp/hum/press
   uint8_t init_state;                       // Tasmota init state
   uint8_t heartbeat_inverted;               // Heartbeat pulse inverted flag
   uint8_t spi_enabled;                      // SPI configured
@@ -433,16 +436,16 @@ void setup(void) {
 //  Serial.setRxBufferSize(INPUT_BUFFER_SIZE);  // Default is 256 chars
 #ifdef ESP32
 #if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
-#ifdef USE_USB_SERIAL_CONSOLE
+#ifdef USE_USB_CDC_CONSOLE
   TasConsole.begin(115200);    // Will always be 115200 bps
 #if !ARDUINO_USB_MODE
-  USB.begin();
+  USB.begin();                 // This needs a serial console with DTR/DSR support
 #endif  // No ARDUINO_USB_MODE
   TasConsole.println();
-  AddLog(LOG_LEVEL_INFO, PSTR("CMD: Using embedded USB"));
-#else   // No USE_USB_SERIAL_CONSOLE
+  AddLog(LOG_LEVEL_INFO, PSTR("CMD: Using USB CDC"));
+#else   // No USE_USB_CDC_CONSOLE
   TasConsole = Serial;
-#endif  // USE_USB_SERIAL_CONSOLE
+#endif  // USE_USB_CDC_CONSOLE
 #else   // No ESP32C3, S2 or S3
   TasConsole = Serial;
 #endif  // ESP32C3, S2 or S3
@@ -589,6 +592,7 @@ void setup(void) {
   TasmotaGlobal.init_state = INIT_GPIOS;
 
   SetPowerOnState();
+  DnsClient.setTimeout(Settings->dns_timeout);
   WifiConnect();
 
   AddLog(LOG_LEVEL_INFO, PSTR(D_PROJECT " %s - %s " D_VERSION " %s%s-" ARDUINO_CORE_RELEASE "(%s)"),

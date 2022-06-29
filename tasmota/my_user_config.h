@@ -79,6 +79,7 @@
 #define WIFI_CONFIG_TOOL       WIFI_RETRY        // [WifiConfig] Default tool if Wi-Fi fails to connect (default option: 4 - WIFI_RETRY)
                                                  // (WIFI_RESTART, WIFI_MANAGER, WIFI_RETRY, WIFI_WAIT, WIFI_SERIAL, WIFI_MANAGER_RESET_ONLY)
                                                  // The configuration can be changed after first setup using WifiConfig 0, 2, 4, 5, 6 and 7.
+#define DNS_TIMEOUT            1000              // [DnsTimeout] Number of ms before DNS timeout
 #define WIFI_ARP_INTERVAL      60                // [SetOption41] Send gratuitous ARP interval
 #define WIFI_SCAN_AT_RESTART   false             // [SetOption56] Scan Wi-Fi network at restart for configured AP's
 #define WIFI_SCAN_REGULARLY    true              // [SetOption57] Scan Wi-Fi network every 44 minutes for configured AP's
@@ -100,9 +101,9 @@
 #ifdef CONFIG_IDF_TARGET_ESP32C3
 #define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota32c3.bin"  // [OtaUrl]
 #elif defined(CONFIG_IDF_TARGET_ESP32S2)
-#define OTA_URL                "no official version (yet)"  // [OtaUrl]
+#define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota32s2.bin"  // [OtaUrl]
 #elif defined(CONFIG_IDF_TARGET_ESP32S3)
-#define OTA_URL                "no official version (yet)"  // [OtaUrl]
+#define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota32s3.bin"  // [OtaUrl]
 #elif defined(CORE32SOLO1)
 #define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota32solo1.bin"  // [OtaUrl]
 #else
@@ -555,6 +556,7 @@
 #define USE_MY92X1                               // Add support for MY92X1 RGBCW led controller as used in Sonoff B1, Ailight and Lohas
 #define USE_SM16716                              // Add support for SM16716 RGB LED controller (+0k7 code)
 #define USE_SM2135                               // Add support for SM2135 RGBCW led control as used in Action LSC (+0k6 code)
+#define USE_SM2335                               // Add support for SM2335 RGBCW led control as used in SwitchBot Color Bulb (+0k7 code)
 #define USE_BP5758D                              // Add support for BP5758D RGBCW led control as used in some Tuya lightbulbs (+0k8 code)
 #define USE_SONOFF_L1                            // Add support for Sonoff L1 led control
 #define USE_ELECTRIQ_MOODL                       // Add support for ElectriQ iQ-wifiMOODL RGBW LED controller (+0k3 code)
@@ -1128,7 +1130,15 @@
 \*********************************************************************************************/
 
 #ifdef USE_CONFIG_OVERRIDE
-  #include "user_config_override.h"         // Configuration overrides for my_user_config.h
+  #include "user_config_override.h"              // Configuration overrides for my_user_config.h
+#endif
+
+/*********************************************************************************************\
+ * Post-process obsoletes
+\*********************************************************************************************/
+
+#ifdef USE_ESP32MAIL
+#define USE_SENDMAIL                             // USE_ESP32MAIL is replaced by USE_SENDMAIL
 #endif
 
 /*********************************************************************************************\
@@ -1167,8 +1177,14 @@
  * Post-process compile options for TLS
 \*********************************************************************************************/
 
-#if defined(USE_MQTT_TLS) || defined(USE_SENDMAIL) || defined(USE_TELEGRAM) || defined(USE_WEBCLIENT_HTTPS) || defined(USE_ALEXA_AVS)
-  #define USE_TLS                                  // flag indicates we need to include TLS code
+#ifdef ESP8266
+#ifdef USE_SENDMAIL
+  #define USE_TLS                                // flag indicates we need to include TLS code
+#endif
+#endif
+
+#if defined(USE_MQTT_TLS) || defined(USE_TELEGRAM) || defined(USE_WEBCLIENT_HTTPS) || defined(USE_ALEXA_AVS)
+  #define USE_TLS                                // flag indicates we need to include TLS code
 #endif
 
 /*********************************************************************************************\

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-/*
+/* 
  * File:   CronExprParser_test.cpp
  * Author: alex
  *
@@ -63,17 +63,9 @@ void cron_free(void* p) {
 }
 #endif
 
-time_t timegm(struct tm *tm) {
-  time_t ret = mktime(tm);
-  if (tm->tm_isdst)
-    ret -= 3600;
-
-  return ret;
-}
-
 #ifndef ANDROID
 #ifndef _WIN32
-//time_t timegm(struct tm* __tp);
+time_t timegm(struct tm* __tp);
 #else /* _WIN32 */
 static time_t timegm(struct tm* tm) {
     return _mkgmtime(tm);
@@ -315,7 +307,7 @@ void test_expr() {
     check_next("0 0 7 ? * MON-FRI", "2009-09-28_07:00:00", "2009-09-29_07:00:00");
     check_next("0 30 23 30 1/3 ?",  "2010-12-30_00:00:00", "2011-01-30_23:30:00");
     check_next("0 30 23 30 1/3 ?",  "2011-01-30_23:30:00", "2011-04-30_23:30:00");
-    check_next("0 30 23 30 1/3 ?",  "2011-04-30_23:30:00", "2011-07-30_23:30:00");
+    check_next("0 30 23 30 1/3 ?",  "2011-04-30_23:30:00", "2011-07-30_23:30:00");    
 #endif
 }
 
@@ -414,3 +406,4 @@ int main() {
     printf("\nAll OK!");
     return 0;
 }
+

@@ -281,6 +281,12 @@ bbool be_value2bool(bvm *vm, bvalue *v)
         return val2bool(v->v.i);
     case BE_REAL:
         return val2bool(v->v.r);
+    case BE_STRING:
+        return str_len(var_tostr(v)) != 0;
+    case BE_COMPTR:
+        return var_toobj(v) != NULL;
+    case BE_COMOBJ:
+        return ((bcommomobj*)var_toobj(v))->data != NULL;
     case BE_INSTANCE:
         return obj2bool(vm, v);
     default:
@@ -1289,6 +1295,18 @@ void be_dofunc(bvm *vm, bvalue *v, int argc)
     case BE_CTYPE_FUNC: do_cfunc(vm, pos, argc); break;
     default: call_error(vm, v);
     }
+}
+
+/* Default empty constructor */
+int be_default_init_native_function(bvm *vm)
+{
+    int argc = be_top(vm);
+    if (argc >= 1) {
+        be_pushvalue(vm, 1);
+    } else {
+        be_pushnil(vm);
+    }
+    be_return(vm);
 }
 
 BERRY_API void be_set_obs_hook(bvm *vm, bobshook hook)

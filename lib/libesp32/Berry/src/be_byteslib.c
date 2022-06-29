@@ -715,6 +715,24 @@ static int m_tostring(bvm *vm)
     be_return(vm);
 }
 
+static int m_tohex(bvm *vm)
+{
+    buf_impl attr = m_read_attributes(vm, 1);
+    if (attr.bufptr) {              /* pointer looks valid */
+        int32_t len = attr.len;
+        size_t hex_len = len * 2 + 1;
+
+        char * hex_out = be_pushbuffer(vm, hex_len);
+        size_t l = tohex(hex_out, hex_len, attr.bufptr, len);
+
+        be_pushnstring(vm, hex_out, l); /* make escape string from buffer */
+        be_remove(vm, -2); /* remove buffer */
+    } else {                    /* pointer is null, don't try to dereference it as it would crash */
+        be_pushstring(vm, "");
+    }
+    be_return(vm);
+}
+
 /*
  * Copy the buffer into a string without any changes
  */
@@ -1245,6 +1263,20 @@ static int m_buffer(bvm *vm)
 }
 
 /*
+ * Returns `btrue` if the buffer is mapped to memory
+ * or `bfalse` if memory was allocated by us.
+ * 
+ * `ismapped() -> bool`
+ */
+static int m_is_mapped(bvm *vm)
+{
+    buf_impl attr = m_read_attributes(vm, 1);
+    bbool mapped = (attr.mapped || (attr.bufptr == NULL));
+    be_pushbool(vm, mapped);
+    be_return(vm);
+}
+
+/*
  * Change the pointer to a mapped buffer.
  * 
  * This call does nothing if the buffer is not mapped (i.e. memory is managed externally)
@@ -1529,6 +1561,7 @@ void be_load_byteslib(bvm *vm)
         { ".len", NULL },
         { "_buffer", m_buffer },
         { "_change_buffer", m_change_buffer },
+        { "ismapped", m_is_mapped },
         { "init", m_init },
         { "deinit", m_deinit },
         { "tostring", m_tostring },
@@ -1536,6 +1569,8 @@ void be_load_byteslib(bvm *vm)
         { "fromstring", m_fromstring },
         { "tob64", m_tob64 },
         { "fromb64", m_fromb64 },
+        { "fromhex", m_fromhex },
+        { "tohex", m_tohex },
         { "add", m_add },
         { "get", m_getu },
         { "geti", m_geti },
@@ -1570,6 +1605,7 @@ class be_class_bytes (scope: global, name: bytes) {
     .len, var
     _buffer, func(m_buffer)
     _change_buffer, func(m_change_buffer)
+    ismapped, func(m_is_mapped)
     init, func(m_init)
     deinit, func(m_deinit)
     tostring, func(m_tostring)
@@ -1578,6 +1614,7 @@ class be_class_bytes (scope: global, name: bytes) {
     tob64, func(m_tob64)
     fromb64, func(m_fromb64)
     fromhex, func(m_fromhex)
+    tohex, func(m_tohex)
     add, func(m_add)
     get, func(m_getu)
     geti, func(m_geti)
