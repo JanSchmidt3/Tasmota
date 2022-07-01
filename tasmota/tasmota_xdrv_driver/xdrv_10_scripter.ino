@@ -7797,8 +7797,8 @@ bool ScriptCommand(void) {
           // is array
           Response_P(PSTR("{\"script\":{\"%s\":["), lp);
           for (uint16_t cnt = 0; cnt < alend; cnt++) {
-            ext_snprintf_P(str, sizeof(str), PSTR("%*_f"), -glob_script_mem.script_dprec, fpd);
-            fpd++;
+            float tvar = *fpd++;
+            ext_snprintf_P(str, sizeof(str), PSTR("%*_f"), -glob_script_mem.script_dprec, &tvar);
             if (cnt) {
               ResponseAppend_P(PSTR(",%s"), str);
             } else {
