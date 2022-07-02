@@ -54,6 +54,8 @@
 #include "AudioFileSourceBuffer.h"
 #include "AudioGeneratorAAC.h"
 
+#include <driver/i2s.h>
+
 #undef AUDIO_PWR_ON
 #undef AUDIO_PWR_OFF
 #define AUDIO_PWR_ON
@@ -280,7 +282,29 @@ void I2S_Init(void) {
   out = new AudioOutputI2S();
   #endif  // USE_I2S_NO_DAC
 #ifdef ESP32
+
+#ifdef ESP32S3_BOX
+  ES8156_init();
+  #define SBOX_SCLK 17
+  #define SBOX_LRCK 47
+  #define SBOX_DOUT 16
+  #define SBOX_SDIN 15
+  #define SBOX_MCLK 2
+
+  i2s_pin_config_t pins = {
+    .mck_io_num = SBOX_MCLK,
+    .bck_io_num = SBOX_SCLK,
+    .ws_io_num = SBOX_LRCK,
+    .data_out_num = SBOX_DOUT,
+    .data_in_num = SBOX_SDIN,
+
+  };
+  i2s_set_pin((i2s_port_t)0, &pins);
+
+#else
   out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+#endif
+
 #endif  // ESP32
 #else
   #ifdef USE_I2S_NO_DAC
@@ -322,8 +346,6 @@ void I2S_Init(void) {
 #define Speak_I2S_NUMBER I2S_NUM_0
 //#define MICSRATE 44100
 #define MICSRATE 16000
-
-#include <driver/i2s.h>
 
 uint32_t SpeakerMic(uint8_t spkr) {
   esp_err_t err = ESP_OK;
