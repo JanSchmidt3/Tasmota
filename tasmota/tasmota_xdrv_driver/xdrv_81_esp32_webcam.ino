@@ -396,8 +396,9 @@ uint32_t WcSetup(int32_t fsiz) {
   AddLog(LOG_LEVEL_DEBUG_MORE, "CAM: XCLK on GPIO %i using ledc channel %i", config.pin_xclk, config.ledc_channel);
   config.ledc_timer = LEDC_TIMER_0;
   config.xclk_freq_hz = 12000000;
+  //config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-
+  //config.pin_xclk = -1;
 
   //esp_log_level_set("*", ESP_LOG_INFO);
 
@@ -1072,9 +1073,9 @@ void WcInit(void) {
     WcSetDefaults(1);
     Settings->webcam_config2.upgraded = 1;
   }
-  if (!WcSetup(Settings->webcam_config.resolution)) {
-    Settings->webcam_config.stream = 0;
-  }
+  //if (!WcSetup(Settings->webcam_config.resolution)) {
+    //Settings->webcam_config.stream = 0;
+  //}
 }
 
 /*********************************************************************************************\
@@ -1180,7 +1181,10 @@ void CmndWebcam(void) {
 void CmndWebcamStream(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
     Settings->webcam_config.stream = XdrvMailbox.payload;
-    if (!Settings->webcam_config.stream) { WcInterruptControl(); }  // Stop stream
+    if (!Settings->webcam_config.stream) {
+      WcSetup(-1);
+      // WcInterruptControl(); }  // Stop stream
+    }
   }
   ResponseCmndStateText(Settings->webcam_config.stream);
 }
