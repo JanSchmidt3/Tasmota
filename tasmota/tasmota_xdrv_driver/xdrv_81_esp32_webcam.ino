@@ -92,7 +92,7 @@
  *
  * Only boards with PSRAM should be used.
  * To speed up cam processing cpu frequency should be better set to 240Mhz
- * 
+ *
  * remarks for AI-THINKER
  * GPIO0 zero must be disconnected from any wire after programming because this pin drives the cam clock and does
  * not tolerate any capictive load
@@ -982,7 +982,7 @@ uint32_t WcSetStreamserver(uint32_t flag) {
 
 void WcInterruptControl() {
   WcSetStreamserver(Settings->webcam_config.stream);
-  WcSetup(Settings->webcam_config.resolution);
+  WcSetup(Settings->webcam_config.resolution));
 }
 
 /*********************************************************************************************/
@@ -1071,6 +1071,9 @@ void WcInit(void) {
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Upgrade settings"));
     WcSetDefaults(1);
     Settings->webcam_config2.upgraded = 1;
+  }
+  if (!WcSetup(Settings->webcam_config.resolution)) {
+    Settings->webcam_config.stream = 0;
   }
 }
 

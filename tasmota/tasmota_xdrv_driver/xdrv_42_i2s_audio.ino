@@ -92,7 +92,7 @@
 #undef DAC_IIS_WS
 #undef DAC_IIS_DOUT
 #define DAC_IIS_BCK       17
-#define DAC_IIS_WS        2
+#define DAC_IIS_WS        47
 #define DAC_IIS_DOUT      15
 
 #endif // ESP32S3_BOX
@@ -284,23 +284,8 @@ void I2S_Init(void) {
 #ifdef ESP32
 
 #ifdef ESP32S3_BOX
-  ES8156_init();
-  #define SBOX_SCLK 17
-  #define SBOX_LRCK 47
-  #define SBOX_DOUT 16
-  #define SBOX_SDIN 15
-  #define SBOX_MCLK 2
-
-  i2s_pin_config_t pins = {
-    .mck_io_num = SBOX_MCLK,
-    .bck_io_num = SBOX_SCLK,
-    .ws_io_num = SBOX_LRCK,
-    .data_out_num = SBOX_DOUT,
-    .data_in_num = SBOX_SDIN,
-
-  };
-  i2s_set_pin((i2s_port_t)0, &pins);
-
+  S3boxInit();
+  //out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
 #else
   out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
 #endif
