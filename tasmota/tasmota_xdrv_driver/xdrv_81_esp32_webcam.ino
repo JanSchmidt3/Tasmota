@@ -115,7 +115,9 @@ extern ESP8266WebServer *Webserver;
 
 #define BOUNDARY "e8b8c539-047d-4777-a985-fbba6edff11e"
 
-
+#ifndef WC_XCLK
+#define WC_XCLK 20000000
+#endif
 
 // CAMERA_MODEL_AI_THINKER default template pins
 #define PWDN_GPIO_NUM     32
@@ -395,10 +397,9 @@ uint32_t WcSetup(int32_t fsiz) {
   config.ledc_channel = (ledc_channel_t) ledc_channel;
   AddLog(LOG_LEVEL_DEBUG_MORE, "CAM: XCLK on GPIO %i using ledc channel %i", config.pin_xclk, config.ledc_channel);
   config.ledc_timer = LEDC_TIMER_0;
-  config.xclk_freq_hz = 12000000;
+  config.xclk_freq_hz = WC_XCLK;
   //config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-  //config.pin_xclk = -1;
 
   //esp_log_level_set("*", ESP_LOG_INFO);
 
