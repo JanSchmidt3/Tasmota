@@ -11,7 +11,7 @@ void S3boxAudioPower(uint8_t pwr) {
 }
 
 uint32_t ES8156_init() {
-  esp_err_t ret_val = ESP_OK;
+  uint32_t ret_val = ESP_OK;
 
   if (I2cSetDevice(ES8156_ADDR, 1)) {
     I2cSetActiveFound(ES8156_ADDR, "ES8156-I2C", 1);
@@ -27,8 +27,8 @@ uint32_t ES8156_init() {
   return ret_val;
 }
 
-esp_err_t es7243e_init() {
-    esp_err_t ret_val = ESP_OK;
+uint32_t es7243e_init() {
+    uint32_t ret_val = ESP_OK;
 
     if (I2cSetDevice(ES7243_ADDR, 1)) {
       I2cSetActiveFound(ES7243_ADDR, "ES7243e-I2C", 1);
@@ -55,26 +55,6 @@ void S3boxInit() {
 
   es7243e_init();
 
-/*
-#define SBOX_SCLK 17
-#define SBOX_LRCK 47
-#define SBOX_DOUT 16
-#define SBOX_SDIN 15
-#define SBOX_MCLK 2
-
-//i2s_config_t i2s_config = I2S_CONFIG_DEFAULT();
-
-i2s_pin_config_t pins = {
-  .mck_io_num = SBOX_MCLK,
-  .bck_io_num = SBOX_SCLK,
-  .ws_io_num = SBOX_LRCK,
-  .data_out_num = SBOX_DOUT,
-  .data_in_num = SBOX_SDIN,
-
-};*/
-
-//i2s_set_pin((i2s_port_t)0, &pins);
 }
-
 #endif
 #endif
