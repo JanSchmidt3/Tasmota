@@ -667,8 +667,8 @@ void Play_mp3(const char *path) {
       }
       OsWatchLoop();
     }
-    mp3_delete();
     out->stop();
+    mp3_delete();
   }
 
 #endif  // USE_SCRIPT
