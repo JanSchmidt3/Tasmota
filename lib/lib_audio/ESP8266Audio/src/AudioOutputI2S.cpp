@@ -219,6 +219,10 @@ bool AudioOutputI2S::begin(bool txDAC)
 #endif
       }
 
+      if (mclkPin >= 0) {
+        use_apll = false;
+      }
+
       i2s_config_t i2s_config_dac = {
           .mode = mode,
           .sample_rate = 44100,
@@ -228,7 +232,9 @@ bool AudioOutputI2S::begin(bool txDAC)
           .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // lowest interrupt priority
           .dma_buf_count = dma_buf_count,
           .dma_buf_len = 128,
-          .use_apll = use_apll // Use audio PLL
+          .use_apll = use_apll, // Use audio PLL
+          .fixed_mclk             = 0, \
+          .mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT, \
       };
       audioLogger->printf("+%d %p\n", portNo, &i2s_config_dac);
       if (i2s_driver_install((i2s_port_t)portNo, &i2s_config_dac, 0, NULL) != ESP_OK)
