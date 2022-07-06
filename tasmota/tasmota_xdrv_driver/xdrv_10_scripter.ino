@@ -3764,6 +3764,36 @@ chknext:
           len++;
           goto exit;
         }
+        if (!strncmp(lp, "rma(", 4)) {
+          uint16_t alen;
+          float *array;
+          lp = get_array_by_name(lp + 4, &array, &alen, 0);
+          char str[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp, OPER_EQU, str, 0);
+          uint32_t raddr = strtol(str, NULL, 16);
+          raddr &= 0xfffffffc;
+          const uint32_t *addr = (const uint32_t*)raddr;
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          uint32_t mlen = fvar;
+          mlen &= 0xfffffffc;
+          uint32_t *lp = (uint32_t*)special_malloc(mlen);
+          if (lp) {
+            for (uint32_t cnt = 0; cnt < mlen/4; cnt++) {
+              lp[cnt] = addr[cnt];
+            }
+            //esp_flash_read();
+
+            uint8_t *ucp = (uint8_t*)lp;
+            for (uint32_t cnt = 0; cnt < mlen; cnt++) {
+              array[cnt] = ucp[cnt];
+            }
+            free(lp);
+            fvar = 0;
+          } else {
+            fvar = -1;
+          }
+          goto nfuncexit;
+        }
 #if  defined(ESP32) && (defined(USE_M5STACK_CORE2))
         if (!strncmp(lp, "rec(", 4)) {
           char str[SCRIPT_MAXSSIZE];
