@@ -23,10 +23,8 @@
  */
 #include <Wire.h>
 #include <freertos/FreeRTOS.h>
-//#include "bsp_i2c.h"
 #include "string.h"
 #include "esp_log.h"
-//#include "i2c_bus.h"
 #include "es8156.h"
 
 /*
@@ -44,11 +42,8 @@ static const char *TAG = "es8156";
 static TwoWire *es8156_wire;
 
 
-//static i2c_bus_handle_t i2c_handle;
-
 static esp_err_t es8156_write_reg(uint8_t reg_addr, uint8_t data)
 {
-    //return i2c_bus_write_byte(i2c_handle, reg_addr, data);
     es8156_wire->beginTransmission(ES8156_ADDR);
     es8156_wire->write(reg_addr);
     es8156_wire->write(data);

@@ -94,6 +94,8 @@
 #define DAC_IIS_BCK       17
 #define DAC_IIS_WS        47
 #define DAC_IIS_DOUT      15
+#define DAC_IIS_DIN       16
+#define DAC_IIS_MCLK      2
 
 #endif // ESP32S3_BOX
 
@@ -282,15 +284,14 @@ void I2S_Init(void) {
   out = new AudioOutputI2S();
   #endif  // USE_I2S_NO_DAC
 #ifdef ESP32
-
 #ifdef ESP32S3_BOX
   S3boxInit();
-  //out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+  out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK, DAC_IIS_DIN);
 #else
   out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
 #endif
-
 #endif  // ESP32
+
 #else
   #ifdef USE_I2S_NO_DAC
   out = new AudioOutputI2SNoDAC();
@@ -492,6 +493,7 @@ void mp3_task(void *arg) {
       if (!mp3->loop()) {
         mp3->stop();
         mp3_delete();
+        out->stop();
         if (mp3_task_h) {
           vTaskDelete(mp3_task_h);
           mp3_task_h = 0;
@@ -665,6 +667,7 @@ void Play_mp3(const char *path) {
       OsWatchLoop();
     }
     mp3_delete();
+    out->stop();
   }
 
 #endif  // USE_SCRIPT
