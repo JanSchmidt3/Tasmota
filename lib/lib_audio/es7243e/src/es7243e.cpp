@@ -21,7 +21,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
-
+#ifdef ESP32
 
  #include <Wire.h>
  #include <freertos/FreeRTOS.h>
@@ -95,3 +95,4 @@ esp_err_t es7243e_adc_init(TwoWire *tw, audio_hal_codec_config_t *codec_cfg)
     }
     return ret;
 }
+#endif

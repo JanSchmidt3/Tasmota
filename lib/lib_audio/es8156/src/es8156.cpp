@@ -21,6 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+
+#ifdef ESP32
+
 #include <Wire.h>
 #include <freertos/FreeRTOS.h>
 #include "string.h"
@@ -153,3 +156,5 @@ esp_err_t es8156_set_channel(uint8_t is_right)
     }
     return es8156_write_reg(ES8156_DAC_SDP_REG11, reg);
 }
+
+#endif
