@@ -19,8 +19,14 @@
 */
 
 #pragma once
+#ifdef ESP32
 #include <driver/i2s.h>
+#endif
 #include "AudioOutput.h"
+
+#ifndef I2S_PIN_NO_CHANGE
+#define I2S_PIN_NO_CHANGE -1
+#endif
 
 class AudioOutputI2S : public AudioOutput
 {

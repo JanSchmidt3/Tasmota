@@ -54,7 +54,9 @@
 #include "AudioFileSourceBuffer.h"
 #include "AudioGeneratorAAC.h"
 
+#ifdef ESP32
 #include <driver/i2s.h>
+#endif
 
 #undef AUDIO_PWR_ON
 #undef AUDIO_PWR_OFF
