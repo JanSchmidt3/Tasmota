@@ -19,7 +19,7 @@
 */
 
 #pragma once
-
+#include <driver/i2s.h>
 #include "AudioOutput.h"
 
 class AudioOutputI2S : public AudioOutput
@@ -27,7 +27,7 @@ class AudioOutputI2S : public AudioOutput
   public:
 #if defined(ESP32) || defined(ESP8266)
     AudioOutputI2S(int port=0, int output_mode=EXTERNAL_I2S, int dma_buf_count = 8, int use_apll=APLL_DISABLE);
-    bool SetPinout(int bclkPin, int wclkPin, int doutPin, int mclk = I2S_PIN_NO_CHANGE,int din = I2S_PIN_NO_CHANGE);
+    bool SetPinout(int bclkPin, int wclkPin, int doutPin, int mclk = I2S_PIN_NO_CHANGE, int din = I2S_PIN_NO_CHANGE);
     enum : int { APLL_AUTO = -1, APLL_ENABLE = 1, APLL_DISABLE = 0 };
     enum : int { EXTERNAL_I2S = 0, INTERNAL_DAC = 1, INTERNAL_PDM = 2 };
 #elif defined(ARDUINO_ARCH_RP2040)
