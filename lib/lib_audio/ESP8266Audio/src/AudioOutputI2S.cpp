@@ -241,7 +241,7 @@ bool AudioOutputI2S::begin(bool txDAC)
           .fixed_mclk             = 0,
           //.mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,
           .mclk_multiple          = I2S_MCLK_MULTIPLE_128,
-          .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT,
+          .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
       };
       audioLogger->printf("+%d %p\n", portNo, &i2s_config_dac);
       if (i2s_driver_install((i2s_port_t)portNo, &i2s_config_dac, 0, NULL) != ESP_OK)
