@@ -48,13 +48,10 @@ uint32_t es7243e_init() {
 
 
 void S3boxInit() {
-
-  I2c2Begin(8, 18);
-
-  ES8156_init();
-
-  es7243e_init();
-
+  if (TasmotaGlobal.i2c_enabled_2) {
+    ES8156_init();
+    es7243e_init();
+  }
 }
 #endif
 #endif

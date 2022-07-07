@@ -219,8 +219,12 @@ bool AudioOutputI2S::begin(bool txDAC)
 #endif
       }
 
-      if (mclkPin >= 0) {
+      if (mclkPin != I2S_PIN_NO_CHANGE) {
         use_apll = false;
+      }
+
+      if (dinPin != I2S_PIN_NO_CHANGE) {
+        mode = (i2s_mode_t) (I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX);
       }
 
       i2s_config_t i2s_config_dac = {

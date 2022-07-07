@@ -289,6 +289,7 @@ void I2S_Init(void) {
 #ifdef ESP32S3_BOX
   S3boxInit();
   out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK, DAC_IIS_DIN);
+  //out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK);
   //out->SetRate(16000);
 #else
   out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
@@ -637,6 +638,10 @@ void Play_mp3(const char *path) {
 #if (defined(USE_SCRIPT_FATFS) && defined(USE_SCRIPT)) || defined(USE_UFILESYS)
   if (decoder || mp3) return;
   if (!out) return;
+
+  if (!ufsp->exists(path)) {
+    return;
+  }
 
   bool I2S_Task;
 
