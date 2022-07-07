@@ -289,8 +289,6 @@ void I2S_Init(void) {
 #ifdef ESP32S3_BOX
   S3boxInit();
   out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK, DAC_IIS_DIN);
-  //out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK);
-  //out->SetRate(16000);
 #else
   out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
 #endif
