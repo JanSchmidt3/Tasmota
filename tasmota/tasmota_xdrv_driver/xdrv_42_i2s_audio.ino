@@ -63,6 +63,9 @@
 #define AUDIO_PWR_ON
 #define AUDIO_PWR_OFF
 
+
+#define MIC_CHANNELS 1
+
 #ifdef USE_TTGO_WATCH
 #undef AUDIO_PWR_ON
 #undef AUDIO_PWR_OFF
@@ -98,6 +101,10 @@
 #define DAC_IIS_DOUT      15
 #define DAC_IIS_DIN       16
 #define DAC_IIS_MCLK      2
+
+#undef MIC_CHANNELS
+#define MIC_CHANNELS 2
+
 
 #endif // ESP32S3_BOX
 
@@ -373,13 +380,14 @@ uint32_t SpeakerMic(uint8_t spkr) {
         .use_apll = 0, // Use audio PLL
         .tx_desc_auto_clear     = true,
         .fixed_mclk             = 0,
-        .mclk_multiple          = I2S_MCLK_MULTIPLE_128,
+        .mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,
         .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
     };
 
 #ifdef ESP32S3_BOX
     i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
-    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
+    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
+    i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
 #else
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
 #endif
@@ -398,9 +406,11 @@ uint32_t SpeakerMic(uint8_t spkr) {
     tx_pin_config.data_in_num = DAC_IIS_DIN;
 
     err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
-
+#ifdef ESP32S3_BOX
+    err += i2s_set_clk(Speak_I2S_NUMBER, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
+#else
     err += i2s_set_clk(Speak_I2S_NUMBER, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
-
+#endif
   }
   return err;
 }
@@ -438,7 +448,7 @@ uint32_t i2s_record(char *path, uint32_t secs) {
     return err;
   }
 
-  mic_size = secs * MICSRATE * 2;
+  mic_size = secs * MICSRATE * 2 * MIC_CHANNELS;
 
   mic_buff = (uint8_t*)heap_caps_malloc(mic_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!mic_buff) return 2;
@@ -479,7 +489,7 @@ bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
   uint8_t wavHeader[sizeof(wavHTemplate)];
   memcpy_P(wavHeader, wavHTemplate, sizeof(wavHTemplate));
 
-  uint8_t channels = 1;
+  uint8_t channels = MIC_CHANNELS;
   uint32_t hertz = MICSRATE;
   uint8_t bps = 16;
 

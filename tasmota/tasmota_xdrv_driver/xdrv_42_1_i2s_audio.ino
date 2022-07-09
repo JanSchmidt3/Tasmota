@@ -44,7 +44,7 @@ uint32_t es7243e_init() {
         }
       };
 
-      ret_val |= es8156_codec_init(&Wire1, &cfg);
+      ret_val |= es7243e_adc_init(&Wire1, &cfg);
     }
 
     return ret_val;
