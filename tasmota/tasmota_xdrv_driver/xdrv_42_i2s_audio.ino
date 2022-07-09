@@ -624,6 +624,19 @@ void Cmd_WebRadio(void) {
 
 }
 
+#ifdef USE_WEBSERVER
+const char HTTP_WEBRADIO[] PROGMEM =
+   "{s}" "I2S_WR-Title" "{m}%s{e}";
+
+void I2S_WR_Show(void) {
+    if (decoder) {
+      WSContentSend_PD(HTTP_WEBRADIO,wr_title);
+    }
+}
+#endif  // USE_WEBSERVER
+
+#endif  // USE_I2S_WEBRADIO
+
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX)
 void Cmd_MicRec(void) {
   if (XdrvMailbox.data_len > 0) {
@@ -640,19 +653,6 @@ void Cmd_MicRec(void) {
   }
 }
 #endif  // USE_M5STACK_CORE2
-
-#ifdef USE_WEBSERVER
-const char HTTP_WEBRADIO[] PROGMEM =
-   "{s}" "I2S_WR-Title" "{m}%s{e}";
-
-void I2S_WR_Show(void) {
-    if (decoder) {
-      WSContentSend_PD(HTTP_WEBRADIO,wr_title);
-    }
-}
-#endif  // USE_WEBSERVER
-
-#endif  // USE_I2S_WEBRADIO
 
 #ifdef ESP32
 void Play_mp3(const char *path) {
