@@ -351,8 +351,12 @@ uint32_t SpeakerMic(uint8_t spkr) {
       #else
       out = new AudioOutputI2S(0, 1);
     #endif
-    out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
-    out->SetGain(((float)is2_volume/100.0)*4.0);
+#ifdef ESP32S3_BOX
+      out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK, DAC_IIS_DIN);
+#else
+      out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+#endif
+    out->SetGain(((float)(is2_volume-2)/100.0)*4.0);
     out->stop();
   } else {
     // config mic
@@ -366,18 +370,37 @@ uint32_t SpeakerMic(uint8_t spkr) {
         .dma_buf_count = 2,
         //.dma_buf_len = 128,
         .dma_buf_len = 1024,
+        .use_apll = 0, // Use audio PLL
+        .tx_desc_auto_clear     = true,
+        .fixed_mclk             = 0,
+        .mclk_multiple          = I2S_MCLK_MULTIPLE_128,
+        .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
     };
+
+#ifdef ESP32S3_BOX
+    i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
+    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
+#else
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
+#endif
+
     err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
 
     i2s_pin_config_t tx_pin_config;
+#ifdef ESP32S3_BOX
+    tx_pin_config.mck_io_num = DAC_IIS_MCLK;
+#else
+    tx_pin_config.mck_io_num = I2S_PIN_NO_CHANGE;
+#endif
     tx_pin_config.bck_io_num = DAC_IIS_BCK;
     tx_pin_config.ws_io_num = DAC_IIS_WS;
     tx_pin_config.data_out_num = DAC_IIS_DOUT;
     tx_pin_config.data_in_num = DAC_IIS_DIN;
+
     err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
 
     err += i2s_set_clk(Speak_I2S_NUMBER, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+
   }
   return err;
 }
@@ -601,7 +624,7 @@ void Cmd_WebRadio(void) {
 
 }
 
-#ifdef USE_M5STACK_CORE2
+#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX)
 void Cmd_MicRec(void) {
   if (XdrvMailbox.data_len > 0) {
     uint16 time = 10;
@@ -711,7 +734,7 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #ifdef USE_I2S_WEBRADIO
   "|WR"
 #endif  // USE_I2S_WEBRADIO
-#ifdef USE_M5STACK_CORE2
+#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX)
   "|REC"
 #endif  // USE_M5STACK_CORE2
 #endif  // ESP32
@@ -724,7 +747,7 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #ifdef USE_I2S_WEBRADIO
   ,&Cmd_WebRadio
 #endif // USE_I2S_WEBRADIO
-#ifdef USE_M5STACK_CORE2
+#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX)
   ,&Cmd_MicRec
 #endif // USE_M5STACK_CORE2
 #endif // ESP32
