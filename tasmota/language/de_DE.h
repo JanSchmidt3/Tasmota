@@ -878,6 +878,12 @@
 #define D_SENSOR_CM11_RX       "CM110x RX"
 #define D_SENSOR_FLOWRATEMETER "Flowrate"
 
+#define D_SENSOR_I2S_MCLK      "I2S_MCLK"
+#define D_SENSOR_I2S_BCLK      "I2S_BCLK"
+#define D_SENSOR_I2S_WS        "I2S_WS"
+#define D_SENSOR_I2S_DIN       "I2S_DIN"
+#define D_SENSOR_I2S_DOUT      "I2S_DOUT"
+
 // Units
 #define D_UNIT_AMPERE "A"
 #define D_UNIT_CELSIUS "C"
@@ -1132,11 +1138,5 @@
 #define D_NEOPOOL_PH_LOW                  "zu niedrig"
 #define D_NEOPOOL_PUMP_TIME_EXCEEDED      "Pumpzeit überschritten"
 
-
-#define D_SENSOR_I2S_MCLK                 "I2S_MCLK"
-#define D_SENSOR_I2S_BCLK                 "I2S_BCLK"
-#define D_SENSOR_I2S_WS                   "I2S_WS"
-#define D_SENSOR_I2S_DIN                  "I2S_DIN"
-#define D_SENSOR_I2S_DOUT                 "I2S_DOUT"
 
 #endif  // _LANGUAGE_DE_DE_H_
