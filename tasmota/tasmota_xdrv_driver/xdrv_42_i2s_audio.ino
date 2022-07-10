@@ -686,7 +686,7 @@ void Cmd_MicRec(void) {
 
 #ifdef ESP32
 void Play_mp3(const char *path) {
-#if (defined(USE_SCRIPT_FATFS) && defined(USE_SCRIPT)) || defined(USE_UFILESYS)
+#ifdef USE_UFILESYS
   if (decoder || mp3) return;
   if (!out) return;
 
@@ -729,7 +729,7 @@ void Play_mp3(const char *path) {
     mp3_delete();
   }
 
-#endif  // USE_SCRIPT
+#endif  // USE_UFILESYS
 }
 
 void mp3_delete(void) {
