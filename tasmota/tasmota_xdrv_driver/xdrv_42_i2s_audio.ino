@@ -281,33 +281,52 @@ void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) {
 }
 #endif  // USE_I2S_SAY_TIME
 
-// should be in settings
-uint8_t is2_volume;
+uint8_t is2_volume; // should be in settings
+i2s_port_t i2s_port;
+
+void I2S_Init_0(void) {
+
+  i2s_port = (i2s_port_t)0;
+
+#if USE_I2S_EXTERNAL_DAC
+
+#ifdef USE_I2S_NO_DAC
+    out = new AudioOutputI2SNoDAC();
+#else
+    //out = new AudioOutputI2S();
+#endif  // USE_I2S_NO_DAC
+
+  if (PinUsed(GPIO_I2S_BCLK) && PinUsed(GPIO_I2S_WS) && PinUsed(GPIO_I2S_DOUT)) {
+    i2s_port = (i2s_port_t)0;
+    out = new AudioOutputI2S(i2s_port);
+    out->SetPinout(Pin(GPIO_I2S_BCLK), Pin(GPIO_I2S_WS), Pin(GPIO_I2S_DOUT), Pin(GPIO_I2S_MCLK), Pin(GPIO_I2S_DIN) );
+  } else if (PinUsed(GPIO_I2S_BCLK, 1) && PinUsed(GPIO_I2S_WS, 1) && PinUsed(GPIO_I2S_DOUT), 1) {
+    i2s_port = (i2s_port_t)1;
+    out = new AudioOutputI2S(i2s_port);
+    out->SetPinout(Pin(GPIO_I2S_BCLK, 1), Pin(GPIO_I2S_WS, 1), Pin(GPIO_I2S_DOUT, 1), Pin(GPIO_I2S_MCLK, 1), Pin(GPIO_I2S_DIN, 1) );
+  } else {
+    // #defines
+    out = new AudioOutputI2S();
+    out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+  }
+
+#if defined(ESP32) && defined(ESP32S3_BOX)
+    S3boxInit();
+#endif
+
+#else
+#ifdef USE_I2S_NO_DAC
+  out = new AudioOutputI2SNoDAC();
+#else
+  out = new AudioOutputI2S(0, 1);    // Internal DAC port 0
+#endif  // USE_I2S_NO_DAC
+#endif  // USE_I2S_EXTERNAL_DAC
+
+}
 
 void I2S_Init(void) {
 
-#if USE_I2S_EXTERNAL_DAC
-  #ifdef USE_I2S_NO_DAC
-  out = new AudioOutputI2SNoDAC();
-  #else
-  out = new AudioOutputI2S();
-  #endif  // USE_I2S_NO_DAC
-#ifdef ESP32
-#ifdef ESP32S3_BOX
-  S3boxInit();
-  out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK, DAC_IIS_DIN);
-#else
-  out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
-#endif
-#endif  // ESP32
-
-#else
-  #ifdef USE_I2S_NO_DAC
-  out = new AudioOutputI2SNoDAC();
-  #else
-  out = new AudioOutputI2S(0, 1);    // Internal DAC port 0
-  #endif  // USE_I2S_NO_DAC
-#endif  // USE_I2S_EXTERNAL_DAC
+  I2S_Init_0();
 
   is2_volume=10;
   out->SetGain(((float)is2_volume/100.0)*4.0);
@@ -338,7 +357,6 @@ void I2S_Init(void) {
 #ifdef ESP32
 #define MODE_MIC 0
 #define MODE_SPK 1
-#define Speak_I2S_NUMBER I2S_NUM_0
 //#define MICSRATE 44100
 #define MICSRATE 16000
 
@@ -351,18 +369,10 @@ uint32_t SpeakerMic(uint8_t spkr) {
     out = nullptr;
   }
 
-  i2s_driver_uninstall(Speak_I2S_NUMBER);
+  i2s_driver_uninstall(i2s_port);
+
   if (spkr==MODE_SPK) {
-    #ifdef USE_I2S_NO_DAC
-      out = new AudioOutputI2SNoDAC();
-      #else
-      out = new AudioOutputI2S(0, 1);
-    #endif
-#ifdef ESP32S3_BOX
-      out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT, DAC_IIS_MCLK, DAC_IIS_DIN);
-#else
-      out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
-#endif
+    I2S_Init_0();
     out->SetGain(((float)(is2_volume-2)/100.0)*4.0);
     out->stop();
   } else {
@@ -392,7 +402,7 @@ uint32_t SpeakerMic(uint8_t spkr) {
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
 #endif
 
-    err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
+    err += i2s_driver_install(i2s_port, &i2s_config, 0, NULL);
 
     i2s_pin_config_t tx_pin_config;
 #ifdef ESP32S3_BOX
@@ -405,11 +415,11 @@ uint32_t SpeakerMic(uint8_t spkr) {
     tx_pin_config.data_out_num = DAC_IIS_DOUT;
     tx_pin_config.data_in_num = DAC_IIS_DIN;
 
-    err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
+    err += i2s_set_pin(i2s_port, &tx_pin_config);
 #ifdef ESP32S3_BOX
-    err += i2s_set_clk(Speak_I2S_NUMBER, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
+    err += i2s_set_clk(i2s_port, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
 #else
-    err += i2s_set_clk(Speak_I2S_NUMBER, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+    err += i2s_set_clk(i2s_port, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
 #endif
   }
   return err;
@@ -426,7 +436,7 @@ void mic_task(void *arg){
   uint32_t data_offset = 0;
   while (1) {
       uint32_t bytes_read;
-      i2s_read(Speak_I2S_NUMBER, (char *)(mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
+      i2s_read(i2s_port, (char *)(mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
       if (bytes_read != DATA_SIZE) break;
       data_offset += DATA_SIZE;
       if (data_offset >= mic_size-DATA_SIZE) break;
@@ -464,7 +474,7 @@ uint32_t i2s_record(char *path, uint32_t secs) {
   uint32_t stime=millis();
   while (1) {
     uint32_t bytes_read;
-    i2s_read(Speak_I2S_NUMBER, (char *)(mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
+    i2s_read(i2s_port, (char *)(mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
     if (bytes_read != DATA_SIZE) break;
     data_offset += DATA_SIZE;
     if (data_offset >= mic_size-DATA_SIZE) break;

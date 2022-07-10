@@ -191,6 +191,7 @@ enum UserSelectablePins {
   GPIO_BP5758D_CLK, GPIO_BP5758D_DAT,  // BP5758D PWM controller
   GPIO_SM2335_CLK, GPIO_SM2335_DAT,    // SM2335 PWM controller
   GPIO_MP3_DFR562_BUSY,                // RB-DFR-562, DFPlayer Mini MP3 Player busy flag
+  GPIO_I2S_MCLK, GPIO_I2S_BCLK, GPIO_I2S_WS, GPIO_I2S_DIN, GPIO_I2S_DOUT,
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -287,7 +288,7 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_SDM120_TX "|" D_SENSOR_SDM120_RX "|"
   D_SENSOR_SDM630_TX "|" D_SENSOR_SDM630_RX "|"
   D_SENSOR_TM1638_CLK "|" D_SENSOR_TM1638_DIO "|" D_SENSOR_TM1638_STB "|"
-  D_SENSOR_DFR562 "|" 
+  D_SENSOR_DFR562 "|"
   D_SENSOR_HX711_SCK "|" D_SENSOR_HX711_DAT "|"
   D_SENSOR_TX2X_TX "|"
   D_SENSOR_TUYA_TX "|" D_SENSOR_TUYA_RX "|"
@@ -426,6 +427,7 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_BP5758D_CLK "|" D_SENSOR_BP5758D_DAT "|"
   D_SENSOR_SM2335_CLK "|" D_SENSOR_SM2335_DAT "|"
   D_SENSOR_DFR562_BUSY "|"
+  D_SENSOR_I2S_MCLK "|" D_SENSOR_I2S_BCLK "|" D_SENSOR_I2S_WS "|" D_SENSOR_I2S_DIN "|" D_SENSOR_I2S_DOUT  "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -516,6 +518,14 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_I2S_IN_DATA) + MAX_I2S,    // I2S In Data
   AGPIO(GPIO_I2S_IN_CLK) + MAX_I2S,     // I2C In Clock
   AGPIO(GPIO_I2S_IN_SLCT) + MAX_I2S,    // I2C In Word Select
+#endif
+
+#ifdef USE_I2S_AUDIO
+  AGPIO(GPIO_I2S_MCLK) + MAX_I2S,   // I2S master clock
+  AGPIO(GPIO_I2S_BCLK) + MAX_I2S,   // I2S bit clock
+  AGPIO(GPIO_I2S_WS) + MAX_I2S,   // I2S word select
+  AGPIO(GPIO_I2S_DIN) + MAX_I2S,   // I2S IN Data
+  AGPIO(GPIO_I2S_DOUT) + MAX_I2S,   // I2S Out Data
 #endif
 
 #ifdef USE_SPI
