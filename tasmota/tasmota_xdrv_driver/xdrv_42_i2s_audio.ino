@@ -296,6 +296,7 @@ void I2S_Init_0(void) {
     //out = new AudioOutputI2S();
 #endif  // USE_I2S_NO_DAC
 
+#ifndef USE_M5STACK_CORE2
   if (PinUsed(GPIO_I2S_BCLK) && PinUsed(GPIO_I2S_WS) && PinUsed(GPIO_I2S_DOUT)) {
     i2s_port = (i2s_port_t)0;
     out = new AudioOutputI2S(i2s_port);
@@ -309,6 +310,11 @@ void I2S_Init_0(void) {
     out = new AudioOutputI2S();
     out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
   }
+#else
+  // core2 template does not match, so take defines
+  out = new AudioOutputI2S();
+  out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+#endif
 
 #if defined(ESP32) && defined(ESP32S3_BOX)
     S3boxInit();
