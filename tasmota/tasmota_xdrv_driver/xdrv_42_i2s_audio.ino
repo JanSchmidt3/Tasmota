@@ -281,6 +281,10 @@ void sayTime(int hour, int minutes, AudioGeneratorTalkie *talkie) {
 }
 #endif  // USE_I2S_SAY_TIME
 
+#ifndef i2s_port_t
+#define i2s_port_t uint8_t
+#endif
+
 uint8_t is2_volume; // should be in settings
 i2s_port_t i2s_port;
 

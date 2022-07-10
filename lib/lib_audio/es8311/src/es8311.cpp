@@ -21,6 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+
+#ifdef ESP32
+
 #include <Wire.h>
 #include <string.h>
 #include "esp_log.h"
@@ -688,3 +691,5 @@ esp_err_t es8311_set_channel(int is_right)
     }
     return es8311_write_reg(ES8311_SDPIN_REG09, reg_val);
 }
+
+#endif

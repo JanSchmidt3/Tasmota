@@ -21,6 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+
+#ifdef ESP32
+
 #include <Wire.h>
 #include <string.h>
 #include "esp_log.h"
@@ -542,3 +545,5 @@ void es7210_read_all(void)
         ets_printf("REG:%02x, %02x\n", reg, i);
     }
 }
+
+#endif
