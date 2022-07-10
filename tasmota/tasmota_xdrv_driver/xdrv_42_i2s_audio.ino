@@ -151,9 +151,13 @@ AudioGeneratorTalkie *talkie = nullptr;
 #undef DAC_IIS_BCK
 #undef DAC_IIS_WS
 #undef DAC_IIS_DOUT
+#undef DAC_IIS_DIN
+#undef DAC_IIS_MCLK
 #define DAC_IIS_BCK       15
 #define DAC_IIS_WS        2
 #define DAC_IIS_DOUT      3
+#define DAC_IIS_DIN       -1
+#define DAC_IIS_MCLK       -1
 #endif  // ESP8266
 
 // defaults to TTGO WATCH
@@ -175,8 +179,13 @@ AudioGeneratorTalkie *talkie = nullptr;
 
 #ifndef DAC_IIS_DIN
 #undef DAC_IIS_DIN
-#define DAC_IIS_DIN       34
+#define DAC_IIS_DIN       -1
 #endif  // DAC_IIS_DIN
+
+#ifndef DAC_IIS_MCLK
+#undef DAC_IIS_MCLK
+#define DAC_IIS_MCLK       -1
+#endif  // DAC_IIS_MCLK
 
 #endif  // ESP32
 
@@ -290,6 +299,13 @@ i2s_port_t i2s_port;
 
 void I2S_Init_0(void) {
 
+int8_t mclk = DAC_IIS_MCLK;
+int8_t bclk = DAC_IIS_BCK;
+int8_t ws = DAC_IIS_WS;
+int8_t dout = DAC_IIS_DOUT;
+int8_t din = DAC_IIS_DIN;
+
+
   i2s_port = (i2s_port_t)0;
 
 #if USE_I2S_EXTERNAL_DAC
@@ -304,21 +320,28 @@ void I2S_Init_0(void) {
   if (PinUsed(GPIO_I2S_BCLK) && PinUsed(GPIO_I2S_WS) && PinUsed(GPIO_I2S_DOUT)) {
     i2s_port = (i2s_port_t)0;
     out = new AudioOutputI2S(i2s_port);
-    out->SetPinout(Pin(GPIO_I2S_BCLK), Pin(GPIO_I2S_WS), Pin(GPIO_I2S_DOUT), Pin(GPIO_I2S_MCLK), Pin(GPIO_I2S_DIN) );
+    mclk = Pin(GPIO_I2S_MCLK);
+    bclk = Pin(GPIO_I2S_BCLK);
+    ws = Pin(GPIO_I2S_WS);
+    dout = Pin(GPIO_I2S_DOUT);
+    din = Pin(GPIO_I2S_DIN);
   } else if (PinUsed(GPIO_I2S_BCLK, 1) && PinUsed(GPIO_I2S_WS, 1) && PinUsed(GPIO_I2S_DOUT), 1) {
     i2s_port = (i2s_port_t)1;
     out = new AudioOutputI2S(i2s_port);
-    out->SetPinout(Pin(GPIO_I2S_BCLK, 1), Pin(GPIO_I2S_WS, 1), Pin(GPIO_I2S_DOUT, 1), Pin(GPIO_I2S_MCLK, 1), Pin(GPIO_I2S_DIN, 1) );
-  } else {
-    // #defines
-    out = new AudioOutputI2S();
-    out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+    mclk = Pin(GPIO_I2S_MCLK, 1);
+    bclk = Pin(GPIO_I2S_BCLK, 1);
+    ws = Pin(GPIO_I2S_WS, 1);
+    dout = Pin(GPIO_I2S_DOUT, 1);
+    din = Pin(GPIO_I2S_DIN, 1);
   }
+  out->SetPinout(bclk, ws, dout, mclk, din);
 #else
   // core2 template does not match, so take defines
   out = new AudioOutputI2S();
-  out->SetPinout(DAC_IIS_BCK, DAC_IIS_WS, DAC_IIS_DOUT);
+  out->SetPinout(bclk, ws, dout);
 #endif
+
+  AddLog(LOG_LEVEL_INFO, PSTR("Init audio I2S: bclk=%d, ws=%d, dout=%d, mclk=%d, din=%d"), bclk, ws, dout, mclk, din);
 
 #if defined(ESP32) && defined(ESP32S3_BOX)
     S3boxInit();
