@@ -953,7 +953,7 @@
 //#define USE_NEOPOOL                              // Add support for Sugar Valley NeoPool Controller - also known under brands Hidrolife, Aquascenic, Oxilife, Bionet, Hidroniser, UVScenic, Station, Brilix, Bayrol and Hay (+6k flash, +60 mem)
 //  #define NEOPOOL_MODBUS_ADDRESS       1         // Any modbus address
 
-//#define FLOWRATEMETER                            // Add support for water flow meter YF-DN50 and similary (+1k7 code)
+//#define USE_FLOWRATEMETER                        // Add support for water flow meter YF-DN50 and similary (+1k7 code)
 
 // -- Thermostat control ----------------------------
 //#define USE_THERMOSTAT                           // Add support for Thermostat
@@ -1007,6 +1007,7 @@
 #define USE_ESP32_SENSORS                        // Add support for ESP32 temperature and optional hall effect sensor
 
 //#define USE_SONOFF_SPM                           // Add support for ESP32 based Sonoff Smart Stackable Power Meter (+11k code)
+//#define USE_DISPLAY_TM1621_SONOFF                // Add support for TM1621 dsiplay driver used by Sonoff POWR3xxD and THR3xxD
 
 //#define USE_ETHERNET                             // Add support for ethernet (+20k code)
 //  #define USE_WT32_ETH01                         // Add support for Wireless-Tag WT32-ETH01
