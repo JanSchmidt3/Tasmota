@@ -191,8 +191,13 @@ enum UserSelectablePins {
   GPIO_BP5758D_CLK, GPIO_BP5758D_DAT,  // BP5758D PWM controller
   GPIO_SM2335_CLK, GPIO_SM2335_DAT,    // SM2335 PWM controller
   GPIO_MP3_DFR562_BUSY,                // RB-DFR-562, DFPlayer Mini MP3 Player busy flag
+  GPIO_TM1621_CS, GPIO_TM1621_WR, GPIO_TM1621_RD, GPIO_TM1621_DAT,  // Sonoff POWR3xxD and THR3xxD LCD display
+  GPIO_REL1_BI, GPIO_REL1_BI_INV,      // 8 x Relays bistable
   GPIO_I2S_MCLK, GPIO_I2S_BCLK, GPIO_I2S_WS, GPIO_I2S_DIN, GPIO_I2S_DOUT,
   GPIO_SENSOR_END };
+
+// Error as warning to rethink GPIO usage
+static_assert(GPIO_SENSOR_END < 2000, "Too many UserSelectablePins");
 
 enum ProgramSelectablePins {
   GPIO_FIX_START = 2046,
@@ -427,6 +432,8 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_BP5758D_CLK "|" D_SENSOR_BP5758D_DAT "|"
   D_SENSOR_SM2335_CLK "|" D_SENSOR_SM2335_DAT "|"
   D_SENSOR_DFR562_BUSY "|"
+  D_GPIO_TM1621_CS "|" D_GPIO_TM1621_WR "|" D_GPIO_TM1621_RD "|" D_GPIO_TM1621_DAT "|"
+  D_SENSOR_RELAY "_b|" D_SENSOR_RELAY "_bi|"
   D_SENSOR_I2S_MCLK "|" D_SENSOR_I2S_BCLK "|" D_SENSOR_I2S_WS "|" D_SENSOR_I2S_DIN "|" D_SENSOR_I2S_DOUT  "|"
   ;
 
@@ -471,14 +478,16 @@ const uint16_t kGpioNiceList[] PROGMEM = {
 #endif
   AGPIO(GPIO_REL1) + MAX_RELAYS,        // Relays
   AGPIO(GPIO_REL1_INV) + MAX_RELAYS,
+  AGPIO(GPIO_REL1_BI) + MAX_RELAYS,     // Bistable (Latching) two coil relays
+  AGPIO(GPIO_REL1_BI_INV) + MAX_RELAYS,
   AGPIO(GPIO_LED1) + MAX_LEDS,          // Leds
   AGPIO(GPIO_LED1_INV) + MAX_LEDS,
 #ifdef USE_COUNTER
   AGPIO(GPIO_CNTR1) + MAX_COUNTERS,     // Counters
   AGPIO(GPIO_CNTR1_NP) + MAX_COUNTERS,
 #endif
-  AGPIO(GPIO_PWM1) + MAX_PWMS,      // RGB   Red   or C  Cold White
-  AGPIO(GPIO_PWM1_INV) + MAX_PWMS,  // or extended PWM for ESP32
+  AGPIO(GPIO_PWM1) + MAX_PWMS,          // RGB   Red   or C  Cold White
+  AGPIO(GPIO_PWM1_INV) + MAX_PWMS,      // or extended PWM for ESP32
 #ifdef USE_BUZZER
   AGPIO(GPIO_BUZZER),                   // Buzzer
   AGPIO(GPIO_BUZZER_INV),               // Inverted buzzer
@@ -621,6 +630,14 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_EPD_DATA),       // Base connection EPD driver
 #endif
 #endif  // USE_DISPLAY
+
+#ifdef USE_DISPLAY_TM1621_SONOFF
+// Initial support outside display driver
+  AGPIO(GPIO_TM1621_CS),
+  AGPIO(GPIO_TM1621_WR),
+  AGPIO(GPIO_TM1621_RD),
+  AGPIO(GPIO_TM1621_DAT),
+#endif  // USE_DISPLAY_TM1621_SONOFF
 
 #ifdef USE_MAX31865
   AGPIO(GPIO_SSPI_MAX31865_CS1) + MAX_MAX31865S,
@@ -1003,7 +1020,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_CM11_RXD),        // CM110x Serial interface
 #endif
 
-#if defined(USE_FLOWRATEMETER)
+#ifdef USE_FLOWRATEMETER
   AGPIO(GPIO_FLOWRATEMETER_IN) + MAX_FLOWRATEMETER, // Flow meter Pin
 #endif
 
