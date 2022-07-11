@@ -314,10 +314,6 @@ int32_t I2S_Init_0(void) {
 
   AddLog(LOG_LEVEL_INFO, PSTR("Init audio I2S: bclk=%d, ws=%d, dout=%d, mclk=%d, din=%d"), audio_i2s.bclk, audio_i2s.ws, audio_i2s.dout, audio_i2s.mclk, audio_i2s.din);
 
-#if defined(ESP32) && defined(ESP32S3_BOX)
-    S3boxInit();
-#endif
-
 #else
 
 #ifdef USE_I2S_NO_DAC
@@ -332,10 +328,16 @@ int32_t I2S_Init_0(void) {
 
 void I2S_Init(void) {
 
+
+  #if defined(ESP32) && defined(ESP32S3_BOX)
+      S3boxInit();
+  #endif
+
   if (I2S_Init_0()) {
     return;
   }
 
+  audio_i2s.out->begin();
   audio_i2s.is2_volume=10;
   audio_i2s.out->SetGain(((float)audio_i2s.is2_volume/100.0)*4.0);
   audio_i2s.out->stop();
