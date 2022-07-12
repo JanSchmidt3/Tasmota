@@ -254,6 +254,9 @@ AudioGeneratorTalkie *talkie = nullptr;
 #endif  // USE_I2S_SAY_TIME
 
 
+enum : int { APLL_AUTO = -1, APLL_ENABLE = 1, APLL_DISABLE = 0 };
+enum : int { EXTERNAL_I2S = 0, INTERNAL_DAC = 1, INTERNAL_PDM = 2 };
+
 int32_t I2S_Init_0(void) {
 
   audio_i2s.i2s_port = (i2s_port_t)0;
@@ -281,6 +284,7 @@ int32_t I2S_Init_0(void) {
         audio_i2s.out = new AudioOutputI2SNoDAC();
     #else
         audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port);
+        //audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port, EXTERNAL_I2S, 8, APLL_DISABLE, I2S_MCLK_MULTIPLE_128);
     #endif // USE_I2S_NO_DAC
     audio_i2s.mclk = Pin(GPIO_I2S_MCLK);
     audio_i2s.bclk = Pin(GPIO_I2S_BCLK);
@@ -304,7 +308,7 @@ int32_t I2S_Init_0(void) {
   }
 #ifdef ESP8266
   // esp8266 have fixed pins
-  if  ((audio_i2s.bclk != 15) || (audio_i2s.ws != 2) || (audio_i2s.dout!= 3)) {
+  if  ((audio_i2s.bclk != 15) || (audio_i2s.ws != 2) || (audio_i2s.dout != 3)) {
     return -2;
   }
 #endif // ESP8266
@@ -312,7 +316,8 @@ int32_t I2S_Init_0(void) {
 
   audio_i2s.out->SetPinout(audio_i2s.bclk, audio_i2s.ws, audio_i2s.dout, audio_i2s.mclk, audio_i2s.din);
 
-  AddLog(LOG_LEVEL_INFO, PSTR("Init audio I2S: bclk=%d, ws=%d, dout=%d, mclk=%d, din=%d"), audio_i2s.bclk, audio_i2s.ws, audio_i2s.dout, audio_i2s.mclk, audio_i2s.din);
+  AddLog(LOG_LEVEL_INFO, PSTR("Init audio I2S: port=%d, bclk=%d, ws=%d, dout=%d, mclk=%d, din=%d"), audio_i2s.i2s_port, audio_i2s.bclk, audio_i2s.ws, audio_i2s.dout, audio_i2s.mclk, audio_i2s.din);
+
 
 #else
 
@@ -412,6 +417,9 @@ uint32_t SpeakerMic(uint8_t spkr) {
 
 #ifdef USE_I2S_MIC
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
+    // mic select to GND
+    i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
+    i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
 #endif
 
 #ifdef USE_M5STACK_CORE2

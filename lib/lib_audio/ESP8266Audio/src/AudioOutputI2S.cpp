@@ -29,7 +29,7 @@
 #include "AudioOutputI2S.h"
 
 #if defined(ESP32) || defined(ESP8266)
-AudioOutputI2S::AudioOutputI2S(int port, int output_mode, int dma_buf_count, int use_apll)
+AudioOutputI2S::AudioOutputI2S(int port, int output_mode, int dma_buf_count, int use_apll, i2s_mclk_multiple_t mult)
 {
   this->portNo = port;
   this->i2sOn = false;
@@ -49,6 +49,7 @@ AudioOutputI2S::AudioOutputI2S(int port, int output_mode, int dma_buf_count, int
   bclkPin = 26;
   wclkPin = 25;
   doutPin = 22;
+  mcmult = mult;
   SetGain(1.0);
 }
 
@@ -76,14 +77,13 @@ bool AudioOutputI2S::SetPinout()
   #endif
 }
 
-bool AudioOutputI2S::SetPinout(int bclk, int wclk, int dout, int mclk, int din, int mult)
+bool AudioOutputI2S::SetPinout(int bclk, int wclk, int dout, int mclk, int din)
 {
   bclkPin = bclk;
   wclkPin = wclk;
   doutPin = dout;
   mclkPin = mclk;
   dinPin = din;
-  mcmult = mult;
 
   if (i2sOn)
     return SetPinout();
@@ -240,7 +240,7 @@ bool AudioOutputI2S::begin(bool txDAC)
           .tx_desc_auto_clear     = true,
           .fixed_mclk             = 0,
           //.mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,
-          .mclk_multiple          = (i2s_mclk_multiple_t)mcmult,
+          .mclk_multiple          = mcmult,
           .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
       };
       audioLogger->printf("+%d %p\n", portNo, &i2s_config_dac);
