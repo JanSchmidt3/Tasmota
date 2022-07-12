@@ -400,7 +400,7 @@ uint32_t SpeakerMic(uint8_t spkr) {
         .use_apll = 0, // Use audio PLL
         .tx_desc_auto_clear     = true,
         .fixed_mclk             = 0,
-        .mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,
+        .mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,  // I2S_MCLK_MULTIPLE_128
         .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
     };
 
@@ -408,7 +408,13 @@ uint32_t SpeakerMic(uint8_t spkr) {
     i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
     i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
-#else
+#endif
+
+#ifdef USE_I2S_MIC
+    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
+#endif
+
+#ifdef USE_M5STACK_CORE2
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
 #endif
 
@@ -662,7 +668,7 @@ void I2S_WR_Show(void) {
 
 #endif  // USE_I2S_WEBRADIO
 
-#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX)
+#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
 void Cmd_MicRec(void) {
   if (XdrvMailbox.data_len > 0) {
     uint16 time = 10;
@@ -685,19 +691,20 @@ void Play_mp3(const char *path) {
   if (audio_i2s.decoder || audio_i2s.mp3) return;
   if (!audio_i2s.out) return;
 
-  if (!ufsp->exists(path)) {
-    return;
-  }
-
   bool I2S_Task;
 
-  AUDIO_PWR_ON
   if (*path=='+') {
     I2S_Task = true;
     path++;
   } else {
     I2S_Task = false;
   }
+
+  if (!ufsp->exists(path)) {
+    return;
+  }
+
+  AUDIO_PWR_ON
 
   audio_i2s.file = new AudioFileSourceFS(*ufsp, path);
 
@@ -759,7 +766,7 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #ifdef USE_I2S_WEBRADIO
   "|WR"
 #endif  // USE_I2S_WEBRADIO
-#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX)
+#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   "|REC"
 #endif  // USE_M5STACK_CORE2
 #endif  // ESP32
@@ -772,7 +779,7 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #ifdef USE_I2S_WEBRADIO
   ,&Cmd_WebRadio
 #endif // USE_I2S_WEBRADIO
-#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX)
+#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   ,&Cmd_MicRec
 #endif // USE_M5STACK_CORE2
 #endif // ESP32
