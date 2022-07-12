@@ -292,8 +292,8 @@ int32_t I2S_Init_0(void) {
     #ifdef USE_I2S_NO_DAC
         audio_i2s.out = new AudioOutputI2SNoDAC();
     #else
-        audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port);
-        //audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port, EXTERNAL_I2S, 8, APLL_DISABLE, I2S_MCLK_MULTIPLE_128);
+        //audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port);
+        audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port, EXTERNAL_I2S, 8, APLL_DISABLE, I2S_MCLK_MULTIPLE_128, 12000000);
     #endif // USE_I2S_NO_DAC
     audio_i2s.mclk = Pin(GPIO_I2S_MCLK);
     audio_i2s.bclk = Pin(GPIO_I2S_BCLK);
