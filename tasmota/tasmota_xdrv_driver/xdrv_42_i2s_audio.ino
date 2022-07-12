@@ -105,6 +105,14 @@ struct AUDIO_I2S {
 } audio_i2s;
 
 
+// because S3 box mclk severly disturbs WLAN
+// we must slow down after each sound
+#ifdef ESP32S3_BOX
+#define DOWNRATE audio_i2s.out->SetRate(1000);
+#else
+#define DOWNRATE
+#endif
+
 #define MIC_CHANNELS 1
 
 #ifdef USE_TTGO_WATCH
@@ -249,6 +257,7 @@ AudioGeneratorTalkie *talkie = nullptr;
   }
   delete talkie;
   audio_i2s.out->stop();
+  DOWNRATE
   AUDIO_PWR_OFF
 }
 #endif  // USE_I2S_SAY_TIME
@@ -331,8 +340,9 @@ int32_t I2S_Init_0(void) {
   return 0;
 }
 
-void I2S_Init(void) {
 
+
+void I2S_Init(void) {
 
   #if defined(ESP32) && defined(ESP32S3_BOX)
       S3boxInit();
@@ -342,7 +352,7 @@ void I2S_Init(void) {
     return;
   }
 
-  audio_i2s.out->begin();
+  DOWNRATE
   audio_i2s.is2_volume=10;
   audio_i2s.out->SetGain(((float)audio_i2s.is2_volume/100.0)*4.0);
   audio_i2s.out->stop();
@@ -390,6 +400,7 @@ uint32_t SpeakerMic(uint8_t spkr) {
     I2S_Init_0();
     audio_i2s.out->SetGain(((float)(audio_i2s.is2_volume-2)/100.0)*4.0);
     audio_i2s.out->stop();
+    DOWNRATE
   } else {
     // config mic
     i2s_config_t i2s_config = {
@@ -648,6 +659,7 @@ void StopPlaying() {
     delete audio_i2s.ifile;
     audio_i2s.ifile = NULL;
   }
+  DOWNRATE
   AUDIO_PWR_OFF
 }
 
@@ -667,9 +679,13 @@ void Cmd_WebRadio(void) {
 const char HTTP_WEBRADIO[] PROGMEM =
    "{s}" "I2S_WR-Title" "{m}%s{e}";
 
-void I2S_WR_Show(void) {
+void I2S_WR_Show(bool json) {
     if (audio_i2s.decoder) {
-      WSContentSend_PD(HTTP_WEBRADIO,audio_i2s.wr_title);
+      if (json) {
+        ResponseAppend_P(PSTR(",\"WebRadio\":{\"Title\":\"%s\"}"), audio_i2s.wr_title);
+      } else {
+        WSContentSend_PD(HTTP_WEBRADIO,audio_i2s.wr_title);
+      }
     }
 }
 #endif  // USE_WEBSERVER
@@ -747,6 +763,7 @@ void mp3_delete(void) {
   delete audio_i2s.id3;
   delete audio_i2s.mp3;
   audio_i2s.mp3=nullptr;
+  DOWNRATE
   AUDIO_PWR_OFF
 }
 #endif  // ESP32
@@ -763,6 +780,7 @@ void Say(char *text) {
   delete sam;
   audio_i2s.out->stop();
 
+  DOWNRATE
   AUDIO_PWR_OFF
 }
 
@@ -843,10 +861,15 @@ bool Xdrv42(uint8_t function) {
 #ifdef USE_WEBSERVER
 #ifdef USE_I2S_WEBRADIO
     case FUNC_WEB_SENSOR:
-      I2S_WR_Show();
+      I2S_WR_Show(false);
       break;
 #endif  // USE_I2S_WEBRADIO
 #endif  // USE_WEBSERVER
+#ifdef USE_I2S_WEBRADIO
+    case FUNC_JSON_APPEND:
+      I2S_WR_Show(true);
+    break;
+#endif  // USE_I2S_WEBRADIO
   }
   return result;
 }
