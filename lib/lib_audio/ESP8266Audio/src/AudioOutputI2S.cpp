@@ -29,7 +29,7 @@
 #include "AudioOutputI2S.h"
 
 #if defined(ESP32) || defined(ESP8266)
-AudioOutputI2S::AudioOutputI2S(int port, int output_mode, int dma_buf_count, int use_apll, i2s_mclk_multiple_t mult, uint32_t freq)
+AudioOutputI2S::AudioOutputI2S(int port, int output_mode, int dma_buf_count, int use_apll, uint8_t mult, uint32_t freq)
 {
   this->portNo = port;
   this->i2sOn = false;

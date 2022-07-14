@@ -108,8 +108,10 @@ struct AUDIO_I2S {
 // because S3 box mclk severly disturbs WLAN
 // we must slow down after each sound
 #ifdef ESP32S3_BOX
+#undef DOWNRATE
 #define DOWNRATE audio_i2s.out->SetRate(1000);
 #else
+#undef DOWNRATE
 #define DOWNRATE
 #endif
 
@@ -265,6 +267,10 @@ AudioGeneratorTalkie *talkie = nullptr;
 
 enum : int { APLL_AUTO = -1, APLL_ENABLE = 1, APLL_DISABLE = 0 };
 enum : int { EXTERNAL_I2S = 0, INTERNAL_DAC = 1, INTERNAL_PDM = 2 };
+
+#ifdef ESP8266
+#define I2S_MCLK_MULTIPLE_128 0
+#endif
 
 int32_t I2S_Init_0(void) {
 
