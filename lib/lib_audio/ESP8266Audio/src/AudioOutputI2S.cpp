@@ -239,9 +239,11 @@ bool AudioOutputI2S::begin(bool txDAC)
           .dma_buf_len = 128,
           .use_apll = use_apll, // Use audio PLL
           .tx_desc_auto_clear     = true,
-          .fixed_mclk             = mclk_freq,
+#ifdef ESP32
+          .fixed_mclk             = (int)mclk_freq,
           //.mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,
-          .mclk_multiple          = mcmult,
+          .mclk_multiple          = (i2s_mclk_multiple_t)mcmult,
+#endif
           .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
       };
       audioLogger->printf("+%d %p\n", portNo, &i2s_config_dac);
