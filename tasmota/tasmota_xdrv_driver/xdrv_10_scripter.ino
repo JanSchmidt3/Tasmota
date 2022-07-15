@@ -6187,13 +6187,17 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               lp += 4;
               // skip one space after cmd
               web_send_line(0, lp);
-              WSContentFlush();
+              //WSContentFlush();
               goto next_line;
             }
             else if (!strncmp(lp, "wfs", 3)) {
               lp += 4;
               // skip one space after cmd
               web_send_file(0, lp);
+              //WSContentFlush();
+              goto next_line;
+            }
+            else if (!strncmp(lp, "wcf", 3)) {
               WSContentFlush();
               goto next_line;
             }
