@@ -2318,17 +2318,21 @@ chknext:
         if (!strncmp(lp, "adc(", 4)) {
           lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
           while (*lp==' ') lp++;
-          float fvar1 = 1;
+          float pin = 1;
           if (*lp!=')') {
-            lp = GetNumericArgument(lp, OPER_EQU, &fvar1, gv);
-            if (fvar1<32 || fvar1>39) fvar1 = 32;
+            lp = GetNumericArgument(lp, OPER_EQU, &pin, gv);
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+            if (pin<1 || pin>20) pin = 1;
+#else
+            if (pin<32 || pin>39) pin = 32;
+#endif
           }
           lp++;
           if (fvar > 7) fvar = 7;
 #ifdef ESP32
           // ESP32
 #ifdef USE_ADC
-          fvar = AdcRead(fvar1, fvar);
+          fvar = AdcRead(pin, fvar);
 #else
           fvar = 999.999;
 #endif // USE_ADC
