@@ -118,7 +118,7 @@ void S3boxInit() {
 #ifdef USE_SHINE
 
 #include <layer3.h>
-#include <types__.h>
+#include <types.h>
 
 typedef uint8_t mp3buf_t;
 
@@ -163,7 +163,11 @@ int32_t wav2mp3(char *path) {
 
   shine_set_config_mpeg_defaults(&config.mpeg);
 
-  config.mpeg.mode = STEREO;
+  if (audio_i2s.mic_channels == 1) {
+    config.mpeg.mode = MONO;
+  } else {
+    config.mpeg.mode = STEREO;
+  }
   config.mpeg.bitr = 128;
   config.wave.samplerate = 16000;  // 48kHz @39%-45% Single core usage :)
   config.wave.channels = (channels)audio_i2s.mic_channels;
@@ -183,7 +187,7 @@ int32_t wav2mp3(char *path) {
   samples_per_pass = shine_samples_per_pass(s);
 
 
-  buffer = (int16_t*)malloc(samples_per_pass*4);
+  buffer = (int16_t*)malloc(samples_per_pass * 2 * audio_i2s.mic_channels);
   if (!buffer) {
     error = -5;
     goto exit;
@@ -191,7 +195,7 @@ int32_t wav2mp3(char *path) {
 
   /* All the magic happens here */
   while (1) {
-    bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 4);
+    bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 2 * audio_i2s.mic_channels);
     if (!bread) {
       break;
     }

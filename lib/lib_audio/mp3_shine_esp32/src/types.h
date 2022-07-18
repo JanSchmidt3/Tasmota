@@ -33,6 +33,7 @@
 
 /* #define DEBUG if you want the library to dump info to stdout */
 
+#undef PI
 #define PI          3.14159265358979
 #define PI4         0.78539816339745
 #define PI12        0.26179938779915
@@ -105,7 +106,7 @@ typedef struct {
   int off[MAX_CHANNELS];
   int32_t fl[SBLIMIT][64];
   int32_t x[MAX_CHANNELS][HAN_SIZE];
-} subband_t; 
+} subband_t;
 
 /* Side information */
 typedef struct {
@@ -154,7 +155,7 @@ typedef struct {
 } shine_scalefac_t;
 
 
-typedef struct shine_global_flags { 
+typedef struct shine_global_flags {
   priv_shine_wave_t    wave;
   priv_shine_mpeg_t    mpeg;
   bitstream_t    bs;
