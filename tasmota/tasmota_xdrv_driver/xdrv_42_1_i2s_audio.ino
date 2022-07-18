@@ -114,4 +114,158 @@ void S3boxInit() {
   }
 }
 #endif
+
+#ifdef USE_SHINE
+
+#include <layer3.h>
+#include <types__.h>
+
+typedef uint8_t mp3buf_t;
+
+int32_t wav2mp3(char *path) {
+  shine_config_t  config;
+  shine_t         s;
+  File wav_in;
+  File mp3_out;
+
+  wav_in = ufsp->open("test.wav", FS_FILE_READ);
+  if (!wav_in) {
+    return -1;
+  }
+
+  mp3_out = ufsp->open("test.mp3", FS_FILE_WRITE);
+  if (!mp3_out) {
+    wav_in.close();
+    return -2;
+  }
+
+  shine_set_config_mpeg_defaults(&config.mpeg);
+
+  config.mpeg.mode = MONO;
+  config.mpeg.bitr = 128;
+  config.wave.samplerate = 16000;  // 48kHz @39%-45% Single core usage :)
+  config.wave.channels = (channels)2;
+
+
+  if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) {
+    return -3;
+  }
+
+  s = shine_initialise(&config);
+  if (!s) {
+    return -4;
+  }
+
+  uint16_t samples_per_pass = shine_samples_per_pass(s);
+
+  uint8_t *ucp;
+  int written;
+  int16_t *buffer;
+  uint32_t bread;
+
+  /* All the magic happens here */
+  while (1) {
+    bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 2);
+    if (bread) {
+      break;
+    }
+    ucp = shine_encode_buffer(s, &buffer, &written);
+    mp3_out.write(ucp, written);
+  }
+
+  /* Flush and write remaining data. */
+  ucp = shine_flush(s, &written);
+  mp3_out.write(ucp, written);
+
+  /* Close encoder. */
+  shine_close(s);
+
+  wav_in.close();
+  mp3_out.close();
+
+  return 0;
+}
+
+
+
+
+#if 0
+#define STREAM_BUFFERS 2
+void shine_task(void *pvParameter) {
+
+    shine_config_t  config;  // Pointer to shine_global_config
+    shine_t         s;
+    shine_global_config *sc;
+    mp3buf_t        databufs[STREAM_BUFFERS];
+    mp3buf_t        *databuf;
+    int             written, samples_per_pass, err=0, next_buf = 0;
+
+    char            *lbuf;
+    BaseType_t      recvd;
+    int             *_buffer, *p, i, buf_pos, source_pos, source_max_samples;
+    unsigned char   *data;
+    int16_t         *buffer[2]; //Stereo max samples per pass
+
+    shine_set_config_mpeg_defaults(&config.mpeg);
+
+    config.mpeg.mode = JOINT_STEREO;
+    config.mpeg.bitr = 256;
+    config.wave.samplerate = 48000;  // 48kHz @39%-45% Single core usage :)
+    config.wave.channels = (channels)2;
+    source_max_samples = 512;
+
+
+    if(!(s = shine_initialise(&config))) {
+        ESP_LOGI("SHINE: ", "Falied to allocate shine_global_config!");
+        ESP_LOGI("SHINE: ", "Size shine_global_config: %d", sizeof(shine_global_config));
+        vTaskDelete(NULL);
+    }
+
+    // Set up streaming buffers
+    sc = s;
+    for (i=0;i<STREAM_BUFFERS;i++) {
+       databufs[i].buf  = malloc(800);
+       databufs[i].size = 0;
+    }
+
+    //samples_per_pass 48k mono 1152 / stereo 1152
+    //samples_per_pass 24k mono 576 / stereo 576
+    /* Number of samples (per channel) to feed the encoder with. */
+    samples_per_pass = sc->mpeg.granules_per_frame * 576;
+
+    /* Number of samples (per channel) to feed the encoder with. */
+    samples_per_pass = shine_samples_per_pass(s);
+    ESP_LOGI("SHINE: ", "Samples per pass %d",samples_per_pass);
+
+    vTaskDelay(1000/portTICK_RATE_MS);
+    source_pos = buf_pos = 0;
+    uint32_t sample_ctr = 0;
+    int lintl[3] = {0},  lintr[3] = {0};
+    int si = 0;
+
+
+    while(1) {
+        //Buffers are received from the audio capture task
+        xQueueReceive(processed_soundbuffer_q, &buffer, portMAX_DELAY);
+        //Encode
+        data = shine_encode_buffer_interleaved(s, buffer, &written);
+
+        databufs[next_buf].size = written;
+        memcpy(databufs[next_buf].buf, data, written);
+        databuf = &databufs[next_buf];
+        //Send endoded buffer to streaming server
+        recvd = xQueueSend(mp3_buffer_q, &databuf, 0);
+
+        next_buf++;
+        if (next_buf == STREAM_BUFFERS) next_buf = 0;
+        //Let FreeRTOS do things
+        vTaskDelay(5/portTICK_RATE_MS);
+
+    }
+    vTaskDelete(NULL);
+}
+#endif // USE_SHINE
+#endif
+
+
 #endif
