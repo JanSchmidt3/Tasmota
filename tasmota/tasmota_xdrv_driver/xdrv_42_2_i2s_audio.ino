@@ -122,6 +122,8 @@ void S3boxInit() {
 
 typedef uint8_t mp3buf_t;
 
+
+// min freq = 16 KHz Stereo or 32 KHz Mono
 int32_t wav2mp3(char *path) {
   int32_t error = 0;
   shine_config_t  config;
@@ -174,7 +176,7 @@ int32_t wav2mp3(char *path) {
     config.mpeg.mode = STEREO;
   }
   config.mpeg.bitr = 128;
-  config.wave.samplerate = sfreq;  // 48kHz @39%-45% Single core usage :)
+  config.wave.samplerate = sfreq;
   config.wave.channels = (channels)chans;
 
 
@@ -200,27 +202,17 @@ int32_t wav2mp3(char *path) {
 
   AddLog(LOG_LEVEL_INFO, PSTR("mp3 encoding %d channels with freq %d Hz"), chans, sfreq);
 
-  /* All the magic happens here */
   while (1) {
     bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 2 * chans);
     if (!bread) {
       break;
     }
-
-    if (chans == 2) {
-      ucp = shine_encode_buffer_interleaved(s, buffer, &written);
-    } else {
-      ucp = shine_encode_buffer(s, &buffer, &written);
-    }
-
+    ucp = shine_encode_buffer_interleaved(s, buffer, &written);
     mp3_out.write(ucp, written);
   }
-
-  /* Flush and write remaining data. */
   ucp = shine_flush(s, &written);
   mp3_out.write(ucp, written);
 
-  /* Close encoder. */
 exit:
   if (s) {
     shine_close(s);

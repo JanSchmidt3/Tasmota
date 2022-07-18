@@ -24,8 +24,7 @@ static int granules_per_frame[4] = {
 };
 
 /* Set default values for important vars */
-void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
-{
+void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg) {
   mpeg->bitr = 128;
   mpeg->emph = NONE;
   mpeg->copyright = 0;
@@ -34,74 +33,76 @@ void shine_set_config_mpeg_defaults(shine_mpeg_t *mpeg)
 
 int shine_mpeg_version(int samplerate_index) {
   /* Pick mpeg version according to samplerate index. */
-  if (samplerate_index < 3)
+  if (samplerate_index < 3) {
     /* First 3 samplerates are for MPEG-I */
     return MPEG_I;
-  else if (samplerate_index < 6)
+  } else if (samplerate_index < 6) {
     /* Then it's MPEG-II */
     return MPEG_II;
-  else
+  } else {
     /* Finally, MPEG-2.5 */
     return MPEG_25;
+  }
 }
 
-int shine_find_samplerate_index(int freq)
-{
+int shine_find_samplerate_index(int freq) {
   int i;
 
-  for(i=0;i<9;i++)
+  for(i=0;i<9;i++) {
     if(freq==samplerates[i]) return i;
-
+  }
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-int shine_find_bitrate_index(int bitr, int mpeg_version)
-{
+int shine_find_bitrate_index(int bitr, int mpeg_version) {
   int i;
 
-  for(i=0;i<16;i++)
+  for(i=0;i<16;i++) {
     if(bitr==bitrates[i][mpeg_version]) return i;
-
+  }
   return -1; /* error - not a valid samplerate for encoder */
 }
 
-int shine_check_config(int freq, int bitr)
-{
+int shine_check_config(int freq, int bitr) {
   int samplerate_index, bitrate_index, mpeg_version;
 
   samplerate_index = shine_find_samplerate_index(freq);
-  if (samplerate_index < 0) return -1;
-
+  if (samplerate_index < 0) {
+    return -1;
+  }
   mpeg_version = shine_mpeg_version(samplerate_index);
 
   bitrate_index = shine_find_bitrate_index(bitr, mpeg_version);
-  if (bitrate_index < 0) return -1;
-
+  if (bitrate_index < 0) {
+    return -1;
+  }
   return mpeg_version;
 }
 
-int shine_samples_per_pass(shine_t s)
-{
+int shine_samples_per_pass(shine_t s) {
   return s->mpeg.granules_per_frame * GRANULE_SIZE;
 }
 
 /* Compute default encoding values. */
-shine_global_config *shine_initialise(shine_config_t *pub_config)
-{
+shine_global_config *shine_initialise(shine_config_t *pub_config) {
   double avg_slots_per_frame;
   shine_global_config *config;
   int x, y;
-  if (shine_check_config(pub_config->wave.samplerate, pub_config->mpeg.bitr) < 0)
+  if (shine_check_config(pub_config->wave.samplerate, pub_config->mpeg.bitr) < 0) {
     return NULL;
+  }
 
   config = (shine_global_config*)heap_caps_malloc(sizeof(shine_global_config), MALLOC_CAP_SPIRAM);
-  if (config == NULL)
+  if (config == NULL) {
     return config;
+  }
+
+  memset(config, 0, sizeof(shine_global_config));
+
   printf("l3_enc & mdct_freq each: %d\n", sizeof(int32_t)*GRANULE_SIZE*MAX_GRANULES*MAX_CHANNELS);
   for (x = 0; x < MAX_CHANNELS; x++) {
       for (y = 0; y < MAX_GRANULES; y++) {
         // 2 * 2 * 576 each
-
         config->l3_enc[x][y] = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //Significant performance hit in IRAM
         config->mdct_freq[x][y] = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 1%
       }
@@ -164,30 +165,27 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   config->mpeg.frac_slots_per_frame  = avg_slots_per_frame - (double)config->mpeg.whole_slots_per_frame;
   config->mpeg.slot_lag              = -config->mpeg.frac_slots_per_frame;
 
-  if(config->mpeg.frac_slots_per_frame==0)
+  if(config->mpeg.frac_slots_per_frame==0) {
     config->mpeg.padding = 0;
+  }
 
   shine_open_bit_stream(&config->bs, BUFFER_SIZE);
 
   memset((char *)&config->side_info,0,sizeof(shine_side_info_t));
 
   /* determine the mean bitrate for main data */
-  if (config->mpeg.granules_per_frame == 2) /* MPEG 1 */
+  if (config->mpeg.granules_per_frame == 2) { /* MPEG 1 */
     config->sideinfo_len = 8 * ((config->wave.channels==1) ? 4 + 17 : 4 + 32);
-  else                /* MPEG 2 */
+  } else {               /* MPEG 2 */
     config->sideinfo_len = 8 * ((config->wave.channels==1) ? 4 + 9 : 4 + 17);
-
+  }
   return config;
 }
 
 
 
-uint32_t *shine_get_counters()
-
-{
-
+uint32_t *shine_get_counters() {
   return counter;
-
 }
 
 /* Counter results
@@ -204,11 +202,9 @@ Counters 2664123380 : 2664123448 : 2666717886 : 2668665908 : 2668859025
 */
 
 
-static unsigned char *shine_encode_buffer_internal(shine_global_config *config, int *written, int stride)
-{
+static unsigned char *shine_encode_buffer_internal(shine_global_config *config, int *written, int stride) {
   counter[0] = xthal_get_ccount();
-  if(config->mpeg.frac_slots_per_frame)
-  {
+  if(config->mpeg.frac_slots_per_frame) {
     config->mpeg.padding   = (config->mpeg.slot_lag <= (config->mpeg.frac_slots_per_frame - 1.0));
     config->mpeg.slot_lag += (config->mpeg.padding - config->mpeg.frac_slots_per_frame);
   }
@@ -234,31 +230,27 @@ static unsigned char *shine_encode_buffer_internal(shine_global_config *config, 
   return config->bs.data;
 }
 
-unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, int *written)
-{
+unsigned char *shine_encode_buffer(shine_global_config *config, int16_t **data, int *written) {
   config->buffer[0] = data[0];
-  if (config->wave.channels == 2)
+  if (config->wave.channels == 2) {
     config->buffer[1] = data[1];
-
+  }
   return shine_encode_buffer_internal(config, written, 1);
 }
 
-unsigned char *shine_encode_buffer_interleaved(shine_global_config *config, int16_t *data, int *written)
-{
+unsigned char *shine_encode_buffer_interleaved(shine_global_config *config, int16_t *data, int *written) {
   config->buffer[0] = data;
-  if (config->wave.channels == 2)
+  if (config->wave.channels == 2) {
     config->buffer[1] = data + 1;
-
+  }
   return shine_encode_buffer_internal(config, written, config->wave.channels);
 }
 
 unsigned char *shine_flush(shine_global_config *config, int *written) {
   *written = config->bs.data_position;
   config->bs.data_position = 0;
-
   return config->bs.data;
 }
-
 
 void shine_close(shine_global_config *config) {
   shine_close_bit_stream(&config->bs);

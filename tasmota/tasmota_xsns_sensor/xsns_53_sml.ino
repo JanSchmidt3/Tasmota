@@ -1294,6 +1294,14 @@ double dval;
   }
 #endif
 
+#ifdef DTZ541
+  unsigned char *cpx=cp-5;
+  // decode OBIS 0180 amd extract direction info
+  if (*cp==0x65 && *cpx==0 && *(cpx+1)==0x01 && *(cpx+2)==0x08 && *(cpx+3)==0) {
+    sml_status[g_mindex]=*(cp+2);
+  }
+#endif
+
   cp=skip_sml(cp,&result);
   // check time
   cp=skip_sml(cp,&result);
