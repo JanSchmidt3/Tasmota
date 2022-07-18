@@ -123,55 +123,72 @@ void S3boxInit() {
 typedef uint8_t mp3buf_t;
 
 int32_t wav2mp3(char *path) {
+  int32_t error = 0;
   shine_config_t  config;
-  shine_t         s;
-  File wav_in;
-  File mp3_out;
+  shine_t s = nullptr;
+  File wav_in = (File)nullptr;
+  File mp3_out = (File)nullptr;
+  uint8_t *ucp;
+  int written;
+  int16_t *buffer = nullptr;
+  uint32_t bread;
+  uint16_t samples_per_pass;
 
-  wav_in = ufsp->open("test.wav", FS_FILE_READ);
+  wav_in = ufsp->open("/test.wav", FS_FILE_READ);
   if (!wav_in) {
-    return -1;
+    error = -1;
+    goto exit;
   }
 
-  mp3_out = ufsp->open("test.mp3", FS_FILE_WRITE);
+  // skip wav header
+  wav_in.seek(44, SeekSet);
+
+
+  mp3_out = ufsp->open("/test.mp3", FS_FILE_WRITE);
   if (!mp3_out) {
-    wav_in.close();
-    return -2;
+    error = -2;
+    goto exit;
   }
-
-
 
   shine_set_config_mpeg_defaults(&config.mpeg);
 
-  config.mpeg.mode = MONO;
+  config.mpeg.mode = STEREO;
   config.mpeg.bitr = 128;
   config.wave.samplerate = 16000;  // 48kHz @39%-45% Single core usage :)
   config.wave.channels = (channels)2;
 
 
   if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) {
-    return -3;
+    error = -3;
+    goto exit;
   }
 
   s = shine_initialise(&config);
   if (!s) {
-    return -4;
+    error = -4;
+    goto exit;
   }
 
-  uint16_t samples_per_pass = shine_samples_per_pass(s);
+  samples_per_pass = shine_samples_per_pass(s);
 
-  uint8_t *ucp;
-  int written;
-  int16_t *buffer;
-  uint32_t bread;
+
+  buffer = (int16_t*)malloc(samples_per_pass*4);
+  if (!buffer) {
+    error = -5;
+    goto exit;
+  }
+
+
 
   /* All the magic happens here */
   while (1) {
-    bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 2);
-    if (bread) {
+    bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 4);
+    if (!bread) {
       break;
     }
-    ucp = shine_encode_buffer(s, &buffer, &written);
+    //ucp = shine_encode_buffer(s, &buffer, &written);
+    ucp = shine_encode_buffer_interleaved(s, buffer, &written);
+
     mp3_out.write(ucp, written);
   }
 
@@ -180,12 +197,24 @@ int32_t wav2mp3(char *path) {
   mp3_out.write(ucp, written);
 
   /* Close encoder. */
-  shine_close(s);
+exit:
+  if (s) {
+    shine_close(s);
+  }
+  if (wav_in) {
+    wav_in.close();
+  }
+  if (mp3_out) {
+    mp3_out.close();
+  }
 
-  wav_in.close();
-  mp3_out.close();
+  if (buffer) {
+    free(buffer);
+  }
 
-  return 0;
+  AddLog(LOG_LEVEL_INFO, PSTR("mp3enc %d"), error);
+
+  return error;
 }
 
 
