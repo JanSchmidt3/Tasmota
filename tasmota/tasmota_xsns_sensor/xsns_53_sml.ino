@@ -1236,7 +1236,7 @@ void Hexdump(uint8_t *sbuff, uint32_t slen) {
   AddLogData(LOG_LEVEL_INFO, cbuff);
 }
 
-#if defined(ED300L) || defined(AS2020)
+#if defined(ED300L) || defined(AS2020) || defined(DTZ541)
 uint8_t sml_status[MAX_METERS];
 uint8_t g_mindex;
 #endif
@@ -1293,8 +1293,9 @@ double dval;
       sml_status[g_mindex]=*(cp+1);
   }
 #endif
-
 #ifdef DTZ541
+  // 00 1c 01 04 verbr
+  // 00 1d 19 04 einsp
   unsigned char *cpx=cp-5;
   // decode OBIS 0180 amd extract direction info
   if (*cp==0x65 && *cpx==0 && *(cpx+1)==0x01 && *(cpx+2)==0x08 && *(cpx+3)==0) {
@@ -1418,6 +1419,15 @@ double dval;
     }
   #endif
   #ifdef AS2020
+    // decode current power OBIS 00 10 07 00
+    if (*cpx==0x00 && *(cpx+1)==0x10 && *(cpx+2)==0x07 && *(cpx+3)==0) {
+        if (sml_status[g_mindex]&0x08) {
+          // and invert sign on solar feed
+          dval*=-1;
+        }
+    }
+  #endif
+  #ifdef DTZ541
     // decode current power OBIS 00 10 07 00
     if (*cpx==0x00 && *(cpx+1)==0x10 && *(cpx+2)==0x07 && *(cpx+3)==0) {
         if (sml_status[g_mindex]&0x08) {
@@ -2126,7 +2136,7 @@ void SML_Decode(uint8_t index) {
         // matches, get value
         dvalid[vindex] = 1;
         mp++;
-#if defined(ED300L) || defined(AS2020)
+#if defined(ED300L) || defined(AS2020) || defined(DTZ541)
         g_mindex=mindex;
 #endif
         if (*mp == '#') {
@@ -3055,7 +3065,7 @@ uint32_t SML_SetBaud(uint32_t meter, uint32_t br) {
 uint32_t SML_Status(uint32_t meter) {
   if (meter<1 || meter>meters_used) return 0;
   meter--;
-#if defined(ED300L) || defined(AS2020)
+#if defined(ED300L) || defined(AS2020) || defined(DTZ541)
   return sml_status[meter];
 #else
   return 0;
