@@ -394,8 +394,9 @@ void I2S_Init(void) {
 #ifdef ESP32
 #define MODE_MIC 0
 #define MODE_SPK 1
-//#define MICSRATE 44100
+#ifndef MICSRATE
 #define MICSRATE 16000
+#endif
 
 uint32_t SpeakerMic(uint8_t spkr) {
   esp_err_t err = ESP_OK;

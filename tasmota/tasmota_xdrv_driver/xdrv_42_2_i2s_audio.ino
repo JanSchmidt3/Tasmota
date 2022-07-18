@@ -135,6 +135,8 @@ int32_t wav2mp3(char *path) {
   uint16_t samples_per_pass;
   char mpath[64];
   char *cp;
+  uint8_t chans = 1;
+  uint32_t sfreq = 16000;
 
   strlcpy(mpath, path, sizeof(mpath));
 
@@ -144,8 +146,11 @@ int32_t wav2mp3(char *path) {
     goto exit;
   }
 
-  // skip wav header
-  wav_in.seek(44, SeekSet);
+  // script>wav2mp3("/test2.wav")
+  uint8_t wavHeader[sizeof(wavHTemplate)];
+  wav_in.read((uint8_t*)wavHeader, sizeof(wavHTemplate));
+  chans = wavHeader[22];
+  sfreq = wavHeader[24]|(wavHeader[25]<<8)|(wavHeader[26]<<16)|(wavHeader[27]<<24);
 
   cp = strchr(mpath, '.');
   if (!cp) {
@@ -163,14 +168,14 @@ int32_t wav2mp3(char *path) {
 
   shine_set_config_mpeg_defaults(&config.mpeg);
 
-  if (audio_i2s.mic_channels == 1) {
+  if (chans == 1) {
     config.mpeg.mode = MONO;
   } else {
     config.mpeg.mode = STEREO;
   }
   config.mpeg.bitr = 128;
-  config.wave.samplerate = 16000;  // 48kHz @39%-45% Single core usage :)
-  config.wave.channels = (channels)audio_i2s.mic_channels;
+  config.wave.samplerate = sfreq;  // 48kHz @39%-45% Single core usage :)
+  config.wave.channels = (channels)chans;
 
 
   if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) {
@@ -187,20 +192,26 @@ int32_t wav2mp3(char *path) {
   samples_per_pass = shine_samples_per_pass(s);
 
 
-  buffer = (int16_t*)malloc(samples_per_pass * 2 * audio_i2s.mic_channels);
+  buffer = (int16_t*)malloc(samples_per_pass * 2 * chans);
   if (!buffer) {
     error = -5;
     goto exit;
   }
 
+  AddLog(LOG_LEVEL_INFO, PSTR("mp3 encoding %d channels with freq %d Hz"), chans, sfreq);
+
   /* All the magic happens here */
   while (1) {
-    bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 2 * audio_i2s.mic_channels);
+    bread = wav_in.read((uint8_t*)buffer, samples_per_pass * 2 * chans);
     if (!bread) {
       break;
     }
-    //ucp = shine_encode_buffer(s, &buffer, &written);
-    ucp = shine_encode_buffer_interleaved(s, buffer, &written);
+
+    if (chans == 2) {
+      ucp = shine_encode_buffer_interleaved(s, buffer, &written);
+    } else {
+      ucp = shine_encode_buffer(s, &buffer, &written);
+    }
 
     mp3_out.write(ucp, written);
   }
@@ -225,7 +236,7 @@ exit:
     free(buffer);
   }
 
-  AddLog(LOG_LEVEL_INFO, PSTR("mp3 encoder %d"), error);
+  AddLog(LOG_LEVEL_INFO, PSTR("mp3 encoding exit with code: %d"), error);
 
   return error;
 }
