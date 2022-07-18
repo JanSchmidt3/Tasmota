@@ -139,6 +139,8 @@ int32_t wav2mp3(char *path) {
     return -2;
   }
 
+
+
   shine_set_config_mpeg_defaults(&config.mpeg);
 
   config.mpeg.mode = MONO;

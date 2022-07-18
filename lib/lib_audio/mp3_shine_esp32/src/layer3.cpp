@@ -1,5 +1,7 @@
 /* layer3.c */
 
+#ifdef ESP32
+
 #include "types.h"
 #include "tables.h"
 #include "layer3.h"
@@ -11,13 +13,6 @@
 #include "esp_heap_caps.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-
-static QueueHandle_t   core0_tasks_q = NULL;
-static QueueHandle_t   core1_tasks_q = NULL;
-static QueueHandle_t   processed_mp3_buffer_q = NULL;
-
 
 static uint32_t counter[5] = {0};
 
@@ -99,7 +94,7 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
   if (shine_check_config(pub_config->wave.samplerate, pub_config->mpeg.bitr) < 0)
     return NULL;
 
-  config = heap_caps_malloc(sizeof(shine_global_config), MALLOC_CAP_SPIRAM);
+  config = (shine_global_config*)heap_caps_malloc(sizeof(shine_global_config), MALLOC_CAP_SPIRAM);
   if (config == NULL)
     return config;
   printf("l3_enc & mdct_freq each: %d\n", sizeof(int32_t)*GRANULE_SIZE*MAX_GRANULES*MAX_CHANNELS);
@@ -107,15 +102,15 @@ shine_global_config *shine_initialise(shine_config_t *pub_config)
       for (y = 0; y < MAX_GRANULES; y++) {
         // 2 * 2 * 576 each
 
-        config->l3_enc[x][y] = heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //Significant performance hit in IRAM
-        config->mdct_freq[x][y] = heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 1%
+        config->l3_enc[x][y] = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //Significant performance hit in IRAM
+        config->mdct_freq[x][y] = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 1%
       }
   }
   printf("l3loop struct: %d\n", sizeof(l3loop_t));
-  config->l3loop = heap_caps_malloc(sizeof(l3loop_t), MALLOC_CAP_SPIRAM);
+  config->l3loop = (l3loop_t*)heap_caps_malloc(sizeof(l3loop_t), MALLOC_CAP_SPIRAM);
   printf("xrsq & xrabs each: %d\n", sizeof(int32_t)*GRANULE_SIZE);
-  config->l3loop->xrsq = heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 0.5%
-  config->l3loop->xrabs = heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 0.5%
+  config->l3loop->xrsq = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 0.5%
+  config->l3loop->xrabs = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 0.5%
 
 /*typedef struct {
   int32_t *xr;
@@ -269,3 +264,5 @@ void shine_close(shine_global_config *config) {
   shine_close_bit_stream(&config->bs);
   free(config);
 }
+
+#endif // ESP32
