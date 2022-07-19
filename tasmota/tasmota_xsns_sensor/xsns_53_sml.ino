@@ -102,6 +102,11 @@ struct METER_DESC {
 #endif
 };
 
+// max number of meters , may be adjusted
+#ifndef MAX_METERS
+#define MAX_METERS 5
+#endif
+
 #ifdef USE_SCRIPT
 struct METER_DESC  script_meter_desc[MAX_METERS];
 uint8_t *script_meter;
@@ -496,10 +501,7 @@ const uint8_t meter[]=
 #define SML_MAX_VARS 20
 #endif
 
-// max number of meters , may be adjusted
-#ifndef MAX_METERS
-#define MAX_METERS 5
-#endif
+
 double meter_vars[SML_MAX_VARS];
 // calulate deltas
 #define MAX_DVARS MAX_METERS*2
@@ -1793,6 +1795,12 @@ void SML_Decode(uint8_t index) {
       continue;
     }
 
+    if (*mp == '=' && *(mp+1) == 's') {
+      mp = strchr(mp, '|');
+      if (mp) mp++;
+      continue;
+    }
+
     // =d must handle dindex
     if (*mp == '=' && *(mp + 1) == 'd') {
       if (index != mindex) {
@@ -1918,6 +1926,11 @@ void SML_Decode(uint8_t index) {
         }
       } else if (*mp == 'h') {
         // skip html tag line
+        mp = strchr(mp, '|');
+        if (mp) mp++;
+        continue;
+      } else if (*mp == 's') {
+        // skip spec option tag line
         mp = strchr(mp, '|');
         if (mp) mp++;
         continue;
