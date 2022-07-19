@@ -3809,6 +3809,15 @@ chknext:
           goto exit;
         }
 #endif
+
+#ifdef ESP32
+        if (!strncmp(lp, "rr(", 3)) {
+          lp+=4;
+          len = 0;
+          if (sp) strlcpy(sp, GetResetReason().c_str(), glob_script_mem.max_ssize);
+          goto strexit;
+        }
+#endif
         break;
 
       case 's':

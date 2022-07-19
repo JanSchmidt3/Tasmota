@@ -11,8 +11,7 @@
  * 9th decimal place accuracy of the filterbank tables in the ISO
  * document.  The coefficients are stored in #filter#
  */
-void shine_subband_initialise(shine_global_config *config)
-{
+void shine_subband_initialise(shine_global_config *config) {
   int i,j;
   double filter;
 
@@ -47,8 +46,7 @@ void shine_subband_initialise(shine_global_config *config)
  * picking out values from the windowed samples, and then multiplying
  * them by the filter matrix, producing 32 subband samples.
  */
-void shine_window_filter_subband(int16_t **buffer, int32_t s[SBLIMIT], int ch, shine_global_config *config, int stride)
-{
+void shine_window_filter_subband(int16_t **buffer, int32_t s[SBLIMIT], int ch, shine_global_config *config, int stride) {
   int32_t y[64];
   int i,j;
   int16_t *ptr = *buffer;

@@ -27,9 +27,7 @@ static void Huffmancodebits( shine_global_config *config, int *ix, gr_info *gi);
   in the IS).
 */
 
-void
-shine_format_bitstream(shine_global_config *config)
-{
+void shine_format_bitstream(shine_global_config *config) {
   int gr, ch, i;
 
   for ( ch =  0; ch < config->wave.channels; ch++ )
@@ -48,8 +46,7 @@ shine_format_bitstream(shine_global_config *config)
   encodeMainData( config );
 }
 
-static void encodeMainData(shine_global_config *config)
-{
+static void encodeMainData(shine_global_config *config) {
   int gr, ch, sfb;
   shine_side_info_t  si = config->side_info;
 
@@ -80,8 +77,7 @@ static void encodeMainData(shine_global_config *config)
     }
 }
 
-static void encodeSideInfo( shine_global_config *config )
-{
+static void encodeSideInfo( shine_global_config *config ) {
   int gr, ch, scfsi_band, region;
   shine_side_info_t  si = config->side_info;
 
@@ -148,8 +144,7 @@ static void encodeSideInfo( shine_global_config *config )
 
 /* Note the discussion of huffmancodebits() on pages 28 and 29 of the IS, as
   well as the definitions of the side information on pages 26 and 27. */
-static void Huffmancodebits( shine_global_config *config, int *ix, gr_info *gi )
-{
+static void Huffmancodebits( shine_global_config *config, int *ix, gr_info *gi ) {
   const int *scalefac = &shine_scale_fact_band_index[config->mpeg.samplerate_index][0];
   unsigned scalefac_index;
   int region1Start, region2Start;
@@ -209,15 +204,13 @@ static void Huffmancodebits( shine_global_config *config, int *ix, gr_info *gi )
     }
 }
 
-static inline int shine_abs_and_sign( int *x )
-{
+static inline int shine_abs_and_sign( int *x ) {
   if ( *x > 0 ) return 0;
   *x *= -1;
   return 1;
 }
 
-static void shine_huffman_coder_count1( bitstream_t *bs, const struct huffcodetab *h, int v, int w, int x, int y )
-{
+static void shine_huffman_coder_count1( bitstream_t *bs, const struct huffcodetab *h, int v, int w, int x, int y ) {
   unsigned int signv, signw, signx, signy;
   unsigned int code = 0;
   int p, cbits = 0;
@@ -250,8 +243,7 @@ static void shine_huffman_coder_count1( bitstream_t *bs, const struct huffcodeta
 }
 
 /* Implements the pseudocode of page 98 of the IS */
-static void shine_HuffmanCode(bitstream_t *bs, int table_select, int x, int y)
-{
+static void shine_HuffmanCode(bitstream_t *bs, int table_select, int x, int y) {
   int cbits = 0, xbits = 0;
   unsigned int code = 0, ext = 0;
   unsigned signx, signy, ylen, idx;

@@ -30,8 +30,7 @@
  * shine_mdct_initialise:
  * -------------------
  */
-void shine_mdct_initialise(shine_global_config *config)
-{
+void shine_mdct_initialise(shine_global_config *config) {
   int m,k;
 
   /* prepare the mdct coefficients */
@@ -47,8 +46,7 @@ void shine_mdct_initialise(shine_global_config *config)
  * shine_mdct_sub:
  * ------------
  */
-void shine_mdct_sub(shine_global_config *config, int stride)
-{
+void shine_mdct_sub(shine_global_config *config, int stride) {
   /* note. we wish to access the array 'config->mdct_freq[2][2][576]' as
    * [2][2][32][18]. (32*18=576),
    */

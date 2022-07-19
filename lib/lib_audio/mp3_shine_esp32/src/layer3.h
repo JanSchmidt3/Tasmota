@@ -5,6 +5,8 @@
 
 /* This is the struct used to tell the encoder about the input PCM */
 
+//#define SHINE_DEBUG
+
 enum channels {
   PCM_MONO   = 1,
   PCM_STEREO = 2

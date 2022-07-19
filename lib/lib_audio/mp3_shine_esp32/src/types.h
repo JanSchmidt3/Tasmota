@@ -31,7 +31,7 @@
 #endif
 #endif
 
-/* #define DEBUG if you want the library to dump info to stdout */
+/* #define SHINE_DEBUG if you want the library to dump info to stdout */
 
 #undef PI
 #define PI          3.14159265358979

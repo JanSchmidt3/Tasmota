@@ -99,7 +99,10 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
 
   memset(config, 0, sizeof(shine_global_config));
 
+#ifdef  SHINE_DEBUG
   printf("l3_enc & mdct_freq each: %d\n", sizeof(int32_t)*GRANULE_SIZE*MAX_GRANULES*MAX_CHANNELS);
+#endif
+
   for (x = 0; x < MAX_CHANNELS; x++) {
       for (y = 0; y < MAX_GRANULES; y++) {
         // 2 * 2 * 576 each
@@ -107,9 +110,13 @@ shine_global_config *shine_initialise(shine_config_t *pub_config) {
         config->mdct_freq[x][y] = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 1%
       }
   }
+#ifdef  SHINE_DEBUG
   printf("l3loop struct: %d\n", sizeof(l3loop_t));
+#endif
   config->l3loop = (l3loop_t*)heap_caps_malloc(sizeof(l3loop_t), MALLOC_CAP_SPIRAM);
+#ifdef  SHINE_DEBUG
   printf("xrsq & xrabs each: %d\n", sizeof(int32_t)*GRANULE_SIZE);
+#endif
   config->l3loop->xrsq = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 0.5%
   config->l3loop->xrabs = (int*)heap_caps_malloc(sizeof(int32_t)*GRANULE_SIZE, MALLOC_CAP_32BIT); //OK 0.5%
 
@@ -254,6 +261,29 @@ unsigned char *shine_flush(shine_global_config *config, int *written) {
 
 void shine_close(shine_global_config *config) {
   shine_close_bit_stream(&config->bs);
+
+  for (uint16_t x = 0; x < MAX_CHANNELS; x++) {
+      for (uint16_t y = 0; y < MAX_GRANULES; y++) {
+        if (config->l3_enc[x][y]) {
+          free(config->l3_enc[x][y]);
+        }
+        if (config->mdct_freq[x][y]) {
+          free(config->mdct_freq[x][y]);
+        }
+      }
+  }
+
+  config->l3loop = (l3loop_t*)heap_caps_malloc(sizeof(l3loop_t), MALLOC_CAP_SPIRAM);
+  if (config->l3loop) {
+    free(config->l3loop);
+  }
+  if (config->l3loop->xrsq) {
+    free(config->l3loop->xrsq);
+  }
+  if (config->l3loop->xrabs) {
+    free(config->l3loop->xrabs);
+  }
+
   free(config);
 }
 
