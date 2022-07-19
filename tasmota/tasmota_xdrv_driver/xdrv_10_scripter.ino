@@ -4903,7 +4903,7 @@ extern char *SML_GetSVal(uint32_t index);
           fvar = !TasmotaGlobal.global_state.wifi_down;
           goto exit;
         }
-#ifdef USE_SHINE
+#ifdef xUSE_SHINE
         if (!strncmp(vname, "wav2mp3(", 8)) {
           char path[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 8, OPER_EQU, path, 0);

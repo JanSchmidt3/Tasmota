@@ -78,6 +78,7 @@
 #define DJ_VAVG "Volt_avg"
 #define DJ_COUNTER "Count"
 
+
 struct METER_DESC {
   int8_t srcpin;
   uint8_t type;
@@ -91,7 +92,22 @@ struct METER_DESC {
   uint8_t max_index;
   char *script_str;
   uint8_t sopt;
+#ifdef USE_SML_SPECOPT
+  uint32_t so_obis1;
+  uint32_t so_obis2;
+  uint8_t so_fcode1;
+  uint8_t so_bpos1;
+  uint8_t so_fcode2;
+  uint8_t so_bpos2;
+#endif
 };
+
+#ifdef USE_SCRIPT
+struct METER_DESC  script_meter_desc[MAX_METERS];
+uint8_t *script_meter;
+#endif
+
+
 
 // this descriptor method is no longer supported
 // but still functional for simple meters
@@ -1236,7 +1252,7 @@ void Hexdump(uint8_t *sbuff, uint32_t slen) {
   AddLogData(LOG_LEVEL_INFO, cbuff);
 }
 
-#if defined(ED300L) || defined(AS2020) || defined(DTZ541)
+#if defined(ED300L) || defined(AS2020) || defined(DTZ541) || defined(USE_SML_SPECOPT)
 uint8_t sml_status[MAX_METERS];
 uint8_t g_mindex;
 #endif
@@ -1294,13 +1310,39 @@ double dval;
   }
 #endif
 #ifdef DTZ541
-  // 00 1c 01 04 verbr
-  // 00 1d 19 04 einsp
   unsigned char *cpx=cp-5;
   // decode OBIS 0180 amd extract direction info
   if (*cp==0x65 && *cpx==0 && *(cpx+1)==0x01 && *(cpx+2)==0x08 && *(cpx+3)==0) {
     sml_status[g_mindex]=*(cp+3);
   }
+#endif
+
+#ifdef USE_SML_SPECOPT
+ unsigned char *cpx=cp-5;
+ uint32_t ocode = (*(cpx+0)<<24) | (*(cpx+1)<<16) | (*(cpx+2)<<8) | (*(cpx+3)<<0);
+ if (ocode == script_meter_desc[g_mindex].so_obis1) {
+   sml_status[g_mindex]&=0xfe;
+   uint32_t flag = 0;
+   uint16_t bytes = 0;
+   if (*cp == script_meter_desc[g_mindex].so_fcode1) {
+     bytes = script_meter_desc[g_mindex].so_fcode1 & 0xf;
+     for (uint16_t cnt = 0; cnt < bytes; cnt++) {
+        flag |= *cpx++;
+     }
+     if (flag & (1 << script_meter_desc[g_mindex].so_bpos1)) {
+       sml_status[g_mindex]|=1;
+     }
+   }
+   if (*cp == script_meter_desc[g_mindex].so_fcode2) {
+     bytes = script_meter_desc[g_mindex].so_fcode2 & 0xf;
+     for (uint16_t cnt = 0; cnt < bytes; cnt++) {
+        flag |= *cpx++;
+     }
+     if (flag & (1 << script_meter_desc[g_mindex].so_bpos1)) {
+       sml_status[g_mindex]|=1;
+     }
+   }
+ }
 #endif
 
   cp=skip_sml(cp,&result);
@@ -1436,6 +1478,16 @@ double dval;
         }
     }
   #endif
+  #ifdef USE_SML_SPECOPT
+    ocode = (*(cpx+0)<<24) | (*(cpx+1)<<16) | (*(cpx+2)<<8) | (*(cpx+3)<<0);
+    if (ocode == script_meter_desc[g_mindex].so_obis2) {
+      if (sml_status[g_mindex] & 1) {
+        // and invert sign on solar feed
+        dval*=-1;
+      }
+    }
+  #endif
+
     return dval;
 }
 
@@ -2136,8 +2188,8 @@ void SML_Decode(uint8_t index) {
         // matches, get value
         dvalid[vindex] = 1;
         mp++;
-#if defined(ED300L) || defined(AS2020) || defined(DTZ541)
-        g_mindex=mindex;
+#if defined(ED300L) || defined(AS2020) || defined(DTZ541) || defined(USE_SML_SPECOPT)
+        g_mindex = mindex;
 #endif
         if (*mp == '#') {
           // get string value
@@ -2351,6 +2403,11 @@ void SML_Show(boolean json) {
           if (mp) mp++;
           continue;
         }
+        if (*mp=='=' && *(mp+1)=='s') {
+          mp = strchr(mp, '|');
+          if (mp) mp++;
+          continue;
+        }
         // skip compare section
         cp=strchr(mp,'@');
         if (cp) {
@@ -2537,11 +2594,6 @@ uint32_t debounce_time;
 }
 
 
-#ifdef USE_SCRIPT
-struct METER_DESC  script_meter_desc[MAX_METERS];
-uint8_t *script_meter;
-#endif
-
 #ifndef METER_DEF_SIZE
 #define METER_DEF_SIZE 3000
 #endif
@@ -2600,6 +2652,40 @@ bool Gpio_used(uint8_t gpiopin) {
   }
   return false;
 }
+
+#ifdef USE_SML_SPECOPT
+void SML_GetSpecOpt(char *cp, uint32_t mnum) {
+// special option 1
+// we need 2 obis codes
+// 2 flag codes + bit positions
+// 1,=so1,00010800,63,7,64,11,00100700
+
+  if (*cp == ',') {
+    cp++;
+    script_meter_desc[mnum].so_obis1 = strtol(cp, &cp, 16);
+  }
+  if (*cp == ',') {
+    cp++;
+    script_meter_desc[mnum].so_fcode1 = strtol(cp, &cp, 16);
+  }
+  if (*cp == ',') {
+    cp++;
+    script_meter_desc[mnum].so_bpos1 = strtol(cp, &cp, 10);
+  }
+  if (*cp == ',') {
+    cp++;
+    script_meter_desc[mnum].so_fcode2 = strtol(cp, &cp, 16);
+  }
+  if (*cp == ',') {
+    cp++;
+    script_meter_desc[mnum].so_bpos2 = strtol(cp, &cp, 10);
+  }
+  if (*cp == ',') {
+    cp++;
+    script_meter_desc[mnum].so_obis2 = strtol(cp, &cp, 16);
+  }
+}
+#endif
 
 void SML_Init(void) {
   meters_used=METERS_USED;
@@ -2836,6 +2922,16 @@ dddef_exit:
               goto next_line;
             }
           }
+#ifdef USE_SML_SPECOPT
+          if (!strncmp(lp1 + 1, ",=so", 4)) {
+            // special option
+            char *cp = lp1 + 5;
+            if (*cp == '1') {
+              cp++;
+              SML_GetSpecOpt(cp, mnum - 1);
+            }
+          }
+#endif
           while (1) {
             if (*lp1 == 0) {
               *tp++ = '|';
@@ -2864,7 +2960,16 @@ dddef_exit:
               goto next_line;
             }
           }
-
+#ifdef USE_SML_SPECOPT
+          if (!strncmp(lp + 1, ",=so", 4)) {
+            // special option
+            char *cp = lp + 5;
+            if (*cp == '1') {
+              cp++;
+              SML_GetSpecOpt(cp, mnum - 1);
+            }
+          }
+#endif
           while (1) {
             if (*lp == SCRIPT_EOL) {
               if (*(tp-1) != '|') *tp++ = '|';
@@ -3065,12 +3170,13 @@ uint32_t SML_SetBaud(uint32_t meter, uint32_t br) {
 uint32_t SML_Status(uint32_t meter) {
   if (meter<1 || meter>meters_used) return 0;
   meter--;
-#if defined(ED300L) || defined(AS2020) || defined(DTZ541)
+#if defined(ED300L) || defined(AS2020) || defined(DTZ541) || defined(USE_SML_SPECOPT)
   return sml_status[meter];
 #else
   return 0;
 #endif
 }
+
 
 
 uint32_t SML_Write(uint32_t meter,char *hstr) {

@@ -99,6 +99,7 @@ struct AUDIO_I2S_t {
   TaskHandle_t mp3_task_h;
   TaskHandle_t mic_task_h;
   uint32_t mic_size;
+  uint32_t mic_rate;
   uint8_t *mic_buff;
   char mic_path[32];
   uint8_t mic_channels;
@@ -386,6 +387,7 @@ void I2S_Init(void) {
 #endif  // USE_I2S_WEBRADIO
 
   audio_i2s.mic_channels = MIC_CHANNELS;
+  audio_i2s.mic_rate = MICSRATE;
 
 #endif  // ESP32
 }
@@ -418,7 +420,7 @@ uint32_t SpeakerMic(uint8_t spkr) {
     // config mic
     i2s_config_t i2s_config = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER),
-        .sample_rate = MICSRATE,
+        .sample_rate = audio_i2s.mic_rate,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
         .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
         .communication_format = I2S_COMM_FORMAT_I2S,
@@ -465,9 +467,9 @@ uint32_t SpeakerMic(uint8_t spkr) {
 
     err += i2s_set_pin(audio_i2s.i2s_port, &tx_pin_config);
 #ifdef ESP32S3_BOX
-    err += i2s_set_clk(audio_i2s.i2s_port, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
+    err += i2s_set_clk(audio_i2s.i2s_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
 #else
-    err += i2s_set_clk(audio_i2s.i2s_port, MICSRATE, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+    err += i2s_set_clk(audio_i2s.i2s_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
 #endif
   }
   return err;
@@ -501,7 +503,7 @@ uint32_t i2s_record(char *path, uint32_t secs) {
     return err;
   }
 
-  audio_i2s.mic_size = secs * MICSRATE * 2 * audio_i2s.mic_channels;
+  audio_i2s.mic_size = secs * audio_i2s.mic_rate * 2 * audio_i2s.mic_channels;
 
   audio_i2s.mic_buff = (uint8_t*)heap_caps_malloc(audio_i2s.mic_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!audio_i2s.mic_buff) return 2;
@@ -543,7 +545,7 @@ bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
   memcpy_P(wavHeader, wavHTemplate, sizeof(wavHTemplate));
 
   uint8_t channels = audio_i2s.mic_channels;
-  uint32_t hertz = MICSRATE;
+  uint32_t hertz = audio_i2s.mic_rate;
   uint8_t bps = 16;
 
   wavHeader[22] = channels & 0xff;
@@ -707,6 +709,14 @@ void I2S_WR_Show(bool json) {
 
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
 void Cmd_MicRec(void) {
+
+  if (audio_i2s.mic_task_h) {
+    // stop task
+    vTaskDelete(audio_i2s.mic_task_h);
+    audio_i2s.mic_task_h = nullptr;
+    ResponseCmndChar_P(PSTR("Stopped"));
+  }
+
   if (XdrvMailbox.data_len > 0) {
     uint16 time = 10;
     char *cp = strchr(XdrvMailbox.data, ':');
@@ -807,6 +817,7 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #endif  // USE_I2S_WEBRADIO
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   "|REC"
+  "|W2M"
 #endif  // USE_M5STACK_CORE2
 #endif  // ESP32
   ;
@@ -820,11 +831,10 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #endif // USE_I2S_WEBRADIO
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   ,&Cmd_MicRec
+  ,&Cmd_wav2mp3
 #endif // USE_M5STACK_CORE2
 #endif // ESP32
 };
-
-
 
 void Cmd_Play(void) {
   if (XdrvMailbox.data_len > 0) {
@@ -841,6 +851,15 @@ void Cmd_Gain(void) {
     }
   }
   ResponseCmndNumber(audio_i2s.is2_volume);
+}
+
+void Cmd_wav2mp3(void) {
+  if (XdrvMailbox.data_len > 0) {
+#ifdef USE_SHINE
+    wav2mp3(XdrvMailbox.data);
+#endif
+  }
+  ResponseCmndChar(XdrvMailbox.data);
 }
 
 void Cmd_Say(void) {
