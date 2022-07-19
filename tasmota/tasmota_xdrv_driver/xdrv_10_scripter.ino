@@ -3814,7 +3814,14 @@ chknext:
         if (!strncmp(lp, "rr(", 3)) {
           lp+=4;
           len = 0;
-          if (sp) strlcpy(sp, GetResetReason().c_str(), glob_script_mem.max_ssize);
+          const char *cp = GetResetReason().c_str();
+          if (sp) {
+              if (cp) {
+                strlcpy(sp, cp, glob_script_mem.max_ssize);
+              } else {
+                strlcpy(sp, "-", glob_script_mem.max_ssize);
+              }
+          }
           goto strexit;
         }
 #endif
