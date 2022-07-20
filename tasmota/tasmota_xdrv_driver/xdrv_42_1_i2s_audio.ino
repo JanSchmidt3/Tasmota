@@ -73,6 +73,7 @@
 #ifndef MICSRATE
 #define MICSRATE 16000
 #endif
+#endif // ESP32
 
 struct AUDIO_I2S_t {
   uint8_t is2_volume; // should be in settings
@@ -112,8 +113,7 @@ struct AUDIO_I2S_t {
   File fwp;
   uint8_t mic_stop;
   int8_t mic_error;
-#endif
-
+#endif // ESP32
 } audio_i2s;
 
 
@@ -166,6 +166,7 @@ extern FS *ufsp;
 const int preallocateBufferSize = 5*1024;
 const int preallocateCodecSize = 29192; // MP3 codec max mem needed
 #endif  // ESP8266
+
 #ifdef ESP32
 const int preallocateBufferSize = 16*1024;
 const int preallocateCodecSize = 29192; // MP3 codec max mem needed
@@ -307,12 +308,12 @@ int32_t I2S_Init_0(void) {
   if (PinUsed(GPIO_I2S_BCLK) && PinUsed(GPIO_I2S_WS) && PinUsed(GPIO_I2S_DOUT)) {
 #endif // USE_I2S_NO_DAC
     audio_i2s.i2s_port = (i2s_port_t)0;
-    #ifdef USE_I2S_NO_DAC
-        audio_i2s.out = new AudioOutputI2SNoDAC();
-    #else
-        //audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port);
-        audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port, EXTERNAL_I2S, 8, APLL_DISABLE, I2S_MCLK_MULTIPLE_128, 12000000);
-    #endif // USE_I2S_NO_DAC
+#ifdef USE_I2S_NO_DAC
+    audio_i2s.out = new AudioOutputI2SNoDAC();
+#else
+    //audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port);
+    audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port, EXTERNAL_I2S, 8, APLL_DISABLE, I2S_MCLK_MULTIPLE_128, 12000000);
+#endif // USE_I2S_NO_DAC
     audio_i2s.mclk = Pin(GPIO_I2S_MCLK);
     audio_i2s.bclk = Pin(GPIO_I2S_BCLK);
     audio_i2s.ws = Pin(GPIO_I2S_WS);
@@ -320,12 +321,12 @@ int32_t I2S_Init_0(void) {
     audio_i2s.din = Pin(GPIO_I2S_DIN);
   } else if (PinUsed(GPIO_I2S_BCLK, 1) && PinUsed(GPIO_I2S_WS, 1) && PinUsed(GPIO_I2S_DOUT), 1) {
     audio_i2s.i2s_port = (i2s_port_t)1;
-    #ifdef USE_I2S_NO_DAC
-        audio_i2s.out = new AudioOutputI2SNoDAC();
-    #else
-        //audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port);
-        audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port, EXTERNAL_I2S, 8, APLL_DISABLE, I2S_MCLK_MULTIPLE_128, 12000000);
-    #endif // USE_I2S_NO_DAC
+#ifdef USE_I2S_NO_DAC
+    audio_i2s.out = new AudioOutputI2SNoDAC();
+#else
+    //audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port);
+    audio_i2s.out = new AudioOutputI2S(audio_i2s.i2s_port, EXTERNAL_I2S, 8, APLL_DISABLE, I2S_MCLK_MULTIPLE_128, 12000000);
+#endif // USE_I2S_NO_DAC
     audio_i2s.mclk = Pin(GPIO_I2S_MCLK, 1);
     audio_i2s.bclk = Pin(GPIO_I2S_BCLK, 1);
     audio_i2s.ws = Pin(GPIO_I2S_WS, 1);
@@ -354,6 +355,7 @@ int32_t I2S_Init_0(void) {
 #else
   audio_i2s.out = new AudioOutputI2S(0, 1);    // Internal DAC port 0
 #endif  // USE_I2S_NO_DAC
+
 #endif  // USE_I2S_EXTERNAL_DAC
 
   return 0;
@@ -477,6 +479,8 @@ uint32_t SpeakerMic(uint8_t spkr) {
   return err;
 }
 #endif //ESP32
+
+#ifdef ESP32
 
 #ifdef USE_SHINE
 #include <layer3.h>
@@ -687,7 +691,6 @@ bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
 #endif  // ESP32
 
 #ifdef ESP32
-
 void mp3_task(void *arg) {
   while (1) {
     while (audio_i2s.mp3->isRunning()) {
@@ -967,6 +970,7 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
   ,&Cmd_wav2mp3
 #endif
 #endif // USE_M5STACK_CORE2
+
 #endif // ESP32
 };
 
@@ -992,11 +996,11 @@ void Cmd_wav2mp3(void) {
   if (XdrvMailbox.data_len > 0) {
 #ifdef USE_SHINE
     wav2mp3(XdrvMailbox.data);
-#endif
+#endif // USE_SHINE
   }
   ResponseCmndChar(XdrvMailbox.data);
 }
-#endif
+#endif // WAV2MP3
 
 void Cmd_Say(void) {
   if (XdrvMailbox.data_len > 0) {
