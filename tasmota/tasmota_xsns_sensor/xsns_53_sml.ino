@@ -2721,6 +2721,13 @@ void SML_Init(void) {
     meter_spos[cnt]=0;
   }
 
+#ifdef USE_SML_SPECOPT
+  for (uint32_t cnt = 0; cnt < MAX_METERS; cnt++) {
+    script_meter_desc[cnt].so_obis1 = 0;
+    script_meter_desc[cnt].so_obis2 = 0;
+  }
+#endif
+
 #ifdef USE_SCRIPT
 
   for (uint32_t cnt=0;cnt<MAX_METERS;cnt++) {
@@ -2948,9 +2955,6 @@ dddef_exit:
               cp++;
               SML_GetSpecOpt(cp, mnum - 1);
             }
-          } else {
-            script_meter_desc[mnum - 1].so_obis1 = 0;
-            script_meter_desc[mnum - 1].so_obis2 = 0;
           }
 #endif
           while (1) {
@@ -2989,9 +2993,6 @@ dddef_exit:
               cp++;
               SML_GetSpecOpt(cp, mnum - 1);
             }
-          } else {
-            script_meter_desc[mnum - 1].so_obis1 = 0;
-            script_meter_desc[mnum - 1].so_obis2 = 0;
           }
 #endif
           while (1) {
