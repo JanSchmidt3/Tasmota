@@ -1320,15 +1320,18 @@ double dval;
 #endif
 
 #ifdef USE_SML_SPECOPT
- unsigned char *cpx=cp-5;
+ unsigned char *cpx = cp - 5;
  uint32_t ocode = (*(cpx+0)<<24) | (*(cpx+1)<<16) | (*(cpx+2)<<8) | (*(cpx+3)<<0);
+
  if (ocode == script_meter_desc[g_mindex].so_obis1) {
    sml_status[g_mindex]&=0xfe;
    uint32_t flag = 0;
    uint16_t bytes = 0;
    if (*cp == script_meter_desc[g_mindex].so_fcode1) {
-     bytes = script_meter_desc[g_mindex].so_fcode1 & 0xf;
+     cpx = cp + 1;
+     bytes = (script_meter_desc[g_mindex].so_fcode1 & 0xf) - 1;
      for (uint16_t cnt = 0; cnt < bytes; cnt++) {
+        flag <<= 8;
         flag |= *cpx++;
      }
      if (flag & (1 << script_meter_desc[g_mindex].so_bpos1)) {
@@ -1336,9 +1339,11 @@ double dval;
      }
    }
    if (*cp == script_meter_desc[g_mindex].so_fcode2) {
-     bytes = script_meter_desc[g_mindex].so_fcode2 & 0xf;
+     cpx = cp + 1;
+     bytes = (script_meter_desc[g_mindex].so_fcode2 & 0xf) - 1;
      for (uint16_t cnt = 0; cnt < bytes; cnt++) {
-        flag |= *cpx++;
+       flag <<= 8;
+       flag |= *cpx++;
      }
      if (flag & (1 << script_meter_desc[g_mindex].so_bpos1)) {
        sml_status[g_mindex]|=1;
@@ -2943,6 +2948,9 @@ dddef_exit:
               cp++;
               SML_GetSpecOpt(cp, mnum - 1);
             }
+          } else {
+            script_meter_desc[mnum - 1].so_obis1 = 0;
+            script_meter_desc[mnum - 1].so_obis2 = 0;
           }
 #endif
           while (1) {
@@ -2981,6 +2989,9 @@ dddef_exit:
               cp++;
               SML_GetSpecOpt(cp, mnum - 1);
             }
+          } else {
+            script_meter_desc[mnum - 1].so_obis1 = 0;
+            script_meter_desc[mnum - 1].so_obis2 = 0;
           }
 #endif
           while (1) {
