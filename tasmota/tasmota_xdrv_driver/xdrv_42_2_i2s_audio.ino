@@ -116,6 +116,7 @@ void S3boxInit() {
 #endif // ESP32S3_BOX
 
 #ifdef USE_SHINE
+#ifdef WAV2MP3
 
 #include <layer3.h>
 #include <types.h>
@@ -232,7 +233,7 @@ exit:
 
   return error;
 }
-
+#endif  // WAV2MP3
 #endif // USE_SHINE
 
 

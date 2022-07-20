@@ -67,6 +67,12 @@
 #define i2s_port_t uint8_t
 #endif
 
+#ifdef ESP32
+#define MODE_MIC 0
+#define MODE_SPK 1
+#ifndef MICSRATE
+#define MICSRATE 16000
+#endif
 
 struct AUDIO_I2S_t {
   uint8_t is2_volume; // should be in settings
@@ -103,6 +109,9 @@ struct AUDIO_I2S_t {
   uint8_t *mic_buff;
   char mic_path[32];
   uint8_t mic_channels;
+  File fwp;
+  uint8_t mic_stop;
+  int8_t mic_error;
 #endif
 
 } audio_i2s;
@@ -392,14 +401,7 @@ void I2S_Init(void) {
 #endif  // ESP32
 }
 
-
 #ifdef ESP32
-#define MODE_MIC 0
-#define MODE_SPK 1
-#ifndef MICSRATE
-#define MICSRATE 16000
-#endif
-
 uint32_t SpeakerMic(uint8_t spkr) {
   esp_err_t err = ESP_OK;
 
@@ -474,6 +476,115 @@ uint32_t SpeakerMic(uint8_t spkr) {
   }
   return err;
 }
+#endif //ESP32
+
+#ifdef USE_SHINE
+#include <layer3.h>
+#include <types.h>
+
+// micro to mp3 file
+void mic_task(void *arg){
+  int8_t error = 0;
+  uint8_t *ucp;
+  int written;
+  shine_config_t  config;
+  shine_t s = nullptr;
+  uint16_t samples_per_pass;
+  File mp3_out = (File)nullptr;
+  int16_t *buffer = nullptr;
+  uint16_t bytesize;
+  uint16_t bwritten;
+
+  mp3_out = ufsp->open(audio_i2s.mic_path, "w");
+  if (!mp3_out) {
+    error = -1;
+    goto exit;
+  }
+
+  shine_set_config_mpeg_defaults(&config.mpeg);
+
+  if (audio_i2s.mic_channels == 1) {
+    config.mpeg.mode = MONO;
+  } else {
+    config.mpeg.mode = STEREO;
+  }
+  config.mpeg.bitr = 128;
+  config.wave.samplerate = audio_i2s.mic_rate;
+  config.wave.channels = (channels)audio_i2s.mic_channels;
+
+  if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) {
+    error = -3;
+    goto exit;
+  }
+
+  s = shine_initialise(&config);
+  if (!s) {
+    error = -4;
+    goto exit;
+  }
+
+  samples_per_pass = shine_samples_per_pass(s);
+  bytesize = samples_per_pass * 2 * audio_i2s.mic_channels;
+
+  buffer = (int16_t*)malloc(bytesize);
+  if (!buffer) {
+    error = -5;
+    goto exit;
+  }
+
+  while (!audio_i2s.mic_stop) {
+      uint32_t bytes_read;
+      i2s_read(audio_i2s.i2s_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
+      ucp = shine_encode_buffer_interleaved(s, buffer, &written);
+      bwritten = mp3_out.write(ucp, written);
+      if (bwritten != written) {
+        break;
+      }
+  }
+  ucp = shine_flush(s, &written);
+  mp3_out.write(ucp, written);
+
+exit:
+  if (s) {
+    shine_close(s);
+  }
+  if (mp3_out) {
+    mp3_out.close();
+  }
+  if (buffer) {
+    free(buffer);
+  }
+
+  SpeakerMic(MODE_SPK);
+  audio_i2s.mic_stop = 0;
+  audio_i2s.mic_error = error;
+  AddLog(LOG_LEVEL_INFO, PSTR("task error: %d"), error);
+  audio_i2s.mic_task_h = 0;
+  vTaskDelete(NULL);
+
+}
+
+int32_t i2s_record_shine(char *path) {
+esp_err_t err = ESP_OK;
+
+  if (audio_i2s.decoder || audio_i2s.mp3) return 0;
+
+  err = SpeakerMic(MODE_MIC);
+  if (err) {
+    SpeakerMic(MODE_SPK);
+    return err;
+  }
+
+  strlcpy(audio_i2s.mic_path, path, sizeof(audio_i2s.mic_path));
+
+  audio_i2s.mic_stop = 0;
+  err = xTaskCreatePinnedToCore(mic_task, "MIC", 4096, NULL, 3, &audio_i2s.mic_task_h, 1);
+
+  return err;
+}
+
+#else
+// micro to wav file
 
 #define DATA_SIZE 1024
 
@@ -571,6 +682,7 @@ bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
 
   return true;
 }
+#endif // USE_SHINE
 
 #endif  // ESP32
 
@@ -708,6 +820,23 @@ void I2S_WR_Show(bool json) {
 #endif  // USE_I2S_WEBRADIO
 
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
+#ifdef USE_SHINE
+void Cmd_MicRec(void) {
+
+  if (audio_i2s.mic_task_h) {
+    // stop task
+    audio_i2s.mic_stop = 1;
+    while (audio_i2s.mic_stop) {
+      delay(1);
+    }
+    ResponseCmndChar_P(PSTR("Stopped"));
+  }
+  if (XdrvMailbox.data_len > 0) {
+    i2s_record_shine(XdrvMailbox.data);
+    ResponseCmndChar(XdrvMailbox.data);
+  }
+}
+#else
 void Cmd_MicRec(void) {
 
   if (audio_i2s.mic_task_h) {
@@ -730,6 +859,7 @@ void Cmd_MicRec(void) {
     ResponseCmndChar(XdrvMailbox.data);
   }
 }
+#endif // USE_SHINE
 #endif  // USE_M5STACK_CORE2
 
 #ifdef ESP32
@@ -817,7 +947,9 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #endif  // USE_I2S_WEBRADIO
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   "|REC"
+#ifdef WAV2MP3
   "|W2M"
+#endif
 #endif  // USE_M5STACK_CORE2
 #endif  // ESP32
   ;
@@ -831,7 +963,9 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #endif // USE_I2S_WEBRADIO
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   ,&Cmd_MicRec
+#ifdef WAV2MP3
   ,&Cmd_wav2mp3
+#endif
 #endif // USE_M5STACK_CORE2
 #endif // ESP32
 };
@@ -853,6 +987,7 @@ void Cmd_Gain(void) {
   ResponseCmndNumber(audio_i2s.is2_volume);
 }
 
+#ifdef WAV2MP3
 void Cmd_wav2mp3(void) {
   if (XdrvMailbox.data_len > 0) {
 #ifdef USE_SHINE
@@ -861,6 +996,7 @@ void Cmd_wav2mp3(void) {
   }
   ResponseCmndChar(XdrvMailbox.data);
 }
+#endif
 
 void Cmd_Say(void) {
   if (XdrvMailbox.data_len > 0) {
