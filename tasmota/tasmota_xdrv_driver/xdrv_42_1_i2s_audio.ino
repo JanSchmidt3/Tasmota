@@ -114,6 +114,13 @@ struct AUDIO_I2S_t {
   uint8_t mic_stop;
   int8_t mic_error;
 #endif // ESP32
+
+#ifdef USE_SHINE
+  uint8_t  stream_active;
+  WiFiClient client;
+  ESP8266WebServer *MP3Server;
+#endif
+
 } audio_i2s;
 
 
@@ -1020,6 +1027,10 @@ void Cmd_Time(void) {
  * Interface
 \*********************************************************************************************/
 
+void i2s_mp3_loop(void);
+void i2s_mp3_init(void);
+void MP3ShowStream(void);
+
 bool Xdrv42(uint8_t function) {
   bool result = false;
 
@@ -1030,6 +1041,17 @@ bool Xdrv42(uint8_t function) {
     case FUNC_INIT:
       I2S_Init();
       break;
+#ifdef USE_SHINE
+    case FUNC_WEB_ADD_MAIN_BUTTON:
+      MP3ShowStream();
+      break;
+    case FUNC_LOOP:
+      i2s_mp3_loop();
+      break;
+    case FUNC_WEB_ADD_HANDLER:
+      i2s_mp3_init();
+      break;
+#endif
 #ifdef USE_WEBSERVER
 #ifdef USE_I2S_WEBRADIO
     case FUNC_WEB_SENSOR:
