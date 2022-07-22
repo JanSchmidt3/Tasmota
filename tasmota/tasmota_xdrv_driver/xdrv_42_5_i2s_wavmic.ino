@@ -268,19 +268,17 @@ exit:
   return error;
 }
 
-#ifdef WAV2MP3
 void Cmd_wav2mp3(void) {
   if (XdrvMailbox.data_len > 0) {
-#ifdef USE_SHINE
     wav2mp3(XdrvMailbox.data);
-#endif // USE_SHINE
   }
   ResponseCmndChar(XdrvMailbox.data);
 }
 
-#endif // WAV2MP3
 #endif  // WAV2MP3
 #endif // USE_SHINE
+
+
 #endif // USE_I2S_MIC
 #endif // USE_I2S_AUDIO
-#endif // EPS32
+#endif // ESP32

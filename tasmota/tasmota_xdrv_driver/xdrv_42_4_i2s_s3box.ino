@@ -1,6 +1,6 @@
 
 /*
-  audio is2 support for sbox and sbox lite
+  audio is2 support for ESP32-S3 box and box lite
 
   Copyright (C) 2022  Gerhard Mutz and Theo Arends
 
@@ -26,9 +26,11 @@
 #include <es7243e.h>
 #include <es7210.h>
 
+
+#define S3BOX_APWR_GPIO 46
+
 void S3boxAudioPower(uint8_t pwr) {
-  pinMode(46 , OUTPUT);
-  digitalWrite(46, pwr);
+  digitalWrite(S3BOX_APWR_GPIO, pwr);
 }
 
 // box lite dac init
@@ -130,6 +132,8 @@ void S3boxInit() {
     // box full
     ES8311_init();
     es7210_init();
+
+    pinMode(S3BOX_APWR_GPIO , OUTPUT);
   }
 }
 #endif // ESP32S3_BOX
