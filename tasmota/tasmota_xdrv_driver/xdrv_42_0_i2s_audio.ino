@@ -117,6 +117,7 @@ struct AUDIO_I2S_t {
 
 #ifdef USE_SHINE
   uint8_t  stream_active;
+  uint8_t  stream_enable;
   WiFiClient client;
   ESP8266WebServer *MP3Server;
 #endif
@@ -511,6 +512,9 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #endif  // USE_I2S_WEBRADIO
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   "|REC"
+#ifdef MP3_MIC_STREAM
+  "|STREAM"
+#endif
 #ifdef WAV2MP3
   "|W2M"
 #endif
@@ -527,6 +531,9 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #endif // USE_I2S_WEBRADIO
 #if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
   ,&Cmd_MicRec
+#ifdef MP3_MIC_STREAM
+  ,&Cmd_MP3Stream
+#endif
 #ifdef WAV2MP3
   ,&Cmd_wav2mp3
 #endif
@@ -577,15 +584,17 @@ bool Xdrv42(uint8_t function) {
     case FUNC_INIT:
       I2S_Init();
       break;
-#if  defined(USE_SHINE) && defined(MP3_MIC_STREAM)
+#if  defined(MP3_MIC_STREAM)
+//#if  defined(USE_SHINE) && defined(MP3_MIC_STREAM)
     case FUNC_WEB_ADD_MAIN_BUTTON:
-      MP3ShowStream();
+      //MP3ShowStream();
       break;
     case FUNC_LOOP:
-      i2s_mp3_loop();
+      //i2s_mp3_loop();
       break;
     case FUNC_WEB_ADD_HANDLER:
-      i2s_mp3_init();
+      //i2s_mp3_init();
+      Webserver->on(UriGlob("/stream.mp3"), HTTP_GET, Micserver);
       break;
 #endif
 #ifdef USE_WEBSERVER

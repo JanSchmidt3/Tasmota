@@ -101,6 +101,11 @@ uint32_t SpeakerMic(uint8_t spkr) {
 #include <layer3.h>
 #include <types.h>
 
+const char HTTP_MP3_MIMES[] PROGMEM =
+  "HTTP/1.1 200 OK\r\n"
+  "Content-disposition: inline; "
+  "Content-type: audio/mp3\r\n\r\n";
+
 // micro to mp3 file
 void mic_task(void *arg){
   int8_t error = 0;
@@ -113,11 +118,34 @@ void mic_task(void *arg){
   int16_t *buffer = nullptr;
   uint16_t bytesize;
   uint16_t bwritten;
+  uint8_t stream = 0;
 
-  mp3_out = ufsp->open(audio_i2s.mic_path, "w");
-  if (!mp3_out) {
-    error = -1;
-    goto exit;
+
+  stream = !strcmp(audio_i2s.mic_path, "/stream.mp3");
+
+  if (!stream) {
+    mp3_out = ufsp->open(audio_i2s.mic_path, "w");
+    if (!mp3_out) {
+      error = -1;
+      goto exit;
+    }
+  } else {
+    audio_i2s.MP3Server->client().write(HTTP_MP3_MIMES, sizeof(HTTP_MP3_MIMES));
+    audio_i2s.MP3Server->client().flush();
+
+
+    char attachment[100];
+    char *cp;
+    for (uint32_t cnt = strlen(audio_i2s.mic_path); cnt >= 0; cnt--) {
+        if (audio_i2s.mic_path[cnt] == '/') {
+          cp = &audio_i2s.mic_path[cnt + 1];
+          break;
+        }
+    }
+    snprintf_P(attachment, sizeof(attachment), PSTR("attachment; filename=%s"), cp);
+    audio_i2s.MP3Server->sendHeader(F("Content-Disposition"), attachment);
+    audio_i2s.MP3Server->send(200, "application/octet-stream", "");
+
   }
 
   shine_set_config_mpeg_defaults(&config.mpeg);
@@ -155,13 +183,23 @@ void mic_task(void *arg){
       uint32_t bytes_read;
       i2s_read(audio_i2s.i2s_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
       ucp = shine_encode_buffer_interleaved(s, buffer, &written);
-      bwritten = mp3_out.write(ucp, written);
-      if (bwritten != written) {
-        break;
+
+      if (!stream) {
+        bwritten = mp3_out.write(ucp, written);
+        if (bwritten != written) {
+          break;
+        }
+      } else {
+        audio_i2s.MP3Server->client().write((const char*)ucp, written);
       }
   }
   ucp = shine_flush(s, &written);
-  mp3_out.write(ucp, written);
+
+  if (!stream) {
+    mp3_out.write(ucp, written);
+  } else {
+    audio_i2s.MP3Server->client().write((const char*)ucp, written);
+  }
 
 exit:
   if (s) {
@@ -173,6 +211,8 @@ exit:
   if (buffer) {
     free(buffer);
   }
+
+  audio_i2s.MP3Server->client().stop();
 
   SpeakerMic(MODE_SPK);
   audio_i2s.mic_stop = 0;

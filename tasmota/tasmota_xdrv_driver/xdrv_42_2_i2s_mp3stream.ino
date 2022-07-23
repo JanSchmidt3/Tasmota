@@ -3,6 +3,22 @@
 #if (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX))
 #if defined(USE_I2S_MIC) && defined(USE_SHINE) && defined(MP3_MIC_STREAM)
 
+void Micserver(void) {
+
+  if (!HttpCheckPriviledgedAccess()) { return; }
+
+  String stmp = Webserver->uri();
+
+  char *cp = strstr_P(stmp.c_str(), PSTR("/stream.mp3"));
+  if (cp) {
+    i2s_record_shine(/stream.mp3);
+  }
+
+}
+
+
+#if 0
+
 
 #define MP3_BOUNDARY "e8b8c539-047d-4777-a985-fbba6edff11e"
 
@@ -11,6 +27,10 @@ void Stream_mp3(void) {
     audio_i2s.MP3Server->send(403,"","");
     return;
   }*/
+  if (!audio_i2s.stream_enable) {
+    return;
+  }
+
   AddLog(LOG_LEVEL_DEBUG, PSTR("I2S: Handle mp3server"));
   audio_i2s.stream_active = 1;
   audio_i2s.client = audio_i2s.MP3Server->client();
@@ -60,11 +80,17 @@ void HandleMP3Task(void) {
 }
 
 void i2s_mp3_init(void) {
+  if (!audio_i2s.stream_enable) {
+    return;
+  }
   audio_i2s.MP3Server = new ESP8266WebServer(81);
   audio_i2s.MP3Server->on(PSTR("/i2s.mp3"), Stream_mp3);
 }
 
-void i2s_mp3_loop() {
+void i2s_mp3_loop(void) {
+  if (!audio_i2s.stream_enable) {
+    return;
+  }
   audio_i2s.MP3Server->handleClient();
   if (audio_i2s.stream_active) {
     HandleMP3Task();
@@ -72,9 +98,20 @@ void i2s_mp3_loop() {
 }
 
 void MP3ShowStream(void) {
-  WSContentSend_P(PSTR("<p></p><center><href src='http://%_I:81/stream' alt='MP3 stream' style='width:99%%;'>mp3 stream</center><p></p>"),
-    (uint32_t)WiFi.localIP());
+  if (!audio_i2s.stream_enable) {
+    return;
+  }
+  WSContentSend_P(PSTR("<p></p><center><href src='http://%_I:81/stream' alt='MP3 stream' style='width:99%%;'>mp3 stream</center><p></p>"),(uint32_t)WiFi.localIP());
 }
+
+void Cmd_MP3Stream(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
+    audio_i2s.stream_enable = XdrvMailbox.payload;
+  }
+  ResponseCmndNumber(audio_i2s.stream_enable);
+}
+#endif
+
 
 #endif // USE_SHINE
 #endif // USE_I2S_AUDIO
