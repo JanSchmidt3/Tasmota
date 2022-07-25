@@ -148,6 +148,10 @@ struct AUDIO_I2S_t {
 #define DAC_IIS_WS        0
 #define DAC_IIS_DOUT      2
 #define DAC_IIS_DIN       34
+#undef MICSRATE
+#define MICSRATE 32000
+#undef MIC_CHANNELS
+#define MIC_CHANNELS 1
 #endif  // USE_M5STACK_CORE2
 
 

@@ -56,15 +56,13 @@ uint32_t SpeakerMic(uint8_t spkr) {
     };
 
 #ifdef ESP32S3_BOX
-    i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
     i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
 #endif
 
 #ifdef USE_I2S_MIC
-    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
     // mic select to GND
-    i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
+    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
     i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
 #endif
 
@@ -72,25 +70,30 @@ uint32_t SpeakerMic(uint8_t spkr) {
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
 #endif
 
+    if (audio_i2s.mic_channels == 1) {
+      i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
+    } else {
+      i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
+    }
+
     err += i2s_driver_install(audio_i2s.i2s_port, &i2s_config, 0, NULL);
 
     i2s_pin_config_t tx_pin_config;
-#ifdef ESP32S3_BOX
+
     tx_pin_config.mck_io_num = audio_i2s.mclk;
-#else
-    tx_pin_config.mck_io_num = I2S_PIN_NO_CHANGE;
-#endif
     tx_pin_config.bck_io_num = audio_i2s.bclk;
     tx_pin_config.ws_io_num = audio_i2s.ws;
     tx_pin_config.data_out_num = audio_i2s.dout;
     tx_pin_config.data_in_num = audio_i2s.din;
 
     err += i2s_set_pin(audio_i2s.i2s_port, &tx_pin_config);
-#ifdef ESP32S3_BOX
-    err += i2s_set_clk(audio_i2s.i2s_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
-#else
-    err += i2s_set_clk(audio_i2s.i2s_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
-#endif
+
+    i2s_channel_t mode = I2S_CHANNEL_MONO;
+    if (audio_i2s.mic_channels > 1) {
+      mode = I2S_CHANNEL_STEREO;
+    }
+    err += i2s_set_clk(audio_i2s.i2s_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, mode);
+
   }
   return err;
 }
