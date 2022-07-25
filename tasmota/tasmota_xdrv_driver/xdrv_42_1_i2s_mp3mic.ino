@@ -178,6 +178,7 @@ void mic_task(void *arg){
     goto exit;
   }
 
+  AddLog(LOG_LEVEL_INFO, PSTR("task start: %d"), bytesize);
   while (!audio_i2s.mic_stop) {
       uint32_t bytes_read;
       i2s_read(audio_i2s.i2s_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
@@ -192,6 +193,8 @@ void mic_task(void *arg){
         audio_i2s.MP3Server->client().write((const char*)ucp, written);
       }
   }
+
+  AddLog(LOG_LEVEL_INFO, PSTR("task loop exit"));
   ucp = shine_flush(s, &written);
 
   if (!stream) {
@@ -202,18 +205,23 @@ void mic_task(void *arg){
 
 exit:
   if (s) {
+    AddLog(LOG_LEVEL_INFO, PSTR("shine close"));
     shine_close(s);
   }
   if (mp3_out) {
+    AddLog(LOG_LEVEL_INFO, PSTR("mp3 close"));
     mp3_out.close();
   }
   if (buffer) {
+    AddLog(LOG_LEVEL_INFO, PSTR("buffer free"));
     free(buffer);
   }
 
   if (stream) {
     audio_i2s.MP3Server->client().stop();
   }
+
+  AddLog(LOG_LEVEL_INFO, PSTR("end task"));
 
   SpeakerMic(MODE_SPK);
   audio_i2s.mic_stop = 0;
