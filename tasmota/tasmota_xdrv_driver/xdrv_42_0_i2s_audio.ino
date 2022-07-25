@@ -143,9 +143,11 @@ struct AUDIO_I2S_t {
 #undef DAC_IIS_BCK
 #undef DAC_IIS_WS
 #undef DAC_IIS_DOUT
+#undef DAC_IIS_DIN
 #define DAC_IIS_BCK       12
 #define DAC_IIS_WS        0
 #define DAC_IIS_DOUT      2
+#define DAC_IIS_DIN       34
 #endif  // USE_M5STACK_CORE2
 
 
@@ -200,6 +202,7 @@ int32_t I2S_Init_0(void) {
     audio_i2s.bclk = DAC_IIS_BCK;
     audio_i2s.ws = DAC_IIS_WS;
     audio_i2s.dout = DAC_IIS_DOUT;
+    audio_i2s.din = DAC_IIS_DIN;
 #else
 #ifdef USE_I2S_NO_DAC
   if (PinUsed(GPIO_I2S_DOUT)) {
