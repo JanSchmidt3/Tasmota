@@ -159,6 +159,7 @@ struct AUDIO_I2S_t {
 #endif // ESP32S3_BOX
 
 extern FS *ufsp;
+extern FS *ffsp;
 
 #ifdef ESP8266
 const int preallocateBufferSize = 5*1024;
@@ -444,13 +445,20 @@ void Play_mp3(const char *path) {
     I2S_Task = false;
   }
 
-  if (!ufsp->exists(path)) {
+  FS *mp3fsp = ufsp;
+
+  if (!strncmp(path, "/ffs", 4)) {
+    path += 4;
+    mp3fsp = ffsp;
+  }
+
+  if (!mp3fsp->exists(path)) {
     return;
   }
 
   AUDIO_PWR_ON
 
-  audio_i2s.file = new AudioFileSourceFS(*ufsp, path);
+  audio_i2s.file = new AudioFileSourceFS(*mp3fsp, path);
 
   audio_i2s.id3 = new AudioFileSourceID3(audio_i2s.file);
 
@@ -504,7 +512,10 @@ void Say(char *text) {
 
 
 const char kI2SAudio_Commands[] PROGMEM = "I2S|"
-  "Say|Gain|Time"
+  "Say|Gain"
+#ifdef USE_I2S_SAY_TIME
+  "|Time"
+#endif
 #ifdef ESP32
   "|Play"
 #ifdef USE_I2S_WEBRADIO
@@ -523,7 +534,10 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
   ;
 
 void (* const I2SAudio_Command[])(void) PROGMEM = {
-  &Cmd_Say, &Cmd_Gain, &Cmd_Time
+  &Cmd_Say, &Cmd_Gain,
+#ifdef USE_I2S_SAY_TIME
+  &Cmd_Time,
+#endif
 #ifdef ESP32
   ,&Cmd_Play
 #ifdef USE_I2S_WEBRADIO
