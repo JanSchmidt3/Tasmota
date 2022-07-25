@@ -521,7 +521,7 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #ifdef USE_I2S_WEBRADIO
   "|WR"
 #endif  // USE_I2S_WEBRADIO
-#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
+#if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
   "|REC"
 #ifdef MP3_MIC_STREAM
   "|STREAM"
@@ -534,16 +534,16 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
   ;
 
 void (* const I2SAudio_Command[])(void) PROGMEM = {
-  &Cmd_Say, &Cmd_Gain,
+  &Cmd_Say, &Cmd_Gain
 #ifdef USE_I2S_SAY_TIME
-  &Cmd_Time,
+  ,&Cmd_Time
 #endif
 #ifdef ESP32
   ,&Cmd_Play
 #ifdef USE_I2S_WEBRADIO
   ,&Cmd_WebRadio
 #endif // USE_I2S_WEBRADIO
-#if defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC)
+#if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
   ,&Cmd_MicRec
 #ifdef MP3_MIC_STREAM
   ,&Cmd_MP3Stream

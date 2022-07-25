@@ -19,8 +19,7 @@
 
 
 #ifdef ESP32
-#if (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX))
-#if defined(USE_I2S_MIC)
+#if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
 
 uint32_t SpeakerMic(uint8_t spkr) {
   esp_err_t err = ESP_OK;
@@ -120,7 +119,6 @@ void mic_task(void *arg){
   uint16_t bwritten;
   uint8_t stream = 0;
 
-
   stream = !strcmp(audio_i2s.mic_path, "/stream.mp3");
 
   if (!stream) {
@@ -133,7 +131,6 @@ void mic_task(void *arg){
     audio_i2s.MP3Server->client().write(HTTP_MP3_MIMES, sizeof(HTTP_MP3_MIMES));
     audio_i2s.MP3Server->client().flush();
 
-
     char attachment[100];
     char *cp;
     for (uint32_t cnt = strlen(audio_i2s.mic_path); cnt >= 0; cnt--) {
@@ -145,7 +142,6 @@ void mic_task(void *arg){
     snprintf_P(attachment, sizeof(attachment), PSTR("attachment; filename=%s"), cp);
     audio_i2s.MP3Server->sendHeader(F("Content-Disposition"), attachment);
     audio_i2s.MP3Server->send(200, "application/octet-stream", "");
-
   }
 
   shine_set_config_mpeg_defaults(&config.mpeg);
@@ -212,7 +208,9 @@ exit:
     free(buffer);
   }
 
-  audio_i2s.MP3Server->client().stop();
+  if (stream) {
+    audio_i2s.MP3Server->client().stop();
+  }
 
   SpeakerMic(MODE_SPK);
   audio_i2s.mic_stop = 0;
@@ -231,6 +229,7 @@ esp_err_t err = ESP_OK;
   err = SpeakerMic(MODE_MIC);
   if (err) {
     SpeakerMic(MODE_SPK);
+    AddLog(LOG_LEVEL_INFO, PSTR("mic init error: %d"), err);
     return err;
   }
 
@@ -259,6 +258,5 @@ void Cmd_MicRec(void) {
 }
 
 #endif // USE_SHINE
-#endif // USE_I2S_MIC
 #endif // USE_I2S_AUDIO
 #endif // ESP32

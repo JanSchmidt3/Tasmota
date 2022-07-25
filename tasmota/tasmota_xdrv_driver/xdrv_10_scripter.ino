@@ -3798,17 +3798,19 @@ chknext:
           }
           goto nfuncexit;
         }
-#if  defined(ESP32) && (defined(USE_M5STACK_CORE2))
+/*
+#if defined(ESP32) && (defined(USE_I2S_AUDIO) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC))
         if (!strncmp(lp, "rec(", 4)) {
           char str[SCRIPT_MAXSSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, str, 0);
-          SCRIPT_SKIP_SPACES
-          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-          fvar = i2s_record(str, fvar);
+          //SCRIPT_SKIP_SPACES
+          //lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          fvar = i2s_record_shine(str);
           len++;
           goto exit;
         }
 #endif
+*/
 
 #ifdef ESP32
         if (!strncmp(lp, "rr(", 3)) {
