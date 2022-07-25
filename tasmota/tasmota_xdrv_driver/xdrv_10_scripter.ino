@@ -78,6 +78,10 @@ int32_t web_send_file(char mc, char *file);
 
 #define SPECIAL_EEPMODE_SIZE 6200
 
+#ifndef STASK_STACK
+#define STASK_STACK 8192-2048
+#endif
+
 #ifdef USE_UFILESYS
 
 #undef USE_SCRIPT_FATFS
@@ -2470,11 +2474,17 @@ chknext:
           while (*lp==' ') lp++;
           float fvar2;
           lp = GetNumericArgument(lp, OPER_EQU, &fvar2, gv);
+          SCRIPT_SKIP_SPACES
           float prio = STASK_PRIO;
           if (*lp!=')') {
             lp = GetNumericArgument(lp, OPER_EQU, &prio, gv);
           }
-          fvar = scripter_create_task(fvar, fvar1, fvar2, prio);
+          SCRIPT_SKIP_SPACES
+          float stack = STASK_STACK;
+          if (*lp!=')') {
+            lp = GetNumericArgument(lp, OPER_EQU, &stack, gv);
+          }
+          fvar = scripter_create_task(fvar, fvar1, fvar2, prio, stack);
           goto nfuncexit;
         }
 #endif //USE_SCRIPT_TASK
@@ -10124,9 +10134,7 @@ int32_t retval;
 #ifdef ESP32
 #ifdef USE_SCRIPT_TASK
 
-#ifndef STASK_STACK
-#define STASK_STACK 8192-2048
-#endif
+
 
 struct ESP32_Task {
   uint16_t task_timer;
@@ -10169,7 +10177,7 @@ void script_task2(void *arg) {
     }
   }
 }
-uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_t prio) {
+uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_t prio,  int32_t stack) {
   //return 0;
   BaseType_t res = 0;
   if (core > 1) { core = 1; }
@@ -10186,12 +10194,12 @@ uint32_t scripter_create_task(uint32_t num, uint32_t time, uint32_t core, int32_
     if (!num) {
       if (Run_Scripter1(">t1", -3, 0) == 99) {
         sp = glob_script_mem.section_ptr + 2;
-        res = xTaskCreatePinnedToCore(script_task1, "T1", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+        res = xTaskCreatePinnedToCore(script_task1, "T1", stack, NULL, prio, &esp32_tasks[num].task_t, core);
       }
     } else {
       if (Run_Scripter1(">t2", -3, 0) == 99) {
         sp = glob_script_mem.section_ptr + 2;
-        res = xTaskCreatePinnedToCore(script_task2, "T2", STASK_STACK, NULL, prio, &esp32_tasks[num].task_t, core);
+        res = xTaskCreatePinnedToCore(script_task2, "T2", stack, NULL, prio, &esp32_tasks[num].task_t, core);
       }
     }
     esp32_tasks[num].tstart = sp;
