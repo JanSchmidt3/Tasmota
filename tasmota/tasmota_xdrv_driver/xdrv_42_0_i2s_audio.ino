@@ -113,6 +113,12 @@ struct AUDIO_I2S_t {
   File fwp;
   uint8_t mic_stop;
   int8_t mic_error;
+  int8_t mic_mclk = -1;
+  int8_t mic_bclk = -1;
+  int8_t mic_ws = -1;
+  int8_t mic_din = -1;
+  int8_t mic_dout = -1;
+  i2s_port_t mic_port;
 #endif // ESP32
 
 #ifdef USE_SHINE
@@ -194,6 +200,7 @@ void Cmd_Time(void);
 int32_t I2S_Init_0(void) {
 
   audio_i2s.i2s_port = (i2s_port_t)0;
+  audio_i2s.mic_port = (i2s_port_t)0;
 
 #if USE_I2S_EXTERNAL_DAC
   // use i2s
@@ -226,7 +233,24 @@ int32_t I2S_Init_0(void) {
     audio_i2s.ws = Pin(GPIO_I2S_WS);
     audio_i2s.dout = Pin(GPIO_I2S_DOUT);
     audio_i2s.din = Pin(GPIO_I2S_DIN);
-  } else if (PinUsed(GPIO_I2S_BCLK, 1) && PinUsed(GPIO_I2S_WS, 1) && PinUsed(GPIO_I2S_DOUT), 1) {
+
+    audio_i2s.mic_mclk = audio_i2s.mclk;
+    audio_i2s.mic_bclk = audio_i2s.bclk;
+    audio_i2s.mic_ws = audio_i2s.ws;
+    audio_i2s.mic_dout = audio_i2s.dout;
+    audio_i2s.mic_din = audio_i2s.din;
+    audio_i2s.mic_port = (i2s_port_t)0;
+
+    // check if 2 ports used, use second for micro
+    if (PinUsed(GPIO_I2S_BCLK, 1) && PinUsed(GPIO_I2S_WS, 1) && PinUsed(GPIO_I2S_DIN, 1)) {
+      audio_i2s.mic_bclk = -1;
+      audio_i2s.mic_bclk = Pin(GPIO_I2S_BCLK, 1);
+      audio_i2s.mic_ws = Pin(GPIO_I2S_WS, 1);
+      audio_i2s.mic_dout = -1;
+      audio_i2s.mic_din = Pin(GPIO_I2S_DIN, 1);
+      audio_i2s.mic_port = (i2s_port_t)1;
+    }
+  } else if (PinUsed(GPIO_I2S_BCLK, 1) && PinUsed(GPIO_I2S_WS, 1) && PinUsed(GPIO_I2S_DOUT, 1)) {
     audio_i2s.i2s_port = (i2s_port_t)1;
 #ifdef USE_I2S_NO_DAC
     audio_i2s.out = new AudioOutputI2SNoDAC();
@@ -239,6 +263,14 @@ int32_t I2S_Init_0(void) {
     audio_i2s.ws = Pin(GPIO_I2S_WS, 1);
     audio_i2s.dout = Pin(GPIO_I2S_DOUT, 1);
     audio_i2s.din = Pin(GPIO_I2S_DIN, 1);
+
+    audio_i2s.mic_mclk = audio_i2s.mclk;
+    audio_i2s.mic_bclk = audio_i2s.bclk;
+    audio_i2s.mic_ws = audio_i2s.ws;
+    audio_i2s.mic_dout = audio_i2s.dout;
+    audio_i2s.mic_din = audio_i2s.din;
+    audio_i2s.mic_port = (i2s_port_t)1;
+
   } else {
     return -1;
   }
@@ -253,7 +285,9 @@ int32_t I2S_Init_0(void) {
   audio_i2s.out->SetPinout(audio_i2s.bclk, audio_i2s.ws, audio_i2s.dout, audio_i2s.mclk, audio_i2s.din);
 
   AddLog(LOG_LEVEL_INFO, PSTR("Init audio I2S: port=%d, bclk=%d, ws=%d, dout=%d, mclk=%d, din=%d"), audio_i2s.i2s_port, audio_i2s.bclk, audio_i2s.ws, audio_i2s.dout, audio_i2s.mclk, audio_i2s.din);
-
+  if (audio_i2s.mic_port != 0) {
+    AddLog(LOG_LEVEL_INFO, PSTR("Init audio I2S mic: port=%d, bclk=%d, ws=%d, din=%d"), audio_i2s.mic_port, audio_i2s.mic_bclk, audio_i2s.mic_ws, audio_i2s.mic_din);
+  }
 #else
 
 #ifdef USE_I2S_NO_DAC

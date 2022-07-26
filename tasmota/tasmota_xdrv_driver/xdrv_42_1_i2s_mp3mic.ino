@@ -24,79 +24,86 @@
 #define MP3_BOUNDARY "e8b8c539-047d-4777-a985-fbba6edff11e"
 
 uint32_t SpeakerMic(uint8_t spkr) {
-  esp_err_t err = ESP_OK;
+esp_err_t err = ESP_OK;
 
-  if (audio_i2s.out) {
-    audio_i2s.out->stop();
-    delete audio_i2s.out;
-    audio_i2s.out = nullptr;
-  }
-
-  i2s_driver_uninstall(audio_i2s.i2s_port);
 
   if (spkr == MODE_SPK) {
-    I2S_Init_0();
-    audio_i2s.out->SetGain(((float)(audio_i2s.is2_volume-2)/100.0)*4.0);
-    audio_i2s.out->stop();
-  } else {
-    // config mic
-    i2s_config_t i2s_config = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER),
-        .sample_rate = audio_i2s.mic_rate,
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
-        .communication_format = I2S_COMM_FORMAT_I2S,
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
-        .dma_buf_count = 2,
-        //.dma_buf_len = 128,
-        .dma_buf_len = 1024,
-        .use_apll = 0, // Use audio PLL
-        .tx_desc_auto_clear     = true,
-        .fixed_mclk             = 0,
-        .mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,  // I2S_MCLK_MULTIPLE_128
-        .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
-    };
+    if (audio_i2s.mic_bclk == -1) {
+      I2S_Init_0();
+      audio_i2s.out->SetGain(((float)(audio_i2s.is2_volume-2)/100.0)*4.0);
+      audio_i2s.out->stop();
+    }
+    return 0;
+  }
+
+  // set micro
+  if (audio_i2s.mic_bclk == -1) {
+    // close audio out
+    if (audio_i2s.out) {
+      audio_i2s.out->stop();
+      delete audio_i2s.out;
+      audio_i2s.out = nullptr;
+    }
+    i2s_driver_uninstall(audio_i2s.i2s_port);
+  }
+
+  // config mic
+  i2s_config_t i2s_config = {
+      .mode = (i2s_mode_t)(I2S_MODE_MASTER),
+      .sample_rate = audio_i2s.mic_rate,
+      .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+      .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
+      .communication_format = I2S_COMM_FORMAT_I2S,
+      .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+      .dma_buf_count = 2,
+      //.dma_buf_len = 128,
+      .dma_buf_len = 1024,
+      .use_apll = 0, // Use audio PLL
+      .tx_desc_auto_clear     = true,
+      .fixed_mclk             = 0,
+      .mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,  // I2S_MCLK_MULTIPLE_128
+      .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
+  };
 
 #ifdef ESP32S3_BOX
-    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
-    i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
+  i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
+  i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
 #endif
 
 #ifdef USE_I2S_MIC
-    // mic select to GND
-    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
-    i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
+  // mic select to GND
+  i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
+  i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
 #endif
 
 #ifdef USE_M5STACK_CORE2
-    i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
+  i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM);
 #endif
 
-    if (audio_i2s.mic_channels == 1) {
-      i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
-    } else {
-      i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
-    }
-
-    err += i2s_driver_install(audio_i2s.i2s_port, &i2s_config, 0, NULL);
-
-    i2s_pin_config_t tx_pin_config;
-
-    tx_pin_config.mck_io_num = audio_i2s.mclk;
-    tx_pin_config.bck_io_num = audio_i2s.bclk;
-    tx_pin_config.ws_io_num = audio_i2s.ws;
-    tx_pin_config.data_out_num = audio_i2s.dout;
-    tx_pin_config.data_in_num = audio_i2s.din;
-
-    err += i2s_set_pin(audio_i2s.i2s_port, &tx_pin_config);
-
-    i2s_channel_t mode = I2S_CHANNEL_MONO;
-    if (audio_i2s.mic_channels > 1) {
-      mode = I2S_CHANNEL_STEREO;
-    }
-    err += i2s_set_clk(audio_i2s.i2s_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, mode);
-
+  if (audio_i2s.mic_channels == 1) {
+    i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
+  } else {
+    i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
   }
+
+  err += i2s_driver_install(audio_i2s.mic_port, &i2s_config, 0, NULL);
+
+  i2s_pin_config_t tx_pin_config;
+
+  tx_pin_config.mck_io_num = audio_i2s.mic_mclk;
+  tx_pin_config.bck_io_num = audio_i2s.mic_bclk;
+  tx_pin_config.ws_io_num = audio_i2s.mic_ws;
+  tx_pin_config.data_out_num = audio_i2s.mic_dout;
+  tx_pin_config.data_in_num = audio_i2s.mic_din;
+
+  err += i2s_set_pin(audio_i2s.mic_port, &tx_pin_config);
+
+  i2s_channel_t mode = I2S_CHANNEL_MONO;
+  if (audio_i2s.mic_channels > 1) {
+    mode = I2S_CHANNEL_STEREO;
+  }
+  err += i2s_set_clk(audio_i2s.mic_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, mode);
+
   return err;
 }
 
@@ -133,12 +140,12 @@ void mic_task(void *arg){
   if (!stream) {
     mp3_out = ufsp->open(audio_i2s.mic_path, "w");
     if (!mp3_out) {
-      error = -1;
+      error = 1;
       goto exit;
     }
   } else {
     if (!audio_i2s.stream_active) {
-      error = -9;
+      error = 2;
       stream = 0;
       goto exit;
     }
@@ -149,8 +156,6 @@ void mic_task(void *arg){
       "\r\n");
     MP3HANDLECLIENT
   }
-
-
 
   shine_set_config_mpeg_defaults(&config.mpeg);
 
@@ -164,13 +169,13 @@ void mic_task(void *arg){
   config.wave.channels = (channels)audio_i2s.mic_channels;
 
   if (shine_check_config(config.wave.samplerate, config.mpeg.bitr) < 0) {
-    error = -3;
+    error = 3;
     goto exit;
   }
 
   s = shine_initialise(&config);
   if (!s) {
-    error = -4;
+    error = 4;
     goto exit;
   }
 
@@ -179,7 +184,7 @@ void mic_task(void *arg){
 
   buffer = (int16_t*)malloc(bytesize);
   if (!buffer) {
-    error = -5;
+    error = 5;
     goto exit;
   }
 
@@ -187,7 +192,7 @@ void mic_task(void *arg){
 
   while (!audio_i2s.mic_stop) {
       uint32_t bytes_read;
-      i2s_read(audio_i2s.i2s_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
+      i2s_read(audio_i2s.mic_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
       ucp = shine_encode_buffer_interleaved(s, buffer, &written);
 
       if (!stream) {
@@ -249,11 +254,15 @@ exit:
 int32_t i2s_record_shine(char *path) {
 esp_err_t err = ESP_OK;
 
-  if (audio_i2s.decoder || audio_i2s.mp3) return 0;
+  if (audio_i2s.mic_port == 0) {
+    if (audio_i2s.decoder || audio_i2s.mp3) return 0;
+  }
 
   err = SpeakerMic(MODE_MIC);
   if (err) {
-    SpeakerMic(MODE_SPK);
+    if (audio_i2s.mic_port == 0) {
+      SpeakerMic(MODE_SPK);
+    }
     AddLog(LOG_LEVEL_INFO, PSTR("mic init error: %d"), err);
     return err;
   }
@@ -262,18 +271,16 @@ esp_err_t err = ESP_OK;
 
   audio_i2s.mic_stop = 0;
 
-
   uint32_t stack = 4096;
 
   if (!strcmp(audio_i2s.mic_path, "stream.mp3")) {
     stack = 8000;
   }
+
   err = xTaskCreatePinnedToCore(mic_task, "MIC", stack, NULL, 3, &audio_i2s.mic_task_h, 1);
 
   return err;
 }
-
-
 
 void Cmd_MicRec(void) {
 
