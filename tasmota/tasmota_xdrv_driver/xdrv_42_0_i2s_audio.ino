@@ -116,6 +116,7 @@ struct AUDIO_I2S_t {
 #endif // ESP32
 
 #ifdef USE_SHINE
+  uint32_t recdur;
   uint8_t  stream_active;
   uint8_t  stream_enable;
   WiFiClient client;
@@ -409,7 +410,7 @@ void StopPlaying() {
 
 void Cmd_WebRadio(void) {
   if (!audio_i2s.out) return;
-  
+
   if (audio_i2s.decoder) {
     StopPlaying();
   }
@@ -524,7 +525,7 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
   "Say|Gain"
 #ifdef USE_I2S_SAY_TIME
   "|Time"
-#endif
+#endif // USE_I2S_SAY_TIME
 #ifdef ESP32
   "|Play"
 #ifdef USE_I2S_WEBRADIO
@@ -534,19 +535,16 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
   "|REC"
 #ifdef MP3_MIC_STREAM
   "|STREAM"
-#endif
-#ifdef WAV2MP3
-  "|W2M"
-#endif
-#endif  // USE_M5STACK_CORE2
+#endif // MP3_MIC_STREAM
+#endif // USE_SHINE
 #endif  // ESP32
-  ;
+;
 
 void (* const I2SAudio_Command[])(void) PROGMEM = {
   &Cmd_Say, &Cmd_Gain
 #ifdef USE_I2S_SAY_TIME
   ,&Cmd_Time
-#endif
+#endif // USE_I2S_SAY_TIME
 #ifdef ESP32
   ,&Cmd_Play
 #ifdef USE_I2S_WEBRADIO
@@ -556,12 +554,8 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
   ,&Cmd_MicRec
 #ifdef MP3_MIC_STREAM
   ,&Cmd_MP3Stream
-#endif
-#ifdef WAV2MP3
-  ,&Cmd_wav2mp3
-#endif
-#endif // USE_M5STACK_CORE2
-
+#endif // MP3_MIC_STREAM
+#endif // USE_SHINE
 #endif // ESP32
 };
 
@@ -613,11 +607,11 @@ bool Xdrv42(uint8_t function) {
       //MP3ShowStream();
       break;
     case FUNC_LOOP:
-      //i2s_mp3_loop();
+      i2s_mp3_loop();
       break;
     case FUNC_WEB_ADD_HANDLER:
-      //i2s_mp3_init();
-      Webserver->on(UriGlob("/stream.mp3"), HTTP_GET, Micserver);
+      audio_i2s.stream_enable = 1;
+      i2s_mp3_init(1);
       break;
 #endif
 #ifdef USE_WEBSERVER

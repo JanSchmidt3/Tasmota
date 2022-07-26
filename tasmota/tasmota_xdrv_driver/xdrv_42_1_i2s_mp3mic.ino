@@ -21,6 +21,8 @@
 #ifdef ESP32
 #if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
 
+#define MP3_BOUNDARY "e8b8c539-047d-4777-a985-fbba6edff11e"
+
 uint32_t SpeakerMic(uint8_t spkr) {
   esp_err_t err = ESP_OK;
 
@@ -121,8 +123,9 @@ void mic_task(void *arg){
   uint16_t bytesize;
   uint16_t bwritten;
   uint8_t stream = 0;
+  uint32_t ctime;
 
-  stream = !strcmp(audio_i2s.mic_path, "/stream.mp3");
+  stream = !strcmp(audio_i2s.mic_path, "stream.mp3");
 
   if (!stream) {
     mp3_out = ufsp->open(audio_i2s.mic_path, "w");
@@ -131,20 +134,16 @@ void mic_task(void *arg){
       goto exit;
     }
   } else {
-    audio_i2s.MP3Server->client().write(HTTP_MP3_MIMES, sizeof(HTTP_MP3_MIMES));
-    audio_i2s.MP3Server->client().flush();
-
-    char attachment[100];
-    char *cp;
-    for (uint32_t cnt = strlen(audio_i2s.mic_path); cnt >= 0; cnt--) {
-        if (audio_i2s.mic_path[cnt] == '/') {
-          cp = &audio_i2s.mic_path[cnt + 1];
-          break;
-        }
+    if (!audio_i2s.stream_active) {
+      error = -9;
+      stream = 0;
+      goto exit;
     }
-    snprintf_P(attachment, sizeof(attachment), PSTR("attachment; filename=%s"), cp);
-    audio_i2s.MP3Server->sendHeader(F("Content-Disposition"), attachment);
-    audio_i2s.MP3Server->send(200, "application/octet-stream", "");
+    audio_i2s.MP3Server->client().flush();
+    audio_i2s.MP3Server->client().setTimeout(3);
+    audio_i2s.MP3Server->client().print("HTTP/1.1 200 OK\r\n"
+      "Content-Type: multipart/x-mixed-replace;boundary=" MP3_BOUNDARY "\r\n"
+      "\r\n");
   }
 
   shine_set_config_mpeg_defaults(&config.mpeg);
@@ -178,7 +177,8 @@ void mic_task(void *arg){
     goto exit;
   }
 
-  AddLog(LOG_LEVEL_INFO, PSTR("task start: %d"), bytesize);
+  ctime = TasmotaGlobal.uptime;
+
   while (!audio_i2s.mic_stop) {
       uint32_t bytes_read;
       i2s_read(audio_i2s.i2s_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
@@ -190,11 +190,19 @@ void mic_task(void *arg){
           break;
         }
       } else {
+        if (!audio_i2s.MP3Server->client().connected()) {
+          break;
+        }
+        audio_i2s.MP3Server->client().print("--" MP3_BOUNDARY "\r\n");
+        audio_i2s.MP3Server->client().printf("Content-Type: audio/mp3\r\n"
+          "Content-Length: %d\r\n"
+          "\r\n", static_cast<int>(written));
         audio_i2s.MP3Server->client().write((const char*)ucp, written);
+        audio_i2s.MP3Server->client().print("\r\n");
       }
+      audio_i2s.recdur = TasmotaGlobal.uptime - ctime;
   }
 
-  AddLog(LOG_LEVEL_INFO, PSTR("task loop exit"));
   ucp = shine_flush(s, &written);
 
   if (!stream) {
@@ -205,15 +213,12 @@ void mic_task(void *arg){
 
 exit:
   if (s) {
-    AddLog(LOG_LEVEL_INFO, PSTR("shine close"));
     shine_close(s);
   }
   if (mp3_out) {
-    AddLog(LOG_LEVEL_INFO, PSTR("mp3 close"));
     mp3_out.close();
   }
   if (buffer) {
-    AddLog(LOG_LEVEL_INFO, PSTR("buffer free"));
     free(buffer);
   }
 
@@ -221,13 +226,12 @@ exit:
     audio_i2s.MP3Server->client().stop();
   }
 
-  AddLog(LOG_LEVEL_INFO, PSTR("end task"));
-
   SpeakerMic(MODE_SPK);
   audio_i2s.mic_stop = 0;
   audio_i2s.mic_error = error;
-  AddLog(LOG_LEVEL_INFO, PSTR("task error: %d"), error);
+  AddLog(LOG_LEVEL_INFO, PSTR("mp3task error: %d"), error);
   audio_i2s.mic_task_h = 0;
+  audio_i2s.recdur = 0;
   vTaskDelete(NULL);
 
 }
@@ -254,18 +258,24 @@ esp_err_t err = ESP_OK;
 
 void Cmd_MicRec(void) {
 
-  if (audio_i2s.mic_task_h) {
-    // stop task
-    audio_i2s.mic_stop = 1;
-    while (audio_i2s.mic_stop) {
-      delay(1);
-    }
-    ResponseCmndChar_P(PSTR("Stopped"));
-  }
   if (XdrvMailbox.data_len > 0) {
-    i2s_record_shine(XdrvMailbox.data);
-    ResponseCmndChar(XdrvMailbox.data);
+    if (!strncmp(XdrvMailbox.data, "-?", 2)) {
+      Response_P("{\"I2SREC-duration\":%d}", audio_i2s.recdur);
+    } else {
+      i2s_record_shine(XdrvMailbox.data);
+      ResponseCmndChar(XdrvMailbox.data);
+    }
+  } else {
+    if (audio_i2s.mic_task_h) {
+      // stop task
+      audio_i2s.mic_stop = 1;
+      while (audio_i2s.mic_stop) {
+        delay(1);
+      }
+      ResponseCmndChar_P(PSTR("Stopped"));
+    }
   }
+
 }
 
 #endif // USE_SHINE

@@ -1,7 +1,9 @@
 
 #ifdef ESP32
-#if (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX))
-#if defined(USE_I2S_MIC) && defined(USE_SHINE) && defined(MP3_MIC_STREAM)
+#if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
+
+
+#if 0
 
 void Micserver(void) {
 
@@ -16,27 +18,7 @@ void Micserver(void) {
 
 }
 
-
-#if 0
-
-
 #define MP3_BOUNDARY "e8b8c539-047d-4777-a985-fbba6edff11e"
-
-void Stream_mp3(void) {
-  /*if(!WebcamCheckPriviledgedAccess()){
-    audio_i2s.MP3Server->send(403,"","");
-    return;
-  }*/
-  if (!audio_i2s.stream_enable) {
-    return;
-  }
-
-  AddLog(LOG_LEVEL_DEBUG, PSTR("I2S: Handle mp3server"));
-  audio_i2s.stream_active = 1;
-  audio_i2s.client = audio_i2s.MP3Server->client();
-  AddLog(LOG_LEVEL_DEBUG, PSTR("I2S: Create client"));
-
-}
 
 void HandleMP3Task(void) {
   size_t _jpg_buf_len = 0;
@@ -79,14 +61,6 @@ void HandleMP3Task(void) {
   }
 }
 
-void i2s_mp3_init(void) {
-  if (!audio_i2s.stream_enable) {
-    return;
-  }
-  audio_i2s.MP3Server = new ESP8266WebServer(81);
-  audio_i2s.MP3Server->on(PSTR("/i2s.mp3"), Stream_mp3);
-}
-
 void i2s_mp3_loop(void) {
   if (!audio_i2s.stream_enable) {
     return;
@@ -101,18 +75,58 @@ void MP3ShowStream(void) {
   if (!audio_i2s.stream_enable) {
     return;
   }
-  WSContentSend_P(PSTR("<p></p><center><href src='http://%_I:81/stream' alt='MP3 stream' style='width:99%%;'>mp3 stream</center><p></p>"),(uint32_t)WiFi.localIP());
+  WSContentSend_P(PSTR("<p></p><center><href src='http://%_I:81/stream.mp3' alt='MP3 stream' style='width:99%%;'>mp3 stream</center><p></p>"),(uint32_t)WiFi.localIP());
 }
+#endif
+
+
+#ifdef MP3_MIC_STREAM
+
+void Stream_mp3(void) {
+  if (!audio_i2s.stream_enable) {
+    return;
+  }
+  AddLog(LOG_LEVEL_INFO, PSTR("I2S: Handle mp3server"));
+  audio_i2s.stream_active = 1;
+  audio_i2s.client = audio_i2s.MP3Server->client();
+  AddLog(LOG_LEVEL_INFO, PSTR("I2S: Create client"));
+  i2s_record_shine((char*)"stream.mp3");
+}
+
+void i2s_mp3_loop(void) {
+  if (audio_i2s.MP3Server) {
+    audio_i2s.MP3Server->handleClient();
+  }
+}
+
+void i2s_mp3_init(uint32_t on) {
+  if (on) {
+    if (!audio_i2s.MP3Server) {
+      audio_i2s.MP3Server = new ESP8266WebServer(81);
+      audio_i2s.MP3Server->on(PSTR("/stream.mp3"), Stream_mp3);
+      audio_i2s.MP3Server->begin();
+      AddLog(LOG_LEVEL_INFO, PSTR("MP3: server created"));
+    }
+  } else {
+    if (audio_i2s.MP3Server) {
+      audio_i2s.MP3Server->stop();
+      delete audio_i2s.MP3Server;
+      audio_i2s.MP3Server = nullptr;
+      AddLog(LOG_LEVEL_INFO, PSTR("MP3: server deleted"));
+    }
+  }
+}
+
 
 void Cmd_MP3Stream(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
     audio_i2s.stream_enable = XdrvMailbox.payload;
   }
+  i2s_mp3_init(audio_i2s.stream_enable);
   ResponseCmndNumber(audio_i2s.stream_enable);
 }
-#endif
+#endif // MP3_MIC_STREAM
 
 
 #endif // USE_SHINE
-#endif // USE_I2S_AUDIO
 #endif // ESP32
