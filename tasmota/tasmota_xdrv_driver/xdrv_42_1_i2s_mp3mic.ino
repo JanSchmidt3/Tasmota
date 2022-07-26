@@ -105,6 +105,9 @@ uint32_t SpeakerMic(uint8_t spkr) {
 #include <layer3.h>
 #include <types.h>
 
+#define MP3HANDLECLIENT audio_i2s.MP3Server->handleClient();
+
+
 const char HTTP_MP3_MIMES[] PROGMEM =
   "HTTP/1.1 200 OK\r\n"
   "Content-disposition: inline; "
@@ -139,12 +142,15 @@ void mic_task(void *arg){
       stream = 0;
       goto exit;
     }
-    audio_i2s.MP3Server->client().flush();
-    audio_i2s.MP3Server->client().setTimeout(3);
-    audio_i2s.MP3Server->client().print("HTTP/1.1 200 OK\r\n"
+    audio_i2s.client.flush();
+    audio_i2s.client.setTimeout(3);
+    audio_i2s.client.print("HTTP/1.1 200 OK\r\n"
       "Content-Type: multipart/x-mixed-replace;boundary=" MP3_BOUNDARY "\r\n"
       "\r\n");
+    MP3HANDLECLIENT
   }
+
+
 
   shine_set_config_mpeg_defaults(&config.mpeg);
 
@@ -190,15 +196,16 @@ void mic_task(void *arg){
           break;
         }
       } else {
-        if (!audio_i2s.MP3Server->client().connected()) {
+        if (!audio_i2s.client.connected()) {
           break;
         }
-        audio_i2s.MP3Server->client().print("--" MP3_BOUNDARY "\r\n");
-        audio_i2s.MP3Server->client().printf("Content-Type: audio/mp3\r\n"
+        audio_i2s.client.print("--" MP3_BOUNDARY "\r\n");
+        audio_i2s.client.printf("Content-Type: audio/mp3\r\n"
           "Content-Length: %d\r\n"
           "\r\n", static_cast<int>(written));
-        audio_i2s.MP3Server->client().write((const char*)ucp, written);
-        audio_i2s.MP3Server->client().print("\r\n");
+        audio_i2s.client.write((const char*)ucp, written);
+        audio_i2s.client.print("\r\n");
+        MP3HANDLECLIENT
       }
       audio_i2s.recdur = TasmotaGlobal.uptime - ctime;
   }
@@ -208,8 +215,10 @@ void mic_task(void *arg){
   if (!stream) {
     mp3_out.write(ucp, written);
   } else {
-    audio_i2s.MP3Server->client().write((const char*)ucp, written);
+    audio_i2s.client.write((const char*)ucp, written);
+    MP3HANDLECLIENT
   }
+
 
 exit:
   if (s) {
@@ -223,7 +232,8 @@ exit:
   }
 
   if (stream) {
-    audio_i2s.MP3Server->client().stop();
+    audio_i2s.client.stop();
+    MP3HANDLECLIENT
   }
 
   SpeakerMic(MODE_SPK);
@@ -251,10 +261,19 @@ esp_err_t err = ESP_OK;
   strlcpy(audio_i2s.mic_path, path, sizeof(audio_i2s.mic_path));
 
   audio_i2s.mic_stop = 0;
-  err = xTaskCreatePinnedToCore(mic_task, "MIC", 4096, NULL, 3, &audio_i2s.mic_task_h, 1);
+
+
+  uint32_t stack = 4096;
+
+  if (!strcmp(audio_i2s.mic_path, "stream.mp3")) {
+    stack = 8000;
+  }
+  err = xTaskCreatePinnedToCore(mic_task, "MIC", stack, NULL, 3, &audio_i2s.mic_task_h, 1);
 
   return err;
 }
+
+
 
 void Cmd_MicRec(void) {
 
