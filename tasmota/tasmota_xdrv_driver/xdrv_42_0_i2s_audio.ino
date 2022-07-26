@@ -118,6 +118,7 @@ struct AUDIO_I2S_t {
   int8_t mic_ws = -1;
   int8_t mic_din = -1;
   int8_t mic_dout = -1;
+  bool use_stream = false;
   i2s_port_t mic_port;
 #endif // ESP32
 

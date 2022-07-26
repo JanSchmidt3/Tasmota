@@ -28,7 +28,7 @@ esp_err_t err = ESP_OK;
 
 
   if (spkr == MODE_SPK) {
-    if (audio_i2s.mic_bclk == -1) {
+    if (audio_i2s.mic_port == 0) {
       I2S_Init_0();
       audio_i2s.out->SetGain(((float)(audio_i2s.is2_volume-2)/100.0)*4.0);
       audio_i2s.out->stop();
@@ -37,7 +37,7 @@ esp_err_t err = ESP_OK;
   }
 
   // set micro
-  if (audio_i2s.mic_bclk == -1) {
+  if (audio_i2s.mic_port == 0) {
     // close audio out
     if (audio_i2s.out) {
       audio_i2s.out->stop();
@@ -114,13 +114,7 @@ esp_err_t err = ESP_OK;
 
 #define MP3HANDLECLIENT audio_i2s.MP3Server->handleClient();
 
-
-const char HTTP_MP3_MIMES[] PROGMEM =
-  "HTTP/1.1 200 OK\r\n"
-  "Content-disposition: inline; "
-  "Content-type: audio/mp3\r\n\r\n";
-
-// micro to mp3 file
+// micro to mp3 file or stream
 void mic_task(void *arg){
   int8_t error = 0;
   uint8_t *ucp;
@@ -132,12 +126,9 @@ void mic_task(void *arg){
   int16_t *buffer = nullptr;
   uint16_t bytesize;
   uint16_t bwritten;
-  uint8_t stream = 0;
   uint32_t ctime;
 
-  stream = !strcmp(audio_i2s.mic_path, "stream.mp3");
-
-  if (!stream) {
+  if (!audio_i2s.use_stream) {
     mp3_out = ufsp->open(audio_i2s.mic_path, "w");
     if (!mp3_out) {
       error = 1;
@@ -146,14 +137,13 @@ void mic_task(void *arg){
   } else {
     if (!audio_i2s.stream_active) {
       error = 2;
-      stream = 0;
+      audio_i2s.use_stream = 0;
       goto exit;
     }
     audio_i2s.client.flush();
     audio_i2s.client.setTimeout(3);
     audio_i2s.client.print("HTTP/1.1 200 OK\r\n"
-      "Content-Type: multipart/x-mixed-replace;boundary=" MP3_BOUNDARY "\r\n"
-      "\r\n");
+    "Content-Type: audio/mpeg;\r\n\r\n");
     MP3HANDLECLIENT
   }
 
@@ -195,29 +185,24 @@ void mic_task(void *arg){
       i2s_read(audio_i2s.mic_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
       ucp = shine_encode_buffer_interleaved(s, buffer, &written);
 
-      if (!stream) {
+      if (!audio_i2s.use_stream) {
         bwritten = mp3_out.write(ucp, written);
         if (bwritten != written) {
           break;
         }
       } else {
+        audio_i2s.client.write((const char*)ucp, written);
+        MP3HANDLECLIENT
         if (!audio_i2s.client.connected()) {
           break;
         }
-        audio_i2s.client.print("--" MP3_BOUNDARY "\r\n");
-        audio_i2s.client.printf("Content-Type: audio/mp3\r\n"
-          "Content-Length: %d\r\n"
-          "\r\n", static_cast<int>(written));
-        audio_i2s.client.write((const char*)ucp, written);
-        audio_i2s.client.print("\r\n");
-        MP3HANDLECLIENT
       }
       audio_i2s.recdur = TasmotaGlobal.uptime - ctime;
   }
 
   ucp = shine_flush(s, &written);
 
-  if (!stream) {
+  if (!audio_i2s.use_stream) {
     mp3_out.write(ucp, written);
   } else {
     audio_i2s.client.write((const char*)ucp, written);
@@ -236,7 +221,7 @@ exit:
     free(buffer);
   }
 
-  if (stream) {
+  if (audio_i2s.use_stream) {
     audio_i2s.client.stop();
     MP3HANDLECLIENT
   }
@@ -247,6 +232,7 @@ exit:
   AddLog(LOG_LEVEL_INFO, PSTR("mp3task error: %d"), error);
   audio_i2s.mic_task_h = 0;
   audio_i2s.recdur = 0;
+  audio_i2s.stream_active = 0;
   vTaskDelete(NULL);
 
 }
@@ -273,7 +259,9 @@ esp_err_t err = ESP_OK;
 
   uint32_t stack = 4096;
 
-  if (!strcmp(audio_i2s.mic_path, "stream.mp3")) {
+  audio_i2s.use_stream = !strcmp(audio_i2s.mic_path, "stream.mp3");
+
+  if (audio_i2s.use_stream) {
     stack = 8000;
   }
 
