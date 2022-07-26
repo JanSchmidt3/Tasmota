@@ -408,6 +408,8 @@ void StopPlaying() {
 }
 
 void Cmd_WebRadio(void) {
+  if (!audio_i2s.out) return;
+  
   if (audio_i2s.decoder) {
     StopPlaying();
   }
