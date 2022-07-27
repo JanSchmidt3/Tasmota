@@ -118,6 +118,7 @@ struct AUDIO_I2S_t {
   int8_t mic_ws = -1;
   int8_t mic_din = -1;
   int8_t mic_dout = -1;
+  uint8_t mic_gain = 1;
   bool use_stream = false;
   i2s_port_t mic_port;
 #endif // ESP32
@@ -568,6 +569,7 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #endif  // USE_I2S_WEBRADIO
 #if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
   "|REC"
+  "|MGain"
 #ifdef MP3_MIC_STREAM
   "|STREAM"
 #endif // MP3_MIC_STREAM
@@ -587,6 +589,7 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #endif // USE_I2S_WEBRADIO
 #if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
   ,&Cmd_MicRec
+  ,&Cmd_MicGain
 #ifdef MP3_MIC_STREAM
   ,&Cmd_MP3Stream
 #endif // MP3_MIC_STREAM

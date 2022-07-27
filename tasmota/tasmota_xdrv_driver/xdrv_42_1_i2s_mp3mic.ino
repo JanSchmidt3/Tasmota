@@ -183,6 +183,13 @@ void mic_task(void *arg){
   while (!audio_i2s.mic_stop) {
       uint32_t bytes_read;
       i2s_read(audio_i2s.mic_port, (char *)buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
+
+      if (audio_i2s.mic_gain > 1) {
+        // set gain
+        for (uint32_t cnt = 0; cnt < bytes_read / 2; cnt++) {
+          buffer[cnt] *= audio_i2s.mic_gain;
+        }
+      }
       ucp = shine_encode_buffer_interleaved(s, buffer, &written);
 
       if (!audio_i2s.use_stream) {
@@ -290,6 +297,14 @@ void Cmd_MicRec(void) {
     }
   }
 
+}
+
+// mic gain in factor not percent
+void Cmd_MicGain(void) {
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 256)) {
+      audio_i2s.mic_gain = XdrvMailbox.payload;
+  }
+  ResponseCmndNumber(audio_i2s.mic_gain);
 }
 
 #endif // USE_SHINE
