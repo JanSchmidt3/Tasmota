@@ -425,6 +425,7 @@ struct SCRIPT_MEM {
     uint8_t *script_pram;
     uint16_t script_pram_size;
     uint8_t numvars;
+    uint8_t arres;
     void *script_mem;
     uint16_t script_mem_size;
     uint8_t script_dprec;
@@ -1293,9 +1294,9 @@ float *get_array_by_name(char *name, uint16_t *alen) {
 
 float Get_MFVal(uint8_t index, int16_t bind) {
   uint8_t *mp = (uint8_t*)glob_script_mem.mfilt;
-  for (uint8_t count = 0; count<MAXFILT; count++) {
+  for (uint8_t count = 0; count < MAXFILT; count++) {
     struct M_FILT *mflp = (struct M_FILT*)mp;
-    if (count==index) {
+    if (count == index) {
         uint16_t maxind = mflp->numvals & AND_FILT_MASK;
         if (!bind) {
           return mflp->index;
@@ -1320,12 +1321,11 @@ float Get_MFVal(uint8_t index, int16_t bind) {
 
 void Set_MFVal(uint8_t index, uint16_t bind, float val) {
   uint8_t *mp = (uint8_t*)glob_script_mem.mfilt;
-  for (uint8_t count = 0; count<MAXFILT; count++) {
+  for (uint8_t count = 0; count < MAXFILT; count++) {
     struct M_FILT *mflp = (struct M_FILT*)mp;
-    if (count==index) {
+    if (count == index) {
         uint16_t maxind = mflp->numvals & AND_FILT_MASK;
         if (!bind) {
-
           if (val < 0) {
             // shift whole array by value
           } else {
@@ -1335,7 +1335,7 @@ void Set_MFVal(uint8_t index, uint16_t bind, float val) {
           }
         } else {
           if (bind >= 1 && bind <= maxind) {
-            mflp->rbuff[bind-1] = val;
+            mflp->rbuff[bind - 1] = val;
           }
         }
         return;
@@ -1347,9 +1347,9 @@ void Set_MFVal(uint8_t index, uint16_t bind, float val) {
 
 float Get_MFilter(uint8_t index) {
   uint8_t *mp = (uint8_t*)glob_script_mem.mfilt;
-  for (uint8_t count = 0; count<MAXFILT; count++) {
+  for (uint8_t count = 0; count < MAXFILT; count++) {
     struct M_FILT *mflp = (struct M_FILT*)mp;
-    if (count==index) {
+    if (count == index) {
       if (mflp->numvals & OR_FILT_MASK) {
         // moving average
         return mflp->maccu / (mflp->numvals & AND_FILT_MASK);
@@ -2110,6 +2110,7 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
       olen = strlen(dvnam);
     }
 
+    glob_script_mem.arres = 0;
     for (count = 0; count < glob_script_mem.numvars; count++) {
         char *cp = glob_script_mem.glob_vnp + glob_script_mem.vnp_offset[count];
         uint8_t slen = strlen(cp);
@@ -2129,6 +2130,7 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
                         len = 1;
                       } else {
                         fvar = Get_MFilter(index);
+                        glob_script_mem.arres = 1;
                       }
                     } else {
                       if (ja) continue;
@@ -6371,6 +6373,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                   // found variable as result
                   globvindex = ind.index; // save destination var index here
                   if (gv) globaindex = gv->numind;
+                  else globaindex = -1;
                   uint8_t index = glob_script_mem.type[ind.index].index;
                   if ((vtype&STYPE)==0) {
                       // numeric result
@@ -6381,7 +6384,6 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                         } else {
                           sysv_type = 0;
                         }
-
                       } else {
                         dfvar = &glob_script_mem.fvars[index];
                         sysv_type = 0;
@@ -6395,15 +6397,20 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                         lp = eval_sub(lp, &fvar, 0);
                       } else {
 #endif
-                        char *slp = lp;
-                        glob_script_mem.glob_error = 0;
-                        //Serial.printf("Stack 1: %d\n",GetStack());
-                        lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-                        if (glob_script_mem.glob_error == 1) {
-                          // mismatch was string, not number
-                          // get the string and convert to number
-                          lp = isvar(slp, &vtype, &ind, 0, cmpstr, gv);
-                          fvar = CharToFloat(cmpstr);
+                        SCRIPT_SKIP_SPACES
+                        if ( (glob_script_mem.arres > 0) && (lastop == OPER_EQU) && (*lp == '{') ) {
+                          glob_script_mem.arres = 2;
+                        } else {
+                          char *slp = lp;
+                          glob_script_mem.glob_error = 0;
+                          //Serial.printf("Stack 1: %d\n",GetStack());
+                          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+                          if (glob_script_mem.glob_error == 1) {
+                            // mismatch was string, not number
+                            // get the string and convert to number
+                            lp = isvar(slp, &vtype, &ind, 0, cmpstr, gv);
+                            fvar = CharToFloat(cmpstr);
+                          }
                         }
 #ifdef SCRIPT_LM_SUB
                       }
@@ -6461,6 +6468,18 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                         if (globaindex >= 0) {
                           Set_MFVal(glob_script_mem.type[globvindex].index, globaindex, *dfvar);
                         } else {
+                          if (glob_script_mem.arres == 2) {
+                            // fetch var preset
+                            lp++;
+                            while (*lp && *lp != SCRIPT_EOL) {
+                              if (*lp == '}') {
+                                lp++;
+                                break;
+                              }
+                              lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+                              Set_MFilter(glob_script_mem.type[globvindex].index, fvar);
+                            }
+                          }
                           Set_MFilter(glob_script_mem.type[globvindex].index, *dfvar);
                         }
                       }

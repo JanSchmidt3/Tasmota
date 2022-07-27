@@ -217,6 +217,13 @@ int32_t I2S_Init_0(void) {
     audio_i2s.ws = DAC_IIS_WS;
     audio_i2s.dout = DAC_IIS_DOUT;
     audio_i2s.din = DAC_IIS_DIN;
+
+    audio_i2s.mic_mclk = audio_i2s.mclk;
+    audio_i2s.mic_bclk = audio_i2s.bclk;
+    audio_i2s.mic_ws = audio_i2s.ws;
+    audio_i2s.mic_dout = audio_i2s.dout;
+    audio_i2s.mic_din = audio_i2s.din;
+    audio_i2s.mic_port = (i2s_port_t)0;
 #else
 #ifdef USE_I2S_NO_DAC
   if (PinUsed(GPIO_I2S_DOUT)) {
