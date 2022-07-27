@@ -6482,8 +6482,9 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                               lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
                               Set_MFilter(glob_script_mem.type[globvindex].index, fvar);
                             }
+                          }  else {
+                              Set_MFilter(glob_script_mem.type[globvindex].index, *dfvar);
                           }
-                          Set_MFilter(glob_script_mem.type[globvindex].index, *dfvar);
                         }
                       }
 
