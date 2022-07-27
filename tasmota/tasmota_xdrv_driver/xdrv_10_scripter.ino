@@ -60,6 +60,10 @@ keywords if then else endif, or, and are better readable for beginners (others m
 #define SCRIPT_MAXSSIZE 48
 #endif
 
+#ifndef SCRIPT_CMDMEM
+#define SCRIPT_CMDMEM 512
+#endif
+
 
 #define SCRIPT_EOL '\n'
 #define SCRIPT_FLOAT_PRECISION 2
@@ -6284,7 +6288,6 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                 }
                 char *slp = lp;
                 SCRIPT_SKIP_SPACES
-                #define SCRIPT_CMDMEM 512
                 char *cmdmem = (char*)malloc(SCRIPT_CMDMEM);
                 if (cmdmem) {
                   char *cmd = cmdmem;
