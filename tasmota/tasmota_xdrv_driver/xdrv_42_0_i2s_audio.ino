@@ -199,6 +199,15 @@ void Cmd_MicRec(void);
 void Cmd_wav2mp3(void);
 void Cmd_Time(void);
 
+void copy_micpars(uint32_t port) {
+  audio_i2s.mic_mclk = audio_i2s.mclk;
+  audio_i2s.mic_bclk = audio_i2s.bclk;
+  audio_i2s.mic_ws = audio_i2s.ws;
+  audio_i2s.mic_dout = audio_i2s.dout;
+  audio_i2s.mic_din = audio_i2s.din;
+  audio_i2s.mic_port = (i2s_port_t)port;
+}
+
 int32_t I2S_Init_0(void) {
 
   audio_i2s.i2s_port = (i2s_port_t)0;
@@ -218,12 +227,8 @@ int32_t I2S_Init_0(void) {
     audio_i2s.dout = DAC_IIS_DOUT;
     audio_i2s.din = DAC_IIS_DIN;
 
-    audio_i2s.mic_mclk = audio_i2s.mclk;
-    audio_i2s.mic_bclk = audio_i2s.bclk;
-    audio_i2s.mic_ws = audio_i2s.ws;
-    audio_i2s.mic_dout = audio_i2s.dout;
-    audio_i2s.mic_din = audio_i2s.din;
-    audio_i2s.mic_port = (i2s_port_t)0;
+    copy_micpars(0);
+
 #else
 #ifdef USE_I2S_NO_DAC
   if (PinUsed(GPIO_I2S_DOUT)) {
@@ -243,12 +248,7 @@ int32_t I2S_Init_0(void) {
     audio_i2s.dout = Pin(GPIO_I2S_DOUT);
     audio_i2s.din = Pin(GPIO_I2S_DIN);
 
-    audio_i2s.mic_mclk = audio_i2s.mclk;
-    audio_i2s.mic_bclk = audio_i2s.bclk;
-    audio_i2s.mic_ws = audio_i2s.ws;
-    audio_i2s.mic_dout = audio_i2s.dout;
-    audio_i2s.mic_din = audio_i2s.din;
-    audio_i2s.mic_port = (i2s_port_t)0;
+    copy_micpars(0);
 
     // check if 2 ports used, use second for micro
     if (PinUsed(GPIO_I2S_BCLK, 1) && PinUsed(GPIO_I2S_WS, 1) && PinUsed(GPIO_I2S_DIN, 1)) {
@@ -273,12 +273,7 @@ int32_t I2S_Init_0(void) {
     audio_i2s.dout = Pin(GPIO_I2S_DOUT, 1);
     audio_i2s.din = Pin(GPIO_I2S_DIN, 1);
 
-    audio_i2s.mic_mclk = audio_i2s.mclk;
-    audio_i2s.mic_bclk = audio_i2s.bclk;
-    audio_i2s.mic_ws = audio_i2s.ws;
-    audio_i2s.mic_dout = audio_i2s.dout;
-    audio_i2s.mic_din = audio_i2s.din;
-    audio_i2s.mic_port = (i2s_port_t)1;
+    copy_micpars(1);
 
   } else {
     return -1;
