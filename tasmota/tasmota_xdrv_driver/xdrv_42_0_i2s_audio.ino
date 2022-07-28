@@ -520,12 +520,17 @@ void Play_mp3(const char *path) {
   if (I2S_Task) {
     xTaskCreatePinnedToCore(mp3_task, "MP3", 8192, NULL, 3, &audio_i2s.mp3_task_h, 1);
   } else {
+#define MP3_TIMEOUT 30000
+    uint32_t tout = millis();
     while (audio_i2s.mp3->isRunning()) {
       if (!audio_i2s.mp3->loop()) {
         audio_i2s.mp3->stop();
         break;
       }
       OsWatchLoop();
+      if (millis()-tout > MP3_TIMEOUT) {
+        break;
+      }
     }
     audio_i2s.out->stop();
     mp3_delete();
