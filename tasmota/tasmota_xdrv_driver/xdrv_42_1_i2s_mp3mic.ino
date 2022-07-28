@@ -112,8 +112,6 @@ esp_err_t err = ESP_OK;
 #include <layer3.h>
 #include <types.h>
 
-#define MP3HANDLECLIENT audio_i2s.MP3Server->handleClient();
-
 // micro to mp3 file or stream
 void mic_task(void *arg){
   int8_t error = 0;
@@ -144,7 +142,6 @@ void mic_task(void *arg){
     audio_i2s.client.setTimeout(3);
     audio_i2s.client.print("HTTP/1.1 200 OK\r\n"
     "Content-Type: audio/mpeg;\r\n\r\n");
-    MP3HANDLECLIENT
   }
 
   shine_set_config_mpeg_defaults(&config.mpeg);
@@ -199,7 +196,7 @@ void mic_task(void *arg){
         }
       } else {
         audio_i2s.client.write((const char*)ucp, written);
-        MP3HANDLECLIENT
+
         if (!audio_i2s.client.connected()) {
           break;
         }
@@ -213,7 +210,6 @@ void mic_task(void *arg){
     mp3_out.write(ucp, written);
   } else {
     audio_i2s.client.write((const char*)ucp, written);
-    MP3HANDLECLIENT
   }
 
 
@@ -230,7 +226,6 @@ exit:
 
   if (audio_i2s.use_stream) {
     audio_i2s.client.stop();
-    MP3HANDLECLIENT
   }
 
   SpeakerMic(MODE_SPK);
