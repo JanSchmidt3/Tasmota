@@ -6319,7 +6319,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                     if (!sflag) {
                       tasm_cmd_activ = 1;
                       AddLog(glob_script_mem.script_loglevel&0x7f, PSTR("Script: performs \"%s\""), tmp);
-                    } else if (sflag==2) {
+                    } else if (sflag == 2) {
                       // allow recursive call
                     } else {
                       tasm_cmd_activ = 1;
@@ -6330,7 +6330,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                     }
                     ExecuteCommand((char*)tmp, SRC_RULE);
                     tasm_cmd_activ = 0;
-                    if (sflag==1) {
+                    if (sflag == 1) {
                       Settings->flag.mqtt_enabled = svmqtt;  // SetOption3  - Enable MQTT
                       Settings->weblog_level = swll;
                     }
