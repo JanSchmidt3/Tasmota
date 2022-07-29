@@ -63,6 +63,7 @@ keywords if then else endif, or, and are better readable for beginners (others m
 #ifndef SCRIPT_CMDMEM
 #define SCRIPT_CMDMEM 512
 #endif
+#define MAX_SCRIPT_CMDBUFFER 4096
 
 
 #define SCRIPT_EOL '\n'
@@ -239,7 +240,7 @@ extern Renderer *renderer;
 #endif
 
 enum {OPER_EQU=1,OPER_PLS,OPER_MIN,OPER_MUL,OPER_DIV,OPER_PLSEQU,OPER_MINEQU,OPER_MULEQU,OPER_DIVEQU,OPER_EQUEQU,OPER_NOTEQU,OPER_GRTEQU,OPER_LOWEQU,OPER_GRT,OPER_LOW,OPER_PERC,OPER_XOR,OPER_AND,OPER_OR,OPER_ANDEQU,OPER_OREQU,OPER_XOREQU,OPER_PERCEQU,OPER_SHLEQU,OPER_SHREQU,OPER_SHL,OPER_SHR};
-enum {SCRIPT_LOGLEVEL=1,SCRIPT_TELEPERIOD,SCRIPT_EVENT_HANDLED,SML_JSON_ENABLE,SCRIPT_EPOFFS};
+enum {SCRIPT_LOGLEVEL=1,SCRIPT_TELEPERIOD,SCRIPT_EVENT_HANDLED,SML_JSON_ENABLE,SCRIPT_EPOFFS,SCRIPT_CBSIZE};
 
 
 #ifdef USE_UFILESYS
@@ -443,6 +444,7 @@ struct SCRIPT_MEM {
     uint8_t siro_num[3];
     uint8_t sind_num;
     char *last_index_string[3];
+    uint16_t cmdbuffer_size = SCRIPT_CMDMEM / 2;
 
 #ifdef USE_SCRIPT_FATFS
     File files[SFS_MAX];
@@ -2520,7 +2522,11 @@ chknext:
           goto strexit;
         }
 #endif // USE_FEXTRACT
-
+        if (!strncmp(lp, "cbs", 3)) {
+          fvar = glob_script_mem.cmdbuffer_size;
+          tind->index = SCRIPT_CBSIZE;
+          goto exit_settable;
+        }
         break;
       case 'd':
         if (!strncmp(vname, "day", 3)) {
@@ -6288,11 +6294,11 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                 }
                 char *slp = lp;
                 SCRIPT_SKIP_SPACES
-                char *cmdmem = (char*)malloc(SCRIPT_CMDMEM);
+                char *cmdmem = (char*)malloc(glob_script_mem.cmdbuffer_size * 2);
                 if (cmdmem) {
                   char *cmd = cmdmem;
                   uint16_t count;
-                  for (count = 0; count<SCRIPT_CMDMEM/2-2; count++) {
+                  for (count = 0; count < glob_script_mem.cmdbuffer_size-2; count++) {
                     //if (*lp=='\r' || *lp=='\n' || *lp=='}') {
                     if (!*lp || *lp=='\r' || *lp=='\n') {
                         cmd[count] = 0;
@@ -6302,8 +6308,8 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                   }
                   //AddLog(LOG_LEVEL_INFO, tmp);
                   // replace vars in cmd
-                  char *tmp = cmdmem + SCRIPT_CMDMEM / 2;
-                  Replace_Cmd_Vars(cmd, 0, tmp, SCRIPT_CMDMEM / 2);
+                  char *tmp = cmdmem + glob_script_mem.cmdbuffer_size;
+                  Replace_Cmd_Vars(cmd, 0, tmp, glob_script_mem.cmdbuffer_size);
                   //toSLog(tmp);
 
                   if (!strncmp(tmp, "print", 5) || pflg) {
@@ -6503,6 +6509,12 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                             break;
                           case SCRIPT_EPOFFS:
                             glob_script_mem.epoch_offset = *dfvar;
+                            break;
+                          case SCRIPT_CBSIZE:
+                            if (*dfvar > MAX_SCRIPT_CMDBUFFER) {
+                              *dfvar = MAX_SCRIPT_CMDBUFFER;
+                            }
+                            glob_script_mem.cmdbuffer_size = *dfvar;
                             break;
 #if defined(USE_SML_M) && defined (USE_SML_SCRIPT_CMD)
                           case SML_JSON_ENABLE:
