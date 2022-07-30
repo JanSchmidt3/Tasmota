@@ -135,8 +135,9 @@ struct AUDIO_I2S_t {
 
 } audio_i2s;
 
-
+#ifndef MIC_CHANNELS
 #define MIC_CHANNELS 1
+#endif
 
 #ifdef USE_TTGO_WATCH
 #undef AUDIO_PWR_ON
