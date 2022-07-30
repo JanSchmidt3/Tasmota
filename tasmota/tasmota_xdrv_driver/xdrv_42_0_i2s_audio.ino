@@ -71,7 +71,7 @@
 #define MODE_MIC 0
 #define MODE_SPK 1
 #ifndef MICSRATE
-#define MICSRATE 16000
+#define MICSRATE 32000
 #endif
 #endif // ESP32
 
@@ -130,6 +130,8 @@ struct AUDIO_I2S_t {
   WiFiClient client;
   ESP8266WebServer *MP3Server;
 #endif
+
+  uint8_t mode;
 
 } audio_i2s;
 
@@ -302,6 +304,9 @@ int32_t I2S_Init_0(void) {
 
 #endif  // USE_I2S_EXTERNAL_DAC
 
+  audio_i2s.mode = MODE_SPK;
+
+
   return 0;
 }
 
@@ -315,8 +320,8 @@ void I2S_Init(void) {
     return;
   }
 
-  audio_i2s.is2_volume=10;
-  audio_i2s.out->SetGain(((float)audio_i2s.is2_volume/100.0)*4.0);
+  audio_i2s.is2_volume = 10;
+  audio_i2s.out->SetGain(((float)audio_i2s.is2_volume / 100.0) * 4.0);
   audio_i2s.out->stop();
   audio_i2s.mp3ram = nullptr;
 

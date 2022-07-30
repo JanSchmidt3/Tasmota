@@ -29,10 +29,14 @@ esp_err_t err = ESP_OK;
 
   if (spkr == MODE_SPK) {
     if (audio_i2s.mic_port == 0) {
+      if (audio_i2s.mode != MODE_SPK) {
+        i2s_driver_uninstall(audio_i2s.mic_port);
+      }
       I2S_Init_0();
-      audio_i2s.out->SetGain(((float)(audio_i2s.is2_volume-2)/100.0)*4.0);
+      audio_i2s.out->SetGain(((float)(audio_i2s.is2_volume - 2) / 100.0) * 4.0);
       audio_i2s.out->stop();
     }
+    audio_i2s.mode = spkr;
     return 0;
   }
 
@@ -44,7 +48,9 @@ esp_err_t err = ESP_OK;
       delete audio_i2s.out;
       audio_i2s.out = nullptr;
     }
-    i2s_driver_uninstall(audio_i2s.i2s_port);
+    if (audio_i2s.mode == MODE_SPK) {
+      i2s_driver_uninstall(audio_i2s.i2s_port);
+    }
   }
 
   // config mic
@@ -103,6 +109,9 @@ esp_err_t err = ESP_OK;
     mode = I2S_CHANNEL_STEREO;
   }
   err += i2s_set_clk(audio_i2s.mic_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, mode);
+
+
+  audio_i2s.mode = spkr;
 
   return err;
 }
@@ -231,7 +240,7 @@ exit:
   SpeakerMic(MODE_SPK);
   audio_i2s.mic_stop = 0;
   audio_i2s.mic_error = error;
-  AddLog(LOG_LEVEL_INFO, PSTR("mp3task error: %d"), error);
+  AddLog(LOG_LEVEL_INFO, PSTR("mp3task result code: %d"), error);
   audio_i2s.mic_task_h = 0;
   audio_i2s.recdur = 0;
   audio_i2s.stream_active = 0;
