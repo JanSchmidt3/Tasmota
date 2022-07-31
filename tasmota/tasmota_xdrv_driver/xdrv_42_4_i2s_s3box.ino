@@ -137,4 +137,94 @@ void S3boxInit() {
   }
 }
 #endif // ESP32S3_BOX
+
+
+#ifdef USE_W8960
+
+#define W8960_ADDR 0x1a
+
+void W8960_Write(uint8_t reg_addr, uint16_t data) {
+  Wire1.beginTransmission(W8960_ADDR);
+  Wire1.write(reg_addr);
+  Wire1.write(data);
+  Wire1.endTransmission();
+}
+
+void W8960_Init(void) {
+
+  if (!TasmotaGlobal.i2c_enabled_2) {
+    return;
+  }
+
+  if (I2cSetDevice(W8960_ADDR, 1)) {
+    I2cSetActiveFound(W8960_ADDR, "W8960-I2C", 1);
+    // reset
+    W8960_Write(0x0f, 0x0000);
+
+    // enable dac and adc
+    W8960_Write(0x19, (1<<8)|(1<<7)|(1<<6)|(1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1));
+    // left speaker not used
+    W8960_Write(0x1A, (1<<8)|(1<<7)|(1<<6)|(1<<5)|(1<<4)|(1<<3));
+    W8960_Write(0x2F, (1<<5)|(1<<4)|(1<<3)|(1<<2));
+
+    // Configure clock
+    W8960_Write(0x04, 0x0000);
+
+    // Configure ADC/DAC
+    W8960_Write(0x05, 0x0000);
+
+    // Configure audio interface
+    // I2S format 16 bits word length
+    //W8960_Write(0x07 0x0002)
+    W8960_Write(0x07, 0x0022);
+
+    // Configure HP_L and HP_R OUTPUTS
+    W8960_Write(0x02, 0x017f);
+    W8960_Write(0x03, 0x017f);
+
+    // Configure SPK_RP and SPK_RN
+    W8960_Write(0x28, 0x0177);
+    W8960_Write(0x29, 0x0177);
+
+    // Enable the OUTPUTS, only right speaker is wired
+    W8960_Write(0x31, 0x0080);
+
+    // Configure DAC volume
+    W8960_Write(0x0a, 0x01FF);
+    W8960_Write(0x0b, 0x01FF);
+
+    // Configure MIXER
+    W8960_Write(0x22,  (1<<8)|(1<<7));
+    W8960_Write(0x25,  (1<<8)|(1<<7));
+
+    // Jack Detect
+    //W8960_Write(0x18, (1<<6)|(0<<5));
+    //W8960_Write(0x17, 0x01C3);
+    //W8960_Write(0x30, 0x0009);
+
+    //  input volume
+    W8960_Write(0x00,  0x0127);
+    W8960_Write(0x01,  0x0127);
+
+    //  set ADC Volume
+    W8960_Write(0x15,  0x01c3);
+    W8960_Write(0x16,  0x01c3);
+
+    // disable bypass switch
+    W8960_Write(0x2d,  0x0000);
+    W8960_Write(0x2e,  0x0000);
+
+    // connect LINPUT1 to PGA and set PGA Boost Gain.
+    W8960_Write(0x20, 0x0020|(1<<8)|(1<<3));
+    W8960_Write(0x21, 0x0020|(1<<8)|(1<<3));
+
+  }
+
+
+
+
+
+}
+#endif // USE_W8960
+
 #endif // ESP32

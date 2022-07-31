@@ -21,7 +21,6 @@
 #ifdef ESP32
 #if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
 
-#define MP3_BOUNDARY "e8b8c539-047d-4777-a985-fbba6edff11e"
 
 uint32_t SpeakerMic(uint8_t spkr) {
 esp_err_t err = ESP_OK;
@@ -151,6 +150,7 @@ void mic_task(void *arg){
     audio_i2s.client.setTimeout(3);
     audio_i2s.client.print("HTTP/1.1 200 OK\r\n"
     "Content-Type: audio/mpeg;\r\n\r\n");
+    //"Content-Type: audio/mp3;\r\n\r\n");
   }
 
   shine_set_config_mpeg_defaults(&config.mpeg);

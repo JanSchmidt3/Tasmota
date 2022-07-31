@@ -30,6 +30,7 @@ void i2s_mp3_init(uint32_t on) {
     if (!audio_i2s.MP3Server) {
       audio_i2s.MP3Server = new ESP8266WebServer(81);
       audio_i2s.MP3Server->on(PSTR("/stream.mp3"), Stream_mp3);
+      audio_i2s.MP3Server->on(PSTR("/stream.m3a"), Stream_mp3);
       audio_i2s.MP3Server->begin();
       AddLog(LOG_LEVEL_INFO, PSTR("MP3: server created"));
     }

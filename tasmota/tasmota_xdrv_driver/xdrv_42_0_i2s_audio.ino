@@ -317,6 +317,10 @@ void I2S_Init(void) {
       S3boxInit();
   #endif
 
+  #ifdef USE_W8960
+      W8960_Init();
+  #endif
+
   if (I2S_Init_0()) {
     return;
   }
