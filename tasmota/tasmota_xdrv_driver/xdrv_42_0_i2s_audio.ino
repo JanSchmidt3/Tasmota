@@ -313,17 +313,17 @@ int32_t I2S_Init_0(void) {
 
 void I2S_Init(void) {
 
-  #if defined(ESP32) && defined(ESP32S3_BOX)
-      S3boxInit();
-  #endif
-
-  #ifdef USE_W8960
-      W8960_Init();
-  #endif
-
   if (I2S_Init_0()) {
     return;
   }
+
+#if defined(ESP32) && defined(ESP32S3_BOX)
+  S3boxInit();
+#endif
+
+#ifdef USE_W8960
+  W8960_Init();
+#endif
 
   audio_i2s.is2_volume = 10;
   audio_i2s.out->SetGain(((float)audio_i2s.is2_volume / 100.0) * 4.0);

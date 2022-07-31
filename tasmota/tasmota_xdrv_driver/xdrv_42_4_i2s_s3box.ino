@@ -144,6 +144,9 @@ void S3boxInit() {
 #define W8960_ADDR 0x1a
 
 void W8960_Write(uint8_t reg_addr, uint16_t data) {
+  reg_addr <<= 1;
+  reg_addr !=  ((data >> 8) & 1);
+  data &= 0xff;
   Wire1.beginTransmission(W8960_ADDR);
   Wire1.write(reg_addr);
   Wire1.write(data);
@@ -160,6 +163,7 @@ void W8960_Init(void) {
     I2cSetActiveFound(W8960_ADDR, "W8960-I2C", 1);
     // reset
     W8960_Write(0x0f, 0x0000);
+    delay(10);
 
     // enable dac and adc
     W8960_Write(0x19, (1<<8)|(1<<7)|(1<<6)|(1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1));
@@ -194,8 +198,8 @@ void W8960_Init(void) {
     W8960_Write(0x0b, 0x01FF);
 
     // Configure MIXER
-    W8960_Write(0x22,  (1<<8)|(1<<7));
-    W8960_Write(0x25,  (1<<8)|(1<<7));
+    W8960_Write(0x22, (1<<8)|(1<<7));
+    W8960_Write(0x25, (1<<8)|(1<<7));
 
     // Jack Detect
     //W8960_Write(0x18, (1<<6)|(0<<5));
@@ -203,26 +207,22 @@ void W8960_Init(void) {
     //W8960_Write(0x30, 0x0009);
 
     //  input volume
-    W8960_Write(0x00,  0x0127);
-    W8960_Write(0x01,  0x0127);
+    W8960_Write(0x00, 0x0127);
+    W8960_Write(0x01, 0x0127);
 
     //  set ADC Volume
-    W8960_Write(0x15,  0x01c3);
-    W8960_Write(0x16,  0x01c3);
+    W8960_Write(0x15, 0x01c3);
+    W8960_Write(0x16, 0x01c3);
 
     // disable bypass switch
-    W8960_Write(0x2d,  0x0000);
-    W8960_Write(0x2e,  0x0000);
+    W8960_Write(0x2d, 0x0000);
+    W8960_Write(0x2e, 0x0000);
 
     // connect LINPUT1 to PGA and set PGA Boost Gain.
     W8960_Write(0x20, 0x0020|(1<<8)|(1<<3));
     W8960_Write(0x21, 0x0020|(1<<8)|(1<<3));
 
   }
-
-
-
-
 
 }
 #endif // USE_W8960
