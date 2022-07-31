@@ -150,6 +150,8 @@ void mic_task(void *arg){
     audio_i2s.client.setTimeout(3);
     audio_i2s.client.print("HTTP/1.1 200 OK\r\n"
     "Content-Type: audio/mpeg;\r\n\r\n");
+
+   //  Webserver->send(200, "application/octet-stream", "");
     //"Content-Type: audio/mp3;\r\n\r\n");
   }
 
