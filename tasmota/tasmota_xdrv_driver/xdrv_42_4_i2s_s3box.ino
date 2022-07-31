@@ -145,7 +145,7 @@ void S3boxInit() {
 
 void W8960_Write(uint8_t reg_addr, uint16_t data) {
   reg_addr <<= 1;
-  reg_addr !=  ((data >> 8) & 1);
+  reg_addr |=  ((data >> 8) & 1);
   data &= 0xff;
   Wire1.beginTransmission(W8960_ADDR);
   Wire1.write(reg_addr);
@@ -161,6 +161,7 @@ void W8960_Init(void) {
 
   if (I2cSetDevice(W8960_ADDR, 1)) {
     I2cSetActiveFound(W8960_ADDR, "W8960-I2C", 1);
+
     // reset
     W8960_Write(0x0f, 0x0000);
     delay(10);
