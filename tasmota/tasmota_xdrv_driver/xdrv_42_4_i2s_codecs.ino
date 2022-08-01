@@ -69,7 +69,6 @@ uint32_t es7243e_init() {
     }
 
     return ret_val;
-}
 
 // box adc init
 uint32_t es7210_init() {
@@ -226,6 +225,33 @@ void W8960_Init(void) {
   }
 
 }
+
+void W8960_SetGain(uint8_t sel, uint16_t value) {
+  switch (sel) {
+    case 0:
+      // output dac in 0.5 db steps
+      value &= 0x00ff;
+      value |= 0x0100;
+      W8960_Write(0x0a, value);
+      W8960_Write(0x0b, value);
+      break;
+    case 1:
+      // input pga in 0.75 db steps
+      value &= 0x001f;
+      value |= 0x0120;
+      W8960_Write(0x00, value);
+      W8960_Write(0x01, value);
+      break;
+    case 2:
+      // adc in 0.5 db steps
+      value &= 0x00ff;
+      value |= 0x0100;
+      W8960_Write(0x15, value);
+      W8960_Write(0x16, value);
+      break;
+  }
+}
+
 #endif // USE_W8960
 
 #endif // ESP32
