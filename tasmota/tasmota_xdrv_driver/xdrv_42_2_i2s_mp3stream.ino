@@ -4,6 +4,11 @@
 
 #ifdef MP3_MIC_STREAM
 
+#ifndef MP3_STREAM_PORT
+#define MP3_STREAM_PORT 82
+#endif
+
+
 void Stream_mp3(void) {
   if (!audio_i2s.stream_enable) {
     return;
@@ -28,7 +33,7 @@ void i2s_mp3_loop(void) {
 void i2s_mp3_init(uint32_t on) {
   if (on) {
     if (!audio_i2s.MP3Server) {
-      audio_i2s.MP3Server = new ESP8266WebServer(81);
+      audio_i2s.MP3Server = new ESP8266WebServer(MP3_STREAM_PORT);
       audio_i2s.MP3Server->on(PSTR("/stream.mp3"), Stream_mp3);
       audio_i2s.MP3Server->on(PSTR("/stream.m3a"), Stream_mp3);
       audio_i2s.MP3Server->begin();

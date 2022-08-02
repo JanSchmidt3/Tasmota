@@ -27,7 +27,7 @@ esp_err_t err = ESP_OK;
 
 
   if (spkr == MODE_SPK) {
-    if (audio_i2s.mic_port == 0) {
+    if (audio_i2s.i2s_port == audio_i2s.mic_port) {
       if (audio_i2s.mode != MODE_SPK) {
         i2s_driver_uninstall(audio_i2s.mic_port);
       }
@@ -40,7 +40,7 @@ esp_err_t err = ESP_OK;
   }
 
   // set micro
-  if (audio_i2s.mic_port == 0) {
+  if (audio_i2s.i2s_port == audio_i2s.mic_port) {
     // close audio out
     if (audio_i2s.out) {
       audio_i2s.out->stop();

@@ -16,8 +16,7 @@
   "connectivity": [
     "wifi",
     "bluetooth",
-    "ethernet",
-    "can"
+    "ethernet"
   ],
   "debug": {
     "openocd_target": "esp32s3.cfg"

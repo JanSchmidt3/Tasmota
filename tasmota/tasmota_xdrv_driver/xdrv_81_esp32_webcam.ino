@@ -370,6 +370,9 @@ uint32_t WcSetup(int32_t fsiz) {
 
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: User template"));
   } else {
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+    return 0;
+#else
     // defaults to AI THINKER
     config.pin_d0 = Y2_GPIO_NUM;
     config.pin_d1 = Y3_GPIO_NUM;
@@ -388,6 +391,7 @@ uint32_t WcSetup(int32_t fsiz) {
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Default template"));
+#endif
   }
 
   int32_t ledc_channel = analogAttach(config.pin_xclk);
