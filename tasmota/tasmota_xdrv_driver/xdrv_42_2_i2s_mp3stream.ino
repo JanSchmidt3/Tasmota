@@ -5,7 +5,7 @@
 #ifdef MP3_MIC_STREAM
 
 #ifndef MP3_STREAM_PORT
-#define MP3_STREAM_PORT 82
+#define MP3_STREAM_PORT 83
 #endif
 
 
