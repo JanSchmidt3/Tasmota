@@ -69,7 +69,7 @@ uint32_t es7243e_init() {
     }
 
     return ret_val;
-
+}
 // box adc init
 uint32_t es7210_init() {
   uint32_t ret_val = ESP_OK;
