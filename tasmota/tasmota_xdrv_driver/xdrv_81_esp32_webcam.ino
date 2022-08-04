@@ -1078,9 +1078,9 @@ void WcInit(void) {
     WcSetDefaults(1);
     Settings->webcam_config2.upgraded = 1;
   }
-  //if (!WcSetup(Settings->webcam_config.resolution)) {
-    //Settings->webcam_config.stream = 0;
-  //}
+  if (!WcSetup(Settings->webcam_config.resolution)) {
+    Settings->webcam_config.stream = 0;
+  }
 }
 
 /*********************************************************************************************\
