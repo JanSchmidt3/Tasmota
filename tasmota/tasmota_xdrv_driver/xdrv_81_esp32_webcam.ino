@@ -424,15 +424,7 @@ uint32_t WcSetup(int32_t fsiz) {
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: PSRAM not found"));
   }
 
-//  AddLog(LOG_LEVEL_INFO, PSTR("CAM: heap check 1: %d"),ESP_getFreeHeap());
-
-  // stupid workaround camera diver eats up static ram should prefer PSRAM
-  // so we steal static ram to force driver to alloc PSRAM
-//  uint32_t maxfram = ESP.getMaxAllocHeap();
-//  void *x=malloc(maxfram-4096);
-  void *x = 0;
   esp_err_t err = esp_camera_init(&config);
-  if (x) { free(x); }
 
   if (err != ESP_OK) {
     AddLog(LOG_LEVEL_INFO, PSTR("CAM: Init failed with error 0x%x"), err);
@@ -1191,8 +1183,7 @@ void CmndWebcamStream(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
     Settings->webcam_config.stream = XdrvMailbox.payload;
     if (!Settings->webcam_config.stream) {
-      //WcSetup(-1);
-      WcInterruptControl(); }  // Stop stream
+      WcInterruptControl();  // Stop stream
     }
   }
   ResponseCmndStateText(Settings->webcam_config.stream);
