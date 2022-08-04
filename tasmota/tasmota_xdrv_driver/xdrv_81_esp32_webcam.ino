@@ -988,7 +988,11 @@ uint32_t WcSetStreamserver(uint32_t flag) {
 
 void WcInterruptControl() {
   WcSetStreamserver(Settings->webcam_config.stream);
-  WcSetup(Settings->webcam_config.resolution);
+  if (!Settings->webcam_config.stream) {
+    WcSetup(-1);
+  } else {
+    WcSetup(Settings->webcam_config.resolution);
+  }
 }
 
 /*********************************************************************************************/
@@ -1187,8 +1191,8 @@ void CmndWebcamStream(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
     Settings->webcam_config.stream = XdrvMailbox.payload;
     if (!Settings->webcam_config.stream) {
-      WcSetup(-1);
-      // WcInterruptControl(); }  // Stop stream
+      //WcSetup(-1);
+      WcInterruptControl(); }  // Stop stream
     }
   }
   ResponseCmndStateText(Settings->webcam_config.stream);
