@@ -8284,6 +8284,11 @@ String ScriptUnsubscribe(const char * data, int data_len)
 
 
 #if defined(ESP32) && defined(USE_UFILESYS) && defined(USE_SCRIPT_ALT_DOWNLOAD)
+
+#ifndef SCRIPT_DLPORT
+#define SCRIPT_DLPORT 82
+#endif
+
 ESP8266WebServer *http82_Server;
 bool download82_busy;
 
@@ -8343,15 +8348,15 @@ void WebServer82Init(void) {
   if (http82_Server != nullptr) {
     return;
   }
-  http82_Server = new ESP8266WebServer(82);
+  http82_Server = new ESP8266WebServer(SCRIPT_DLPORT);
   if (http82_Server != nullptr) {
     http82_Server->on(UriGlob("/ufs/*"), HTTP_GET, ScriptServeFile82);
     http82_Server->on("/", HTTP_GET, Handle82Root);
     http82_Server->onNotFound(Handle82NotFound);
     http82_Server->begin();
-    AddLog(LOG_LEVEL_INFO, PSTR("HTTP Server 82 started"));
+    AddLog(LOG_LEVEL_INFO, PSTR("HTTP DL Server started on port: %d "), SCRIPT_DLPORT);
   } else {
-    AddLog(LOG_LEVEL_INFO, PSTR("HTTP Server 82 failed"));
+    AddLog(LOG_LEVEL_INFO, PSTR("HTTP DL Server failed"));
   }
 }
 

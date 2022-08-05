@@ -5,7 +5,7 @@
 #ifdef MP3_MIC_STREAM
 
 #ifndef MP3_STREAM_PORT
-#define MP3_STREAM_PORT 83
+#define MP3_STREAM_PORT 81
 #endif
 
 
@@ -37,7 +37,7 @@ void i2s_mp3_init(uint32_t on) {
       audio_i2s.MP3Server->on(PSTR("/stream.mp3"), Stream_mp3);
       audio_i2s.MP3Server->on(PSTR("/stream.m3a"), Stream_mp3);
       audio_i2s.MP3Server->begin();
-      AddLog(LOG_LEVEL_INFO, PSTR("MP3: server created"));
+      AddLog(LOG_LEVEL_INFO, PSTR("MP3: server created on port: %d "), MP3_STREAM_PORT);
     }
   } else {
     if (audio_i2s.MP3Server) {
