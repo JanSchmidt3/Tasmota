@@ -448,7 +448,9 @@ uint32_t WcSetup(int32_t fsiz) {
 
   WcApplySettings();
 
-  AddLog(LOG_LEVEL_INFO, PSTR("CAM: Initialized"));
+  camera_sensor_info_t *info = esp_camera_sensor_get_info(&wc_s->id);
+
+  AddLog(LOG_LEVEL_INFO, PSTR("CAM: %s Initialized"), info->name);
 
   Wc.up = 1;
   if (psram) { Wc.up = 2; }
