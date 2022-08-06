@@ -3834,7 +3834,6 @@ chknext:
 #endif
 */
 
-//#ifdef ESP32
         if (!strncmp(lp, "rr(", 3)) {
           lp+=4;
           len = 0;
@@ -3848,7 +3847,6 @@ chknext:
           }
           goto strexit;
         }
-//#endif
         break;
 
       case 's':
