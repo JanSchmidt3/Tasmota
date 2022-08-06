@@ -67,13 +67,13 @@
 #define i2s_port_t uint8_t
 #endif
 
-#ifdef ESP32
 #define MODE_MIC 0
 #define MODE_SPK 1
+
 #ifndef MICSRATE
 #define MICSRATE 32000
 #endif
-#endif // ESP32
+
 
 struct AUDIO_I2S_t {
   uint8_t is2_volume; // should be in settings
@@ -105,6 +105,7 @@ struct AUDIO_I2S_t {
 #ifdef ESP32
   TaskHandle_t mp3_task_h;
   TaskHandle_t mic_task_h;
+#endif // ESP32
   uint32_t mic_size;
   uint32_t mic_rate;
   uint8_t *mic_buff;
@@ -121,7 +122,7 @@ struct AUDIO_I2S_t {
   uint8_t mic_gain = 1;
   bool use_stream = false;
   i2s_port_t mic_port;
-#endif // ESP32
+
 
 #ifdef USE_SHINE
   uint32_t recdur;
