@@ -4623,6 +4623,7 @@ extern char *SML_GetSVal(uint32_t index);
               script_sspi_trans(index, fpd, len, fvar);
               break;
           }
+          lp++;
           len = 0;
           goto exit;
         }
