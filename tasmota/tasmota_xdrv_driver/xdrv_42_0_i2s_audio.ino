@@ -312,7 +312,6 @@ int32_t I2S_Init_0(void) {
   audio_i2s.out->SetRate(MICSRATE);
 #endif
 
-
   return 0;
 }
 
