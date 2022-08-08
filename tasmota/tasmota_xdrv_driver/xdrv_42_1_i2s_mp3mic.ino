@@ -25,6 +25,7 @@
 uint32_t SpeakerMic(uint8_t spkr) {
 esp_err_t err = ESP_OK;
 
+#ifndef USE_I2S_COMMON_IO
 
   if (spkr == MODE_SPK) {
     if (audio_i2s.i2s_port == audio_i2s.mic_port) {
@@ -109,6 +110,7 @@ esp_err_t err = ESP_OK;
   }
   err += i2s_set_clk(audio_i2s.mic_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, mode);
 
+#endif // USE_I2S_COMMON_IO
 
   audio_i2s.mode = spkr;
 
