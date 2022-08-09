@@ -134,6 +134,14 @@ struct AUDIO_I2S_t {
 
   uint8_t mode;
 
+#ifdef I2S_BRIDGE
+  uint8_t bridge_mode;
+  WiFiUDP i2s_bridge_udp;
+  IPAddress i2s_bridge_ip;
+  TaskHandle_t i2s_bridge_h;
+#endif
+
+
 } audio_i2s;
 
 #ifndef MIC_CHANNELS
@@ -594,6 +602,9 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #ifdef MP3_MIC_STREAM
   "|STREAM"
 #endif // MP3_MIC_STREAM
+#ifdef I2S_BRIDGE
+  "|BRIDGE"
+#endif // I2S_BRIDGE
 #endif // USE_SHINE
 #endif  // ESP32
 ;
@@ -614,6 +625,9 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #ifdef MP3_MIC_STREAM
   ,&Cmd_MP3Stream
 #endif // MP3_MIC_STREAM
+#ifdef I2S_BRIDGE
+  ,&Cmd_I2SBridge
+#endif // I2S_BRIDGE
 #endif // USE_SHINE
 #endif // ESP32
 };
