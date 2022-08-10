@@ -2527,6 +2527,18 @@ chknext:
           tind->index = SCRIPT_CBSIZE;
           goto exit_settable;
         }
+#ifdef USE_W8960
+extern void W8960_SetGain(uint8_t sel, uint16_t value);
+
+        if (!strncmp(lp, "codec(", 6)) {
+          float sel;
+          lp = GetNumericArgument(lp + 6, OPER_EQU, &sel, gv);
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          W8960_SetGain(sel, fvar);
+          fvar = 0;
+          goto nfuncexit;
+        }
+#endif
         break;
       case 'd':
         if (!strncmp(vname, "day", 3)) {

@@ -75,6 +75,16 @@
 #endif
 
 
+typedef union {
+  uint8_t data;
+  struct {
+    uint8_t swap_speaker : 1;
+    uint8_t swap_mic : 1;
+    uint8_t mode : 3;
+  };
+} BRIDGE_MODE;
+
+
 struct AUDIO_I2S_t {
   uint8_t is2_volume; // should be in settings
   i2s_port_t i2s_port;
@@ -135,8 +145,9 @@ struct AUDIO_I2S_t {
   uint8_t mode;
 
 #ifdef I2S_BRIDGE
-  uint8_t bridge_mode;
+  BRIDGE_MODE bridge_mode;
   WiFiUDP i2s_bridge_udp;
+  WiFiUDP i2s_bridgec_udp;
   IPAddress i2s_bridge_ip;
   TaskHandle_t i2s_bridge_h;
 #endif
@@ -334,7 +345,7 @@ void I2S_Init(void) {
 #endif
 
 #ifdef USE_W8960
-  W8960_Init();
+  W8960_Init1();
 #endif
 
   audio_i2s.is2_volume = 10;
@@ -681,10 +692,16 @@ bool Xdrv42(uint8_t function) {
       break;
     case FUNC_LOOP:
       i2s_mp3_loop();
+#if defined(USE_I2S_MIC) && defined(I2S_BRIDGE)
+      i2s_bridge_loop();
+#endif
       break;
     case FUNC_WEB_ADD_HANDLER:
       audio_i2s.stream_enable = 1;
       i2s_mp3_init(1);
+#if defined(USE_I2S_MIC) && defined(I2S_BRIDGE)
+      I2SBridgeInit();
+#endif
       break;
 #endif
 #ifdef USE_WEBSERVER
