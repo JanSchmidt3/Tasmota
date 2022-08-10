@@ -20,8 +20,8 @@
 
 
 #ifdef ESP32
-#if (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX))
-#if defined(USE_I2S_MIC) && defined(I2S_BRIDGE)
+#if (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC))
+#ifdef I2S_BRIDGE
 
 #ifndef I2S_BRIDGE_PORT
 #define I2S_BRIDGE_PORT 6970
@@ -42,6 +42,7 @@ void i2s_bridge_init(uint8_t mode) {
     audio_i2s.i2s_bridge_udp.flush();
     audio_i2s.i2s_bridge_udp.stop();
     SendBridgeCmd(I2S_BRIDGE_MODE_OFF);
+    AUDIO_PWR_OFF
   } else {
     audio_i2s.i2s_bridge_udp.begin(I2S_BRIDGE_PORT);
     xTaskCreatePinnedToCore(i2s_bridge_task, "BRIDGE", 8192, NULL, 3, &audio_i2s.i2s_bridge_h, 1);
@@ -52,6 +53,7 @@ void i2s_bridge_init(uint8_t mode) {
       sprintf_P(buffer, PSTR("%u.%u.%u.%u"), audio_i2s.i2s_bridge_ip[0], audio_i2s.i2s_bridge_ip[1], audio_i2s.i2s_bridge_ip[2], audio_i2s.i2s_bridge_ip[3]);
       AddLog(LOG_LEVEL_INFO, PSTR("I2S_bridge: master started sending to ip: %s"), buffer);
     }
+    AUDIO_PWR_ON
   }
 }
 
@@ -187,6 +189,7 @@ void i2s_bridge_loop(void) {
 
   if (audio_i2s.i2s_bridgec_udp.parsePacket()) {
       // received control command
+    memset(packet_buffer,0,sizeof(packet_buffer));
     audio_i2s.i2s_bridgec_udp.read(packet_buffer, 63);
     char *cp = (char*)packet_buffer;
     if (!strncmp(cp, "cmd:", 4)) {
@@ -206,6 +209,6 @@ void I2SBridgeInit(void) {
   //audio_i2s.i2s_bridgec_udp.stop();
 }
 
-#endif // USE_I2S_MIC
+#endif // I2S_BRIDGE
 #endif // USE_I2S_AUDIO
 #endif // ESP32
