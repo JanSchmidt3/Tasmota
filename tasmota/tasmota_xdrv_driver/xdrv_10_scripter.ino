@@ -1042,10 +1042,14 @@ char *script;
 
 int32_t udp_call(char *url, uint32_t port, char *sbuf) {
   WiFiUDP udp;
-  IPAddress adr = adr.fromString(url);
+  IPAddress adr;
+  adr.fromString(url);
+  udp.begin(port);
   udp.beginPacket(adr, port);
   udp.write((const uint8_t*)sbuf, strlen(sbuf));
   udp.endPacket();
+  udp.flush();
+  udp.stop();
   return 0;
 }
 
