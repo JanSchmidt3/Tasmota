@@ -137,6 +137,10 @@ int32_t web_send_file(char mc, char *file);
 #define STASK_PRIO 1
 #endif
 
+#ifdef ESP32
+#include <driver/i2s.h>
+#endif
+
 #ifdef USE_SCRIPT_TIMER
 #include <Ticker.h>
 Ticker Script_ticker1;
@@ -1229,16 +1233,16 @@ float median_array(float *array, uint16_t len) {
     uint8_t flg;
     float min = FLT_MAX;
 
-    for (uint8_t hcnt = 0; hcnt<len/2+1; hcnt++) {
-        for (uint8_t mcnt = 0; mcnt<len; mcnt++) {
+    for (uint16_t hcnt = 0; hcnt < len / 2 + 1; hcnt++) {
+        for (uint16_t mcnt = 0; mcnt < len; mcnt++) {
             flg = 0;
-            for (uint8_t icnt = 0; icnt<index; icnt++) {
+            for (uint16_t icnt = 0; icnt < index; icnt++) {
                 if (ind[icnt] == mcnt) {
                     flg = 1;
                 }
             }
             if (!flg) {
-                if (array[mcnt]<min) {
+                if (array[mcnt] < min) {
                     min = array[mcnt];
                     mind = mcnt;
                 }
@@ -1255,9 +1259,9 @@ float median_array(float *array, uint16_t len) {
 float *Get_MFAddr(uint8_t index, uint16_t *len, uint16_t *ipos) {
   *len = 0;
   uint8_t *mp = (uint8_t*)glob_script_mem.mfilt;
-  for (uint8_t count = 0; count<MAXFILT; count++) {
+  for (uint8_t count = 0; count < MAXFILT; count++) {
     struct M_FILT *mflp = (struct M_FILT*)mp;
-    if (count==index) {
+    if (count == index) {
         *len = mflp->numvals & AND_FILT_MASK;
         if (ipos) *ipos = mflp->index;
         return mflp->rbuff;
@@ -1274,10 +1278,9 @@ char *get_array_by_name(char *lp, float **fp, uint16_t *alen, uint16_t *ipos) {
   uint8_t vtype;
   while (*lp == ' ') lp++;
   lp = isvar(lp, &vtype, &ind, 0, 0, 0);
-  if (vtype==VAR_NV) return 0;
-  if (vtype&STYPE) return 0;
+  if (vtype == VAR_NV) return 0;
+  if (vtype & STYPE) return 0;
   uint16_t index = glob_script_mem.type[ind.index].index;
-
   if (glob_script_mem.type[ind.index].bits.is_filter) {
     float *fa = Get_MFAddr(index, alen, ipos);
     *fp = fa;
@@ -1291,8 +1294,8 @@ float *get_array_by_name(char *name, uint16_t *alen) {
   struct T_INDEX ind;
   uint8_t vtype;
   isvar(name, &vtype, &ind, 0, 0, 0);
-  if (vtype==VAR_NV) return 0;
-  if (vtype&STYPE) return 0;
+  if (vtype == VAR_NV) return 0;
+  if (vtype & STYPE) return 0;
   uint16_t index = glob_script_mem.type[ind.index].index;
 
   if (glob_script_mem.type[ind.index].bits.is_filter) {
@@ -3494,6 +3497,34 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           goto nfuncexit;
         }
 #endif // USE_SCRIPT_I2C
+
+#ifdef ESP32
+#ifdef USE_I2S_AUDIO
+        if (!strncmp(lp, "i2sw(", 5)) {
+          float port;
+          lp = GetNumericArgument(lp + 5, OPER_EQU, &port, gv);
+          uint16_t alen = 0;
+          float *fa = 0;
+          lp = get_array_by_name(lp, &fa, &alen, 0);
+          if (!fa) {
+            fvar = -1;
+            goto nfuncexit;
+          }
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          break;
+          uint32_t bytes_written;
+          int16_t *wp = (int16_t*)calloc(alen, 2);
+          if (wp) {
+            for (uint16_t cnt = 0; cnt < alen; cnt++) {
+                wp[cnt] = fa[cnt];
+            }
+            i2s_write((i2s_port_t)port, (const uint8_t*)wp, fvar, &bytes_written, 0);
+            free(wp);
+          }
+          goto nfuncexit;
+        }
+#endif // USE_I2S_AUDIO
+#endif // ESP32
         break;
 
 #ifdef USE_KNX
