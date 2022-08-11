@@ -44,6 +44,12 @@ void i2s_bridge_init(uint8_t mode) {
     SendBridgeCmd(I2S_BRIDGE_MODE_OFF);
     AUDIO_PWR_OFF
   } else {
+    i2s_set_sample_rates(audio_i2s.mic_port, MICSRATE);
+    if (mode&3 == I2S_BRIDGE_MODE_READ) {
+      //SpeakerMic(MODE_SPK);
+    } else {
+      //SpeakerMic(MODE_MIC);
+    }
     audio_i2s.i2s_bridge_udp.begin(I2S_BRIDGE_PORT);
     xTaskCreatePinnedToCore(i2s_bridge_task, "BRIDGE", 8192, NULL, 3, &audio_i2s.i2s_bridge_h, 1);
     if (!(audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_MASTER)) {
@@ -78,9 +84,9 @@ uint16_t bytesize;
             uwp[cnt + 1] = tmp;
           }
         }
-        if (!(audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_MASTER)) {
-          audio_i2s.i2s_bridge_ip = audio_i2s.i2s_bridge_udp.remoteIP();
-        }
+        //if (!(audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_MASTER)) {
+          //audio_i2s.i2s_bridge_ip = audio_i2s.i2s_bridge_udp.remoteIP();
+        //}
         audio_i2s.i2s_bridge_udp.flush();
         //AddLog(LOG_LEVEL_INFO, PSTR(">>> %d"), len);
         i2s_write(audio_i2s.i2s_port, (const uint8_t*)packet_buffer, len, &bytes_written, 0);
@@ -91,7 +97,7 @@ uint16_t bytesize;
       uint32_t bytes_read;
       bytesize = I2S_BRIDGE_BUFFER_SIZE;
       i2s_read(audio_i2s.mic_port, (char *)packet_buffer, bytesize, &bytes_read, (100 / portTICK_RATE_MS));
-      //AddLog(LOG_LEVEL_INFO, PSTR(">>> %d"), bytes_read);
+      /*
       if (audio_i2s.bridge_mode.swap_mic) {
         uint16_t *uwp = (uint16_t*)packet_buffer;
         for (uint32_t cnt = 0; cnt < bytes_read / 4; cnt += 2) {
@@ -99,7 +105,20 @@ uint16_t bytesize;
           uwp[cnt] = uwp[cnt + 1];
           uwp[cnt + 1] = tmp;
         }
+      }*/
+      // make mono
+      if (audio_i2s.bridge_mode.swap_mic) {
+        uint16_t *uwp = (uint16_t*)packet_buffer;
+        for (uint32_t cnt = 0; cnt < bytes_read / 4; cnt += 2) {
+          uwp[cnt] = uwp[cnt + 1];
+        }
+      } else {
+        uint16_t *uwp = (uint16_t*)packet_buffer;
+        for (uint32_t cnt = 0; cnt < bytes_read / 4; cnt += 2) {
+          uwp[cnt + 1] = uwp[cnt];
+        }
       }
+
       audio_i2s.i2s_bridge_udp.beginPacket(audio_i2s.i2s_bridge_ip, I2S_BRIDGE_PORT);
       audio_i2s.i2s_bridge_udp.write((const uint8_t*)packet_buffer, bytes_read);
       audio_i2s.i2s_bridge_udp.endPacket();
@@ -151,6 +170,7 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
           audio_i2s.bridge_mode.swap_speaker = 0;
           break;
       }
+      Response_P(PSTR("{\"SWAP_MIC\":%d,\"SWAP_SPKR\":%d}"), audio_i2s.bridge_mode.swap_mic, audio_i2s.bridge_mode.swap_speaker);
     } else {
       if (audio_i2s.bridge_mode.mode != val) {
         if ((val == I2S_BRIDGE_MODE_OFF) && (audio_i2s.bridge_mode.mode != I2S_BRIDGE_MODE_OFF)) {
@@ -175,9 +195,9 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
           }
         }
       }
+      ResponseCmndNumber(audio_i2s.bridge_mode.mode);
     }
   }
-  ResponseCmndNumber(audio_i2s.bridge_mode.mode);
 }
 
 void i2s_bridge_loop(void) {

@@ -327,7 +327,7 @@ int32_t I2S_Init_0(void) {
 
   audio_i2s.mode = MODE_SPK;
 
-#if defined(USE_I2S_COMMON_IO) || defined(I2S_BRIDGE)
+#ifdef USE_I2S_COMMON_IO
   audio_i2s.out->SetRate(MICSRATE);
 #endif
 
