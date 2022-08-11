@@ -3511,15 +3511,15 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
             goto nfuncexit;
           }
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-          break;
           uint32_t bytes_written;
-          int16_t *wp = (int16_t*)calloc(alen, 2);
+          int16_t *wp = (int16_t*)special_malloc(alen * 2);
           if (wp) {
             for (uint16_t cnt = 0; cnt < alen; cnt++) {
                 wp[cnt] = fa[cnt];
             }
             i2s_write((i2s_port_t)port, (const uint8_t*)wp, fvar, &bytes_written, 0);
             free(wp);
+            fvar = bytes_written;
           }
           goto nfuncexit;
         }
