@@ -61,24 +61,26 @@ esp_err_t err = ESP_OK;
       .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,
       .communication_format = I2S_COMM_FORMAT_I2S,
       .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+      //.dma_buf_count = 8,
       .dma_buf_count = 2,
       //.dma_buf_len = 128,
       .dma_buf_len = 1024,
       .use_apll = 0, // Use audio PLL
       .tx_desc_auto_clear     = true,
-      .fixed_mclk             = 0,
+      .fixed_mclk             = 12000000,
       .mclk_multiple          = I2S_MCLK_MULTIPLE_DEFAULT,  // I2S_MCLK_MULTIPLE_128
       .bits_per_chan          = I2S_BITS_PER_CHAN_16BIT
   };
 
-#ifdef ESP32S3_BOX
-  i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
-  i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
-#endif
 
 #ifdef USE_I2S_MIC
   // mic select to GND
   i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX);
+  i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
+#endif
+
+#ifdef ESP32S3_BOX
+  i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
   i2s_config.communication_format = I2S_COMM_FORMAT_STAND_I2S;
 #endif
 

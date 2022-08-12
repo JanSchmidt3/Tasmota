@@ -78,6 +78,7 @@
 typedef union {
   uint8_t data;
   struct {
+    uint8_t enabled : 1;
     uint8_t swap_speaker : 1;
     uint8_t swap_mic : 1;
     uint8_t mode : 3;
@@ -692,14 +693,14 @@ bool Xdrv42(uint8_t function) {
       break;
     case FUNC_LOOP:
       i2s_mp3_loop();
-#if defined(USE_I2S_MIC) && defined(I2S_BRIDGE)
+#if defined(I2S_BRIDGE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
       i2s_bridge_loop();
 #endif
       break;
     case FUNC_WEB_ADD_HANDLER:
       audio_i2s.stream_enable = 1;
       i2s_mp3_init(1);
-#if defined(USE_I2S_MIC) && defined(I2S_BRIDGE)
+#if defined(I2S_BRIDGE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
       I2SBridgeInit();
 #endif
       break;

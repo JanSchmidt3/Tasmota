@@ -44,8 +44,10 @@ void i2s_bridge_init(uint8_t mode) {
     SendBridgeCmd(I2S_BRIDGE_MODE_OFF);
     AUDIO_PWR_OFF
   } else {
-    i2s_set_sample_rates(audio_i2s.mic_port, MICSRATE);
-    if (mode&3 == I2S_BRIDGE_MODE_READ) {
+    i2s_set_sample_rates(audio_i2s.mic_port, audio_i2s.mic_rate);
+    //i2s_set_clk(audio_i2s.mic_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
+
+    if (mode & 3 == I2S_BRIDGE_MODE_READ) {
       //SpeakerMic(MODE_SPK);
     } else {
       //SpeakerMic(MODE_MIC);
@@ -129,9 +131,11 @@ void Cmd_I2SBridge(void) {
     if (strchr(cp, '.')) {
       // enter destination ip
        audio_i2s.i2s_bridge_ip.fromString(cp);
+       Response_P(PSTR("{\"I2S_bridge\":{\"IP\":\"%s\"}}"), cp);
+    } else {
+      I2SBridgeCmd(XdrvMailbox.payload, 1);
     }
   }
-  I2SBridgeCmd(XdrvMailbox.payload, 1);
 }
 
 void SendBridgeCmd(uint8_t mode) {
@@ -161,7 +165,7 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
           audio_i2s.bridge_mode.swap_speaker = 0;
           break;
       }
-      Response_P(PSTR("{\"SWAP_MIC\":%d,\"SWAP_SPKR\":%d}"), audio_i2s.bridge_mode.swap_mic, audio_i2s.bridge_mode.swap_speaker);
+      Response_P(PSTR("{\"I2S_bridge\":{\"SWAP_MIC\":%d,\"SWAP_SPKR\":%d}}"), audio_i2s.bridge_mode.swap_mic, audio_i2s.bridge_mode.swap_speaker);
     } else {
       if (audio_i2s.bridge_mode.mode != val) {
         if ((val == I2S_BRIDGE_MODE_OFF) && (audio_i2s.bridge_mode.mode != I2S_BRIDGE_MODE_OFF)) {
@@ -219,6 +223,7 @@ void I2SBridgeInit(void) {
   //audio_i2s.i2s_bridgec_udp.flush();
   //audio_i2s.i2s_bridgec_udp.stop();
   //I2SBridgeCmd(audio_i2s.bridge_mode.mode, 1);
+  AddLog(LOG_LEVEL_INFO, PSTR("I2S_bridge: command server created on port: %d "), I2S_BRIDGE_PORT + 1);
 }
 
 #endif // I2S_BRIDGE
