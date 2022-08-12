@@ -179,8 +179,6 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
 
         if (flg) {
           if (val & I2S_BRIDGE_MODE_MASTER) {
-            //audio_i2s.i2s_bridge_ip = IPAddress(192,168,188,105);
-            //audio_i2s.i2s_bridge_ip.fromString("192.168.188.105");
             // set slave to complementary mode
             uint8_t slavemode = I2S_BRIDGE_MODE_READ;
             if (audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_READ) {
