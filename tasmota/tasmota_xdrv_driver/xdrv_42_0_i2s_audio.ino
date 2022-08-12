@@ -78,6 +78,7 @@
 typedef union {
   uint8_t data;
   struct {
+    uint8_t master : 1;
     uint8_t enabled : 1;
     uint8_t swap_speaker : 1;
     uint8_t swap_mic : 1;

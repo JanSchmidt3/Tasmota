@@ -32,7 +32,6 @@
 #define I2S_BRIDGE_MODE_OFF 0
 #define I2S_BRIDGE_MODE_READ 1
 #define I2S_BRIDGE_MODE_WRITE 2
-#define I2S_BRIDGE_MODE_MASTER 4
 
 void i2s_bridge_init(uint8_t mode) {
 
@@ -54,7 +53,7 @@ void i2s_bridge_init(uint8_t mode) {
     }
     audio_i2s.i2s_bridge_udp.begin(I2S_BRIDGE_PORT);
     xTaskCreatePinnedToCore(i2s_bridge_task, "BRIDGE", 8192, NULL, 3, &audio_i2s.i2s_bridge_h, 1);
-    if (!(audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_MASTER)) {
+    if (!audio_i2s.bridge_mode.master) {
       AddLog(LOG_LEVEL_INFO, PSTR("I2S_bridge: slave started"));
     } else {
       char buffer[32];
@@ -140,7 +139,7 @@ void Cmd_I2SBridge(void) {
 
 void SendBridgeCmd(uint8_t mode) {
 char slavecmd[16];
-  if ((audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_MASTER) || (mode == I2S_BRIDGE_MODE_OFF)) {
+  if (audio_i2s.bridge_mode.master) {
     sprintf(slavecmd,"cmd:%d", mode);
     audio_i2s.i2s_bridgec_udp.beginPacket(audio_i2s.i2s_bridge_ip, I2S_BRIDGE_PORT + 1);
     audio_i2s.i2s_bridgec_udp.write((const uint8_t*)slavecmd,strlen(slavecmd));
@@ -150,18 +149,24 @@ char slavecmd[16];
 
 void I2SBridgeCmd(uint8_t val, uint8_t flg) {
   if ((val >= 0) && (val <= 11)) {
-    if (val > 7) {
+    if (val > 3) {
       switch (val) {
-        case 8:
+        case 4:
+          audio_i2s.bridge_mode.master = 1;
+          break;
+        case 5:
+          audio_i2s.bridge_mode.master = 0;
+          break;
+        case 6:
           audio_i2s.bridge_mode.swap_mic = 1;
           break;
-        case 9:
+        case 7:
           audio_i2s.bridge_mode.swap_mic = 0;
           break;
-        case 10:
+        case 8:
           audio_i2s.bridge_mode.swap_speaker = 1;
           break;
-        case 11:
+        case 9:
           audio_i2s.bridge_mode.swap_speaker = 0;
           break;
       }
@@ -169,7 +174,7 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
     } else {
       if (audio_i2s.bridge_mode.mode != val) {
         if ((val == I2S_BRIDGE_MODE_OFF) && (audio_i2s.bridge_mode.mode != I2S_BRIDGE_MODE_OFF)) {
-          if (flg &&  (audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_MASTER)) {
+          if (flg &&  (audio_i2s.bridge_mode.master)) {
             // shutdown slave
             SendBridgeCmd(I2S_BRIDGE_MODE_OFF);
           }
@@ -188,11 +193,11 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
             }
           }
         }
-        
+
         audio_i2s.bridge_mode.mode = val;
 
         if (flg) {
-          if (val & I2S_BRIDGE_MODE_MASTER) {
+          if (audio_i2s.bridge_mode.master) {
             // set slave to complementary mode
             uint8_t slavemode = I2S_BRIDGE_MODE_READ;
             if (audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_READ) {
