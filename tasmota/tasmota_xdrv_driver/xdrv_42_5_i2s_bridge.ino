@@ -41,16 +41,16 @@ void i2s_bridge_init(uint8_t mode) {
   if (I2S_BRIDGE_MODE_OFF == mode) {
     audio_i2s.i2s_bridge_udp.flush();
     audio_i2s.i2s_bridge_udp.stop();
-    SendBridgeCmd(I2S_BRIDGE_MODE_OFF);
+    //SpeakerMic(MODE_SPK);
     AUDIO_PWR_OFF
   } else {
-    i2s_set_sample_rates(audio_i2s.mic_port, audio_i2s.mic_rate);
+    //i2s_set_sample_rates(audio_i2s.mic_port, audio_i2s.mic_rate);
     //i2s_set_clk(audio_i2s.mic_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
 
-    if (mode & 3 == I2S_BRIDGE_MODE_READ) {
-      //SpeakerMic(MODE_SPK);
-    } else {
+    if (mode & 3 == I2S_BRIDGE_MODE_WRITE) {
       //SpeakerMic(MODE_MIC);
+    } else {
+      //SpeakerMic(MODE_SPK);
     }
     audio_i2s.i2s_bridge_udp.begin(I2S_BRIDGE_PORT);
     xTaskCreatePinnedToCore(i2s_bridge_task, "BRIDGE", 8192, NULL, 3, &audio_i2s.i2s_bridge_h, 1);
@@ -169,12 +169,26 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
     } else {
       if (audio_i2s.bridge_mode.mode != val) {
         if ((val == I2S_BRIDGE_MODE_OFF) && (audio_i2s.bridge_mode.mode != I2S_BRIDGE_MODE_OFF)) {
+          if (flg &&  (audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_MASTER)) {
+            // shutdown slave
+            SendBridgeCmd(I2S_BRIDGE_MODE_OFF);
+          }
           i2s_bridge_init(I2S_BRIDGE_MODE_OFF);
         } else {
           if (audio_i2s.bridge_mode.mode == I2S_BRIDGE_MODE_OFF) {
+            // initial on
             i2s_bridge_init(val);
+          } else {
+            // change mode
+            if (val & I2S_BRIDGE_MODE_READ) {
+              //SpeakerMic(MODE_SPK);
+            }
+            if (val & I2S_BRIDGE_MODE_WRITE) {
+              //SpeakerMic(MODE_MIC);
+            }
           }
         }
+        
         audio_i2s.bridge_mode.mode = val;
 
         if (flg) {

@@ -27,7 +27,11 @@ esp_err_t err = ESP_OK;
 
 #ifndef USE_I2S_COMMON_IO
 
+  if (audio_i2s.mode == spkr) {
+    return 0;
+  }
   if (spkr == MODE_SPK) {
+
     if (audio_i2s.i2s_port == audio_i2s.mic_port) {
       if (audio_i2s.mode != MODE_SPK) {
         i2s_driver_uninstall(audio_i2s.mic_port);

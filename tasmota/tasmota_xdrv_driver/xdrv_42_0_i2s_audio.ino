@@ -67,8 +67,8 @@
 #define i2s_port_t uint8_t
 #endif
 
-#define MODE_MIC 0
-#define MODE_SPK 1
+#define MODE_MIC 1
+#define MODE_SPK 2
 
 #ifndef MICSRATE
 #define MICSRATE 32000
