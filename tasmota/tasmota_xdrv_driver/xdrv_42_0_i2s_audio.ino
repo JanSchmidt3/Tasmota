@@ -82,7 +82,7 @@ typedef union {
     uint8_t enabled : 1;
     uint8_t swap_speaker : 1;
     uint8_t swap_mic : 1;
-    uint8_t mode : 3;
+    uint8_t mode : 2;
   };
 } BRIDGE_MODE;
 
@@ -352,6 +352,7 @@ void I2S_Init(void) {
 
   audio_i2s.is2_volume = 10;
   audio_i2s.out->SetGain(((float)audio_i2s.is2_volume / 100.0) * 4.0);
+  audio_i2s.out->begin();
   audio_i2s.out->stop();
   audio_i2s.mp3ram = nullptr;
 
@@ -377,6 +378,7 @@ void I2S_Init(void) {
   audio_i2s.mic_rate = MICSRATE;
 
 #endif  // ESP32
+
 }
 
 #ifdef ESP32
