@@ -20,31 +20,46 @@
 
 
 #ifdef ESP32
-#if (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX))
-#if defined(USE_I2S_MIC)
-
+#if (defined(USE_I2S_AUDIO) || defined(USE_TTGO_WATCH) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) || defined(USE_I2S_MIC))
 // micro to wav file
 
 #define DATA_SIZE 1024
 
 #ifndef USE_SHINE
 
-void mic_task(void *arg){
-  uint32_t data_offset = 0;
-  while (1) {
+
+#define WAV_BUFF_SIZE 512
+
+File wav_fwp;
+bool wav_record;
+
+void mic_task(void *path){
+uint8_t buffer[WAV_BUFF_SIZE];
+char *file = (char*) path;
+
+  SaveWav(file);
+
+  wav_record = true;
+  AddLog(LOG_LEVEL_INFO, PSTR("wav task created"));
+  uint8_t index=0;
+  while (wav_record) {
       uint32_t bytes_read;
-      i2s_read(audio_i2s.i2s_port, (char *)(audio_i2s.mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
-      if (bytes_read != DATA_SIZE) break;
-      data_offset += DATA_SIZE;
-      if (data_offset >= audio_i2s.mic_size-DATA_SIZE) break;
+      i2s_read(audio_i2s.mic_port, (char *)buffer, WAV_BUFF_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
+      uint32_t bwritten = wav_fwp.write(buffer, bytes_read);
+      if (bwritten != bytes_read) {
+        AddLog(LOG_LEVEL_INFO, PSTR("wav task %d - %d"),bwritten,bytes_read);
+        break;
+      }
+      index++;
+      if (index==200) break;
   }
   SpeakerMic(MODE_SPK);
-  SaveWav(audio_i2s.mic_path, audio_i2s.mic_buff, audio_i2s.mic_size);
-  free(audio_i2s.mic_buff);
-  vTaskDelete(audio_i2s.mic_task_h);
+  wav_fwp.close();
+  AddLog(LOG_LEVEL_INFO, PSTR("wav task stopped"));
+  vTaskDelete(NULL);
 }
 
-uint32_t i2s_record(char *path, uint32_t secs) {
+uint32_t i2s_record(char *path) {
   esp_err_t err = ESP_OK;
 
   if (audio_i2s.decoder || audio_i2s.mp3) return 0;
@@ -55,33 +70,8 @@ uint32_t i2s_record(char *path, uint32_t secs) {
     return err;
   }
 
-  audio_i2s.mic_size = secs * audio_i2s.mic_rate * 2 * audio_i2s.mic_channels;
+  xTaskCreatePinnedToCore(mic_task, "MIC", 6000, (void*)path, 3, &audio_i2s.mic_task_h, 1);
 
-  audio_i2s.mic_buff = (uint8_t*)heap_caps_malloc(audio_i2s.mic_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if (!audio_i2s.mic_buff) return 2;
-
-  if (*path=='+') {
-    path++;
-    strlcpy(audio_i2s.mic_path, path , sizeof(audio_i2s.mic_path));
-    xTaskCreatePinnedToCore(mic_task, "MIC", 4096, NULL, 3, &audio_i2s.mic_task_h, 1);
-    return 0;
-  }
-
-  uint32_t data_offset = 0;
-  uint32_t stime=millis();
-  while (1) {
-    uint32_t bytes_read;
-    i2s_read(audio_i2s.i2s_port, (char *)(audio_i2s.mic_buff + data_offset), DATA_SIZE, &bytes_read, (100 / portTICK_RATE_MS));
-    if (bytes_read != DATA_SIZE) break;
-    data_offset += DATA_SIZE;
-    if (data_offset >= audio_i2s.mic_size-DATA_SIZE) break;
-    delay(0);
-  }
-  //AddLog(LOG_LEVEL_INFO, PSTR("rectime: %d ms"), millis()-stime);
-  SpeakerMic(MODE_SPK);
-  // save to path
-  SaveWav(path, audio_i2s.mic_buff, audio_i2s.mic_size);
-  free(audio_i2s.mic_buff);
   return 0;
 }
 
@@ -90,9 +80,10 @@ static const uint8_t wavHTemplate[] PROGMEM = { // Hardcoded simple WAV header w
     0x66, 0x6d, 0x74, 0x20, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x22, 0x56, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x04, 0x00, 0x10, 0x00,
     0x64, 0x61, 0x74, 0x61, 0xff, 0xff, 0xff, 0xff };
 
-bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
-  File fwp = ufsp->open(path, "w");
-  if (!fwp) return false;
+bool SaveWav(char *path) {
+  wav_fwp = ufsp->open(path, "w");
+  if (!wav_fwp) return false;
+
   uint8_t wavHeader[sizeof(wavHTemplate)];
   memcpy_P(wavHeader, wavHTemplate, sizeof(wavHTemplate));
 
@@ -116,36 +107,25 @@ bool SaveWav(char *path, uint8_t *buff, uint32_t size) {
   wavHeader[34] = bps;
   wavHeader[35] = 0;
 
-  fwp.write(wavHeader, sizeof(wavHeader));
-
-  fwp.write(buff, size);
-  fwp.close();
+  wav_fwp.write(wavHeader, sizeof(wavHeader));
+  wav_fwp.flush();
 
   return true;
 }
 
-
 void Cmd_MicRec(void) {
 
-  if (audio_i2s.mic_task_h) {
+  if (wav_record) {
     // stop task
-    vTaskDelete(audio_i2s.mic_task_h);
-    audio_i2s.mic_task_h = nullptr;
-    ResponseCmndChar_P(PSTR("Stopped"));
+    wav_record = false;
+    delay(100);
   }
 
   if (XdrvMailbox.data_len > 0) {
-    uint16 time = 10;
-    char *cp = strchr(XdrvMailbox.data, ':');
-    if (cp) {
-      time = atoi(cp + 1);
-      *cp = 0;
-    }
-    if (time<10) time = 10;
-    if (time>30) time = 30;
-    i2s_record(XdrvMailbox.data, time);
-    ResponseCmndChar(XdrvMailbox.data);
+    i2s_record(XdrvMailbox.data);
   }
+  ResponseCmndChar(XdrvMailbox.data);
+
 }
 
 #endif // no USE_SHINE
@@ -278,7 +258,5 @@ void Cmd_wav2mp3(void) {
 #endif  // WAV2MP3
 #endif // USE_SHINE
 
-
-#endif // USE_I2S_MIC
 #endif // USE_I2S_AUDIO
 #endif // ESP32

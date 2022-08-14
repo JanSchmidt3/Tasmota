@@ -80,7 +80,6 @@ typedef union {
   struct {
     uint8_t master : 1;
     uint8_t enabled : 1;
-    uint8_t swap_speaker : 1;
     uint8_t swap_mic : 1;
     uint8_t mode : 2;
   };
@@ -152,6 +151,7 @@ struct AUDIO_I2S_t {
   WiFiUDP i2s_bridgec_udp;
   IPAddress i2s_bridge_ip;
   TaskHandle_t i2s_bridge_h;
+  int8_t ptt_pin = -1;
 #endif
 
 
@@ -329,10 +329,6 @@ int32_t I2S_Init_0(void) {
 
   audio_i2s.mode = MODE_SPK;
 
-#ifdef USE_I2S_COMMON_IO
-  audio_i2s.out->SetRate(MICSRATE);
-#endif
-
   return 0;
 }
 
@@ -376,6 +372,10 @@ void I2S_Init(void) {
 
   audio_i2s.mic_channels = MIC_CHANNELS;
   audio_i2s.mic_rate = MICSRATE;
+
+#ifdef USE_I2S_COMMON_IO
+  i2s_set_clk(audio_i2s.mic_port, audio_i2s.mic_rate, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_STEREO);
+#endif
 
 #endif  // ESP32
 
@@ -611,10 +611,10 @@ const char kI2SAudio_Commands[] PROGMEM = "I2S|"
 #ifdef USE_I2S_WEBRADIO
   "|WR"
 #endif  // USE_I2S_WEBRADIO
-#if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
+#if ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
   "|REC"
   "|MGain"
-#ifdef MP3_MIC_STREAM
+#if defined(USE_SHINE) && defined(MP3_MIC_STREAM)
   "|STREAM"
 #endif // MP3_MIC_STREAM
 #ifdef I2S_BRIDGE
@@ -634,10 +634,10 @@ void (* const I2SAudio_Command[])(void) PROGMEM = {
 #ifdef USE_I2S_WEBRADIO
   ,&Cmd_WebRadio
 #endif // USE_I2S_WEBRADIO
-#if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
+#if  ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
   ,&Cmd_MicRec
   ,&Cmd_MicGain
-#ifdef MP3_MIC_STREAM
+#if defined(USE_SHINE) && defined(MP3_MIC_STREAM)
   ,&Cmd_MP3Stream
 #endif // MP3_MIC_STREAM
 #ifdef I2S_BRIDGE
@@ -689,25 +689,27 @@ bool Xdrv42(uint8_t function) {
     case FUNC_INIT:
       I2S_Init();
       break;
-#if  defined(MP3_MIC_STREAM)
-//#if  defined(USE_SHINE) && defined(MP3_MIC_STREAM)
     case FUNC_WEB_ADD_MAIN_BUTTON:
       //MP3ShowStream();
       break;
     case FUNC_LOOP:
+#if defined(USE_SHINE) && defined(MP3_MIC_STREAM)
       i2s_mp3_loop();
+#endif
 #if defined(I2S_BRIDGE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
       i2s_bridge_loop();
 #endif
       break;
     case FUNC_WEB_ADD_HANDLER:
+#if defined(USE_SHINE) && defined(MP3_MIC_STREAM)
       audio_i2s.stream_enable = 1;
       i2s_mp3_init(1);
+#endif
 #if defined(I2S_BRIDGE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
       I2SBridgeInit();
 #endif
       break;
-#endif
+
 #ifdef USE_WEBSERVER
 #ifdef USE_I2S_WEBRADIO
     case FUNC_WEB_SENSOR:

@@ -19,7 +19,7 @@
 
 
 #ifdef ESP32
-#if defined(USE_SHINE) && ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
+#if ( (defined(USE_I2S_AUDIO) && defined(USE_I2S_MIC)) || defined(USE_M5STACK_CORE2) || defined(ESP32S3_BOX) )
 
 
 uint32_t SpeakerMic(uint8_t spkr) {
@@ -123,8 +123,8 @@ esp_err_t err = ESP_OK;
   return err;
 }
 
-
 #ifdef USE_SHINE
+
 #include <layer3.h>
 #include <types.h>
 
@@ -312,6 +312,8 @@ void Cmd_MicRec(void) {
   }
 
 }
+#endif // USE_SHINE
+
 
 // mic gain in factor not percent
 void Cmd_MicGain(void) {
@@ -321,6 +323,5 @@ void Cmd_MicGain(void) {
   ResponseCmndNumber(audio_i2s.mic_gain);
 }
 
-#endif // USE_SHINE
 #endif // USE_I2S_AUDIO
 #endif // ESP32
