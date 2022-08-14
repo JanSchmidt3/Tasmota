@@ -200,7 +200,7 @@ void I2SBridgeCmd(uint8_t val, uint8_t flg) {
         if (flg) {
           if (audio_i2s.bridge_mode.master) {
             // set slave to complementary mode
-            if ((audio_i2s.bridge_mode.mode & 3) != 3) {
+            if (audio_i2s.bridge_mode.mode && ((audio_i2s.bridge_mode.mode & 3) != 3)) {
               uint8_t slavemode = I2S_BRIDGE_MODE_READ;
               if (audio_i2s.bridge_mode.mode & I2S_BRIDGE_MODE_READ) {
                 slavemode = I2S_BRIDGE_MODE_WRITE;
