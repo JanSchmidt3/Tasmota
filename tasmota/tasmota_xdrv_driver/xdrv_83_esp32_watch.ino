@@ -279,8 +279,6 @@ int32_t ttgo_sleeptime;
 
 }
 
-#define rtc_clk_cpu_freq_set
-
 void TTGO_Sleep(int32_t stime) {
 int32_t ttgo_sleeptime;
 
