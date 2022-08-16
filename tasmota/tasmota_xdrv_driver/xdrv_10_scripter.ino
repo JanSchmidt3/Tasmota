@@ -1770,7 +1770,16 @@ uint32_t res = 0;
 }
 
 
-
+uint8_t script_hexnibble(char chr) {
+  uint8_t rVal = 0;
+  if (isdigit(chr)) {
+    rVal = chr - '0';
+  } else  {
+    if (chr >= 'A' && chr <= 'F') rVal = chr + 10 - 'A';
+    if (chr >= 'a' && chr <= 'f') rVal = chr + 10 - 'a';
+  }
+  return rVal;
+}
 
 #ifdef USE_LIGHT
 uint32_t HSVToRGB(uint16_t hue, uint8_t saturation, uint8_t value) {
@@ -3399,7 +3408,23 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           goto nfuncexit;
         }
 #endif
+        if (!strncmp(lp, "hstr(", 5)) {
+          char hstr[SCRIPT_MAXSSIZE];
+          lp = GetStringArgument(lp + 5, OPER_EQU, hstr, 0);
+          uint16_t cnt;
+          uint16_t slen = strlen(hstr);
+          slen &= 0xfffe;
+          for (cnt = 0; cnt < slen; cnt += 2) {
+            hstr[cnt / 2] = (script_hexnibble(hstr[cnt]) << 4) | script_hexnibble(hstr[cnt + 1] );
+          }
+          hstr[cnt / 2 + 1] = 0;
+          if (sp) strlcpy(sp, hstr, strlen(hstr));
+          len = 0;
+          lp++;
+          goto strexit;
+        }
         break;
+
       case 'i':
         if (!strncmp(lp, "ins(", 4)) {
           char s1[SCRIPT_MAXSSIZE];
