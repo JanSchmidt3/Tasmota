@@ -31,10 +31,23 @@ ws8960wire = tw;
     W8960_Write(0x19, (1<<8)|(1<<7)|(1<<6)|(1<<5)|(1<<4)|(1<<3)|(1<<2)|(1<<1));
     // left speaker not used
     W8960_Write(0x1A, (1<<8)|(1<<7)|(1<<6)|(1<<5)|(1<<4)|(1<<3));
+
+    // enable PLL
+    //WM8960_Write(0x1A, 1 << 8 | 1 << 7 | 1 << 6 | 1 << 5 | 1 << 4 | 1 << 3 | 1 << 2 | 1);
+
     W8960_Write(0x2F, (1<<5)|(1<<4)|(1<<3)|(1<<2));
 
     // Configure clock
     W8960_Write(0x04, 0x0000);
+    //WM8960_Write(0x04, 0x00DD); // Select 011011101
+    //WM8960_Write(0x08, 0x0080); // Select 011011101
+
+    // PLL
+    //WM8960_Write_Reg(0x34, 0x0038);
+    //WM8960_Write_Reg(0x35, 0x0031);
+    //WM8960_Write_Reg(0x36, 0x0026);
+    //WM8960_Write_Reg(0x37, 0x00E8);
+
 
     // Configure ADC/DAC
     W8960_Write(0x05, 0x0000);
@@ -53,15 +66,15 @@ ws8960wire = tw;
     W8960_Write(0x29, 0x0177);
 
     // Enable the OUTPUTS, only right speaker is wired
-    W8960_Write(0x31, 0x0080);
+    W8960_Write(0x31, 0x00c0);
 
     // Configure DAC volume
     W8960_Write(0x0a, 0x01FF);
     W8960_Write(0x0b, 0x01FF);
 
     // Configure MIXER
-    W8960_Write(0x22, (1<<8)|(1<<7));
-    W8960_Write(0x25, (1<<8)|(1<<7));
+    W8960_Write(0x22, (1<<8);
+    W8960_Write(0x25, (1<<8);
 
     // Jack Detect
     //W8960_Write(0x18, (1<<6)|(0<<5));
