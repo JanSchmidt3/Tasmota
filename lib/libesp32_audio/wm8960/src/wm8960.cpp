@@ -73,8 +73,8 @@ ws8960wire = tw;
     W8960_Write(0x0b, 0x01FF);
 
     // Configure MIXER
-    W8960_Write(0x22, (1<<8);
-    W8960_Write(0x25, (1<<8);
+    W8960_Write(0x22, (1<<8));
+    W8960_Write(0x25, (1<<8));
 
     // Jack Detect
     //W8960_Write(0x18, (1<<6)|(0<<5));
