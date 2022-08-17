@@ -2433,7 +2433,12 @@ void SML_Show(boolean json) {
           tststr:
           if (*cp=='#') {
             // meter id
-            sprintf(tpowstr,"\"%s\"",&meter_id[mindex][0]);
+            if (*(cp + 1) == 'x') {
+              // convert hex to asci
+              sml_hex_asci(mindex, tpowstr);
+            } else {
+              sprintf(tpowstr,"\"%s\"",&meter_id[mindex][0]);
+            }
             mid=1;
           } else if (*cp=='(') {
             if (meter_desc_p[mindex].type=='o') {
@@ -3411,6 +3416,19 @@ void SML_Check_Send(void) {
     }
   }
 }
+
+void sml_hex_asci(uint32_t mindex, char *tpowstr) {
+  char *cp = &meter_id[mindex][0];
+  uint16_t slen = strlen(cp);
+  slen &= 0xfffe;
+  uint16_t cnt;
+  for (cnt = 0; cnt < slen; cnt += 2) {
+    uint8_t iob = (sml_hexnibble(cp[cnt]) << 4) | sml_hexnibble(cp[cnt + 1]);
+    tpowstr[cnt / 2] = iob;
+  }
+  tpowstr[cnt / 2] = 0;
+}
+
 
 uint8_t sml_hexnibble(char chr) {
   uint8_t rVal = 0;
