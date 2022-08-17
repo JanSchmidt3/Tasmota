@@ -3426,7 +3426,7 @@ void sml_hex_asci(uint32_t mindex, char *tpowstr) {
     uint8_t iob = (sml_hexnibble(cp[cnt]) << 4) | sml_hexnibble(cp[cnt + 1]);
     tpowstr[cnt / 2] = iob;
   }
-  tpowstr[cnt / 2] = 0;
+  tpowstr[cnt / 2 + 1] = 0;
 }
 
 
