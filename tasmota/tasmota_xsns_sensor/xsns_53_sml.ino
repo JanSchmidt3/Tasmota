@@ -3422,11 +3422,13 @@ void sml_hex_asci(uint32_t mindex, char *tpowstr) {
   uint16_t slen = strlen(cp);
   slen &= 0xfffe;
   uint16_t cnt;
+  *tpowstr++ = '"';
   for (cnt = 0; cnt < slen; cnt += 2) {
     uint8_t iob = (sml_hexnibble(cp[cnt]) << 4) | sml_hexnibble(cp[cnt + 1]);
-    tpowstr[cnt / 2] = iob;
+    *tpowstr++ = iob;
   }
-  tpowstr[cnt / 2 + 1] = 0;
+  *tpowstr++ = '"';
+  *tpowstr = 0;
 }
 
 
