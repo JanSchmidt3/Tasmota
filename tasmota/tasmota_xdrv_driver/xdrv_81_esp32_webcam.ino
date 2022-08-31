@@ -1063,6 +1063,17 @@ void WcShowStream(void) {
   }
 }
 
+/*
+
+#include "human_face_detect_msr01.hpp"
+#include "human_face_detect_mnp01.hpp"
+#include "face_recognition_tool.hpp"
+#include "face_recognition_112_v1_s16.hpp"
+
+
+FaceRecognition112V1S16 *recognizer;
+*/
+
 void WcInit(void) {
   if (!Settings->webcam_config.data) {
     Settings->webcam_config.stream = 1;
@@ -1079,6 +1090,8 @@ void WcInit(void) {
   if (!WcSetup(Settings->webcam_config.resolution)) {
     Settings->webcam_config.stream = 0;
   }
+
+
 }
 
 /*********************************************************************************************\
