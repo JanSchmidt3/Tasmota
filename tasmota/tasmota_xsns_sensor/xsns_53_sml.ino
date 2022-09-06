@@ -1630,7 +1630,7 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
     if (meter_spos[meters] >= SML_BSIZ) {
       meter_spos[meters] = 0;
     }
-    if (iob == 0x0a) {
+    if ((iob == 0x0a) || (iob == 0x0d)) {
       SML_Decode(meters);
       meter_spos[meters] = 0;
     }

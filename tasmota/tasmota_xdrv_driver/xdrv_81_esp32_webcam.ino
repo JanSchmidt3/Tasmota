@@ -1063,12 +1063,13 @@ void WcShowStream(void) {
   }
 }
 
-/*
 
-#include "human_face_detect_msr01.hpp"
-#include "human_face_detect_mnp01.hpp"
-#include "face_recognition_tool.hpp"
-#include "face_recognition_112_v1_s16.hpp"
+
+//#include <human_face_detect_msr01.hpp>
+/*
+#include <human_face_detect_mnp01.hpp>
+#include <face_recognition_tool.hpp>
+#include <face_recognition_112_v1_s16.hpp>
 
 
 FaceRecognition112V1S16 *recognizer;
