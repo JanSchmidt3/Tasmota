@@ -9030,16 +9030,16 @@ uint16_t cipos = 0;
 }
 
 char *gc_send_labels(char *lp,uint32_t anum) {
-  WSContentSend_PD("[");
+  WSContentSend_P("[");
   for (uint32_t cnt = 0; cnt < anum + 1; cnt++) {
     char label[SCRIPT_MAXSSIZE];
     lp = GetStringArgument(lp, OPER_EQU, label, 0);
     SCRIPT_SKIP_SPACES
-    WSContentSend_PD(SCRIPT_MSG_GTE1, label);
+    WSContentSend_P(SCRIPT_MSG_GTE1, label);
     //Serial.printf("labels %s\n",label);
-    if (cnt<anum) { WSContentSend_PD(","); }
+    if (cnt<anum) { WSContentSend_P(","); }
   }
-  WSContentSend_PD("],");
+  WSContentSend_P("],");
   return lp;
 }
 
@@ -9091,9 +9091,9 @@ uint32_t cnt;
 void WCS_DIV(uint8_t flag) {
   if (flag & WSO_NODIV) return;
   if (flag & WSO_STOP_DIV) {
-    WSContentSend_PD(SCRIPT_MSG_BUT_STOP);
+    WSContentSend_P(SCRIPT_MSG_BUT_STOP);
   } else {
-    WSContentSend_PD(SCRIPT_MSG_BUT_START);
+    WSContentSend_P(SCRIPT_MSG_BUT_START);
   }
 }
 
@@ -9311,7 +9311,7 @@ const char *gc_str;
       lp = GetStringArgument(lp, OPER_EQU, right, 0);
       SCRIPT_SKIP_SPACES
 
-      WSContentSend_PD(SCRIPT_MSG_SLIDER, left,mid, right, (uint32_t)min, (uint32_t)max, (uint32_t)val, vname);
+      WSContentSend_P(SCRIPT_MSG_SLIDER, left,mid, right, (uint32_t)min, (uint32_t)max, (uint32_t)val, vname);
       lp++;
 
     } else if (!strncmp(lin, "ck(", 3)) {
@@ -9336,7 +9336,7 @@ const char *gc_str;
         uval = 1;
       }
       WCS_DIV(specopt);
-      WSContentSend_PD(SCRIPT_MSG_CHKBOX, center, label, (char*)cp, uval, vname);
+      WSContentSend_P(SCRIPT_MSG_CHKBOX, center, label, (char*)cp, uval, vname);
       WCS_DIV(specopt | WSO_STOP_DIV);
       lp++;
     } else if (!strncmp(lin, "pd(", 3)) {
@@ -9366,7 +9366,7 @@ const char *gc_str;
         lp = slp1;
       }
       WCS_DIV(specopt);
-      WSContentSend_PD(SCRIPT_MSG_PULLDOWNa, center, vname, pulabel, tsiz, 1, vname, vname);
+      WSContentSend_P(SCRIPT_MSG_PULLDOWNa, center, vname, pulabel, tsiz, 1, vname, vname);
 
       // get pu labels
       uint8_t index = 1;
@@ -9389,7 +9389,7 @@ const char *gc_str;
             } else {
               cp = (char*)"";
             }
-            WSContentSend_PD(SCRIPT_MSG_PULLDOWNb, cp, index, pulabel);
+            WSContentSend_P(SCRIPT_MSG_PULLDOWNb, cp, index, pulabel);
             index++;
           }
           break;
@@ -9401,7 +9401,7 @@ const char *gc_str;
         } else {
           cp = (char*)"";
         }
-        WSContentSend_PD(SCRIPT_MSG_PULLDOWNb, cp, index, pulabel);
+        WSContentSend_P(SCRIPT_MSG_PULLDOWNb, cp, index, pulabel);
         SCRIPT_SKIP_SPACES
         if (*lp == ')') {
           lp++;
@@ -9409,7 +9409,7 @@ const char *gc_str;
         }
         index++;
       }
-      WSContentSend_PD(SCRIPT_MSG_PULLDOWNc);
+      WSContentSend_P(SCRIPT_MSG_PULLDOWNc);
       WCS_DIV(specopt | WSO_STOP_DIV);
     } else if (!strncmp(lin, "bu(", 3)) {
       char *lp = lin + 3;
@@ -9423,8 +9423,8 @@ const char *gc_str;
       }
       uint8_t proz = 100 / bcnt;
       if (!optflg && bcnt>1) proz -= 2;
-      if (optflg) WSContentSend_PD(SCRIPT_MSG_BUT_START_TBL);
-      else WSContentSend_PD(SCRIPT_MSG_BUT_START);
+      if (optflg) WSContentSend_P(SCRIPT_MSG_BUT_START_TBL);
+      else WSContentSend_P(SCRIPT_MSG_BUT_START);
       for (uint32_t cnt = 0; cnt < bcnt; cnt++) {
         float val;
         char *slp = lp;
@@ -9454,17 +9454,17 @@ const char *gc_str;
           if (!optflg) proz += 2;
         }
         if (!optflg) {
-          WSContentSend_PD(SCRIPT_MSG_BUTTONa, proz, uval, vname, cp);
+          WSContentSend_P(SCRIPT_MSG_BUTTONa, proz, uval, vname, cp);
         } else {
-          WSContentSend_PD(SCRIPT_MSG_BUTTONa_TBL, proz, uval, vname, cp);
+          WSContentSend_P(SCRIPT_MSG_BUTTONa_TBL, proz, uval, vname, cp);
         }
         if (bcnt > 1 && cnt < bcnt - 1) {
-          if (!optflg) WSContentSend_PD(SCRIPT_MSG_BUTTONb, 2);
+          if (!optflg) WSContentSend_P(SCRIPT_MSG_BUTTONb, 2);
         }
         lp += 4;
       }
-      if (optflg) WSContentSend_PD(SCRIPT_MSG_BUT_STOP_TBL);
-      else WSContentSend_PD(SCRIPT_MSG_BUT_STOP);
+      if (optflg) WSContentSend_P(SCRIPT_MSG_BUT_STOP_TBL);
+      else WSContentSend_P(SCRIPT_MSG_BUT_STOP);
 
     }  else if (!strncmp(lin, "tm(", 3)) {
       // time only HH:MM
@@ -9494,7 +9494,7 @@ const char *gc_str;
       const char *max = PSTR("23:59");
       const char *styp = PSTR("sivat");
       WCS_DIV(specopt);
-      WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, center, label, type, vstr, min, max, tsiz, styp, vname);
+      WSContentSend_P(SCRIPT_MSG_TEXTINP_U, center, label, type, vstr, min, max, tsiz, styp, vname);
       WCS_DIV(specopt | WSO_STOP_DIV);
     }  else if (!strncmp(lin, "tx(", 3)) {
       // text
@@ -9535,16 +9535,16 @@ const char *gc_str;
           SCRIPT_SKIP_SPACES
           WCS_DIV(specopt);
           const char *styp = PSTR("siva");
-          WSContentSend_PD(SCRIPT_MSG_TEXTINP_U, center, label, type, str, min, max, tsiz, styp, vname);
+          WSContentSend_P(SCRIPT_MSG_TEXTINP_U, center, label, type, str, min, max, tsiz, styp, vname);
           WCS_DIV(specopt | WSO_STOP_DIV);
         } else {
           WCS_DIV(specopt);
-          WSContentSend_PD(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
+          WSContentSend_P(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
           WCS_DIV(specopt | WSO_STOP_DIV);
         }
       } else {
         WCS_DIV(specopt);
-        WSContentSend_PD(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
+        WSContentSend_P(SCRIPT_MSG_TEXTINP, center, label, str, tsiz, vname);
         WCS_DIV(specopt | WSO_STOP_DIV);
       }
       lp++;
@@ -9590,18 +9590,18 @@ const char *gc_str;
       dtostrfd(max, dprec, maxstr);
       dtostrfd(step, dprec, stepstr);
       WCS_DIV(specopt);
-      WSContentSend_PD(SCRIPT_MSG_NUMINP, center, label, minstr, maxstr, stepstr, vstr, tsiz, vname);
+      WSContentSend_P(SCRIPT_MSG_NUMINP, center, label, minstr, maxstr, stepstr, vstr, tsiz, vname);
       WCS_DIV(specopt | WSO_STOP_DIV);
       lp++;
 
     } else {
       if (mc == 'w' || (specopt & WSO_FORCEPLAIN)) {
-        WSContentSend_PD(PSTR("%s"), lin);
+        WSContentSend_P(PSTR("%s"), lin);
       } else {
         if (optflg) {
-          WSContentSend_PD(PSTR("<div>%s</div>"), lin);
+          WSContentSend_P(PSTR("<div>%s</div>"), lin);
         } else {
-          WSContentSend_PD(PSTR("{s}%s{e}"), lin);
+          WSContentSend_P(PSTR("{s}%s{e}"), lin);
         }
       }
     }
@@ -9627,7 +9627,7 @@ exgc:
         uint16_t len = (uint32_t)cp - (uint32_t)lin;
         strncpy(valstr, lin, len);
         valstr[len] = 0;
-        WSContentSend_PD(PSTR("%s"), valstr);
+        WSContentSend_P(PSTR("%s"), valstr);
         float *fpd = 0;
         uint16_t alend;
         uint16_t ipos;
@@ -9652,14 +9652,14 @@ exgc:
               ipos = 0;
             }
             if (cnt == 0) {
-              WSContentSend_PD(PSTR("%s"), valstr);
+              WSContentSend_P(PSTR("%s"), valstr);
             } else {
-              WSContentSend_PD(PSTR(",%s"), valstr);
+              WSContentSend_P(PSTR(",%s"), valstr);
             }
           }
         }
         lp++;
-        WSContentSend_PD(PSTR("%s"), lp);
+        WSContentSend_P(PSTR("%s"), lp);
         return lp;
       }
 
@@ -9670,11 +9670,11 @@ exgc:
         uint16_t len = (uint32_t)cp - (uint32_t)lin;
         strncpy(valstr, lin, len);
         valstr[len] = 0;
-        WSContentSend_PD(PSTR("%s"), valstr);
+        WSContentSend_P(PSTR("%s"), valstr);
         scripter_sub(cp , 0);
         cp = strchr(cp, ')');
         if (cp) {
-          WSContentSend_PD(PSTR("%s"), cp + 1);
+          WSContentSend_P(PSTR("%s"), cp + 1);
         }
         return lp;
       }
@@ -9696,7 +9696,7 @@ exgc:
         lp++;
         if (!(google_libs & GLIBS_MAIN)) {
           google_libs |= GLIBS_MAIN;
-          WSContentSend_PD(SCRIPT_MSG_GTABLE);
+          WSContentSend_P(SCRIPT_MSG_GTABLE);
         }
 
         gc_str = GC_type(gs_ctype);
@@ -9705,24 +9705,24 @@ exgc:
           case 'g':
             if (!(google_libs & GLIBS_GAUGE)) {
               google_libs |= GLIBS_GAUGE;
-              WSContentSend_PD(SCRIPT_MSG_GAUGE);
+              WSContentSend_P(SCRIPT_MSG_GAUGE);
             }
             break;
           case 't':
             if (!(google_libs & GLIBS_TABLE)) {
               google_libs |= GLIBS_TABLE;
-              WSContentSend_PD(SCRIPT_MSG_TABLE);
+              WSContentSend_P(SCRIPT_MSG_TABLE);
             }
             break;
           case 'T':
             if (!(google_libs & GLIBS_TIMELINE)) {
               google_libs |= GLIBS_TIMELINE;
-              WSContentSend_PD(SCRIPT_MSG_TIMELINE);
+              WSContentSend_P(SCRIPT_MSG_TIMELINE);
             }
             break;
         }
         if (type == 'e') {
-          WSContentSend_PD(SCRIPT_MSG_GTABLEbx, gc_str, chartindex);
+          WSContentSend_P(SCRIPT_MSG_GTABLEbx, gc_str, chartindex);
           chartindex++;
           return lp1;
         }
@@ -9792,7 +9792,7 @@ exgc:
         //Serial.printf("entries %d\n",entries);
         if (gs_ctype=='T') {
           if (anum && !(entries & 1)) {
-            WSContentSend_PD(SCRIPT_MSG_GTABLEa);
+            WSContentSend_P(SCRIPT_MSG_GTABLEa);
             char label[SCRIPT_MAXSSIZE];
             lp = GetStringArgument(lp, OPER_EQU, label, 0);
             SCRIPT_SKIP_SPACES
@@ -9800,9 +9800,9 @@ exgc:
             lab2[0] = 0;
             if (*lp!=')') {
               lp = GetStringArgument(lp, OPER_EQU, lab2, 0);
-              WSContentSend_PD(SCRIPT_MSG_GTABLEe);
+              WSContentSend_P(SCRIPT_MSG_GTABLEe);
             } else {
-              WSContentSend_PD(SCRIPT_MSG_GTABLEd);
+              WSContentSend_P(SCRIPT_MSG_GTABLEd);
             }
 
             for (uint32_t ind = 0; ind < anum; ind++) {
@@ -9823,34 +9823,34 @@ exgc:
               }
 
               for (uint32_t cnt = 0; cnt < ventries; cnt += 2) {
-                WSContentSend_PD("['%s',",lbl);
+                WSContentSend_P("['%s',",lbl);
                 if (lab2[0]) {
-                  WSContentSend_PD("'%s',",lbl2);
+                  WSContentSend_P("'%s',",lbl2);
                 }
                 uint32_t time = fp[cnt];
-                WSContentSend_PD(SCRIPT_MSG_GOPT5, time / 60, time % 60);
-                WSContentSend_PD(",");
+                WSContentSend_P(SCRIPT_MSG_GOPT5, time / 60, time % 60);
+                WSContentSend_P(",");
                 time = fp[cnt + 1];
-                WSContentSend_PD(SCRIPT_MSG_GOPT5, time / 60, time % 60);
-                  WSContentSend_PD("]");
-                  if (cnt < ventries - 2) { WSContentSend_PD(","); }
+                WSContentSend_P(SCRIPT_MSG_GOPT5, time / 60, time % 60);
+                  WSContentSend_P("]");
+                  if (cnt < ventries - 2) { WSContentSend_P(","); }
               }
               if (ind < anum - 1) {
                 if (ventries) {
-                WSContentSend_PD(",");
+                WSContentSend_P(",");
               }
             }
           }
           snprintf_P(options,sizeof(options), SCRIPT_MSG_GOPT4);
         }
         if (tonly) {
-          WSContentSend_PD("]);");
+          WSContentSend_P("]);");
           return lp1;
           //goto nextwebline;
         }
       } else {
         // we need to fetch the labels now
-        WSContentSend_PD(SCRIPT_MSG_GTABLEa);
+        WSContentSend_P(SCRIPT_MSG_GTABLEa);
         lp = gc_send_labels(lp, anum);
 
         // now we have to export the values
@@ -9904,7 +9904,7 @@ exgc:
         uint32_t aind = ipos;
         if (aind >= entries) aind = entries - 1;
         for (uint32_t cnt = 0; cnt < entries; cnt++) {
-          WSContentSend_PD("['");
+          WSContentSend_P("['");
           char lbl[16];
           if (todflg >= 0) {
             uint16_t mins = (float)(todflg % divflg) * (float)((float)60 / (float)divflg);
@@ -9932,8 +9932,8 @@ exgc:
               sprintf(lbl, "%s-%02d", lbl, aind % divflg);
             }
           }
-          WSContentSend_PD(lbl);
-          WSContentSend_PD("',");
+          WSContentSend_P(lbl);
+          WSContentSend_P("',");
           for (uint32_t ind = 0; ind < anum; ind++) {
             char acbuff[32];
             float *fp = arrays[ind];
@@ -9944,11 +9944,11 @@ exgc:
               fval = fp[cnt];
             }
             f2char(fval, glob_script_mem.script_dprec, glob_script_mem.script_lzero, acbuff);
-            WSContentSend_PD("%s", acbuff);
-            if (ind < anum - 1) { WSContentSend_PD(","); }
+            WSContentSend_P("%s", acbuff);
+            if (ind < anum - 1) { WSContentSend_P(","); }
           }
-          WSContentSend_PD("]");
-          if (cnt < entries - 1) { WSContentSend_PD(","); }
+          WSContentSend_P("]");
+          if (cnt < entries - 1) { WSContentSend_P(","); }
           aind++;
           if (aind >= entries) {
             aind = 0;
@@ -9956,7 +9956,7 @@ exgc:
         }
         // table complete
         if (tonly) {
-          WSContentSend_PD("]);");
+          WSContentSend_P("]);");
           return lp1;
           //goto nextwebline;
         }
@@ -10025,19 +10025,19 @@ exgc:
             (uint32_t)yellowFrom, (uint32_t)yellowTo);
           }
         }
-        WSContentSend_PD(SCRIPT_MSG_GTABLEb, options);
-        WSContentSend_PD(SCRIPT_MSG_GTABLEbx, gc_str, chartindex);
+        WSContentSend_P(SCRIPT_MSG_GTABLEb, options);
+        WSContentSend_P(SCRIPT_MSG_GTABLEbx, gc_str, chartindex);
         chartindex++;
       } else {
-        WSContentSend_PD(PSTR("%s"), lin);
+        WSContentSend_P(PSTR("%s"), lin);
       }
 #else
       if (!(specopt&WSO_FORCEMAIN)) {
         lin++;
       }
-      WSContentSend_PD(PSTR("%s"), lin);
+      WSContentSend_P(PSTR("%s"), lin);
     } else {
-          //  WSContentSend_PD(PSTR("%s"),lin);
+          //  WSContentSend_P(PSTR("%s"),lin);
 #endif //USE_GOOGLE_CHARTS
     }
   }
@@ -11030,7 +11030,7 @@ void script_add_subpage(uint8_t num) {
       }
       sprintf_P(id, PSTR("/sfd%1d"), num);
       Webserver->on(id, wptr);
-      WSContentSend_PD(HTTP_WEB_FULL_DISPLAY, num, bname);
+      WSContentSend_P(HTTP_WEB_FULL_DISPLAY, num, bname);
   }
 }
 #endif // SCRIPT_FULL_WEBPAGE
