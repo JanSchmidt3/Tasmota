@@ -1609,16 +1609,16 @@ void sml_empty_receiver(uint32_t meters) {
 void sml_shift_in(uint32_t meters,uint32_t shard) {
   uint32_t count;
 #ifndef SML_OBIS_LINE
-  if (meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') {
+  if (meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') {
 #else
-  if (meter_desc_p[meters].type!='o' && meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') {
+  if (meter_desc_p[meters].type!='o' && meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') {
 #endif
     // shift in
     for (count=0; count<SML_BSIZ-1; count++) {
       smltbuf[meters][count]=smltbuf[meters][count+1];
     }
   }
-  uint8_t iob=(uint8_t)meter_ss[meters]->read();
+  uint8_t iob = (uint8_t)meter_ss[meters]->read();
 
   if (meter_desc_p[meters].type == 'o') {
 #ifndef SML_OBIS_LINE
@@ -1639,19 +1639,51 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
     smltbuf[meters][SML_BSIZ-1]=iob;
   } else if (meter_desc_p[meters].type=='r') {
     smltbuf[meters][SML_BSIZ-1]=iob;
-  } else if (meter_desc_p[meters].type=='m' || meter_desc_p[meters].type=='M') {
-    smltbuf[meters][meter_spos[meters]] = iob;
-    meter_spos[meters]++;
-    if (meter_spos[meters]>=SML_BSIZ) {
-      meter_spos[meters]=0;
-    }
-    if (meter_spos[meters]>=8) {
-      uint32_t mlen=smltbuf[meters][2]+5;
-      if (mlen>SML_BSIZ) mlen=SML_BSIZ;
-      if (meter_spos[meters]>=mlen) {
-        SML_Decode(meters);
+  } else if (meter_desc_p[meters].type=='m' || meter_desc_p[meters].type=='M' || meter_desc_p[meters].type=='k') {
+
+    if (meter_desc_p[meters].type=='k') {
+      // Kamstrup
+      if (iob == 0x40) {
+        meter_spos[meters] = 0;
+      } else if (iob == 0x0d) {
+        uint16_t crc = KS_calculateCRC(&smltbuf[meters][0], meter_spos[meters], 0);
+        if (!crc) {
+          uint8_t *ucp = &smltbuf[meters][0];
+          for (uint16_t cnt = 0; cnt < meter_spos[meters]; cnt++) {
+            uint8_t iob = smltbuf[meters][cnt];
+            if (iob == 0x1b) {
+              *ucp++ = smltbuf[meters][cnt + 1] ^ 0xff;
+              cnt++;
+            } else {
+              *ucp++ = iob;
+            }
+          }
+          SML_Decode(meters);
+        }
         sml_empty_receiver(meters);
+        meter_spos[meters] = 0;
+      } else {
+        smltbuf[meters][meter_spos[meters]] = iob;
+        meter_spos[meters]++;
+        if (meter_spos[meters] >= SML_BSIZ) {
+          meter_spos[meters] = 0;
+        }
+      }
+    } else {
+      smltbuf[meters][meter_spos[meters]] = iob;
+      meter_spos[meters]++;
+      if (meter_spos[meters] >= SML_BSIZ) {
         meter_spos[meters]=0;
+      }
+      // modbus
+      if (meter_spos[meters]>=8) {
+        uint32_t mlen=smltbuf[meters][2]+5;
+        if (mlen>SML_BSIZ) mlen=SML_BSIZ;
+        if (meter_spos[meters]>=mlen) {
+          SML_Decode(meters);
+          sml_empty_receiver(meters);
+          meter_spos[meters]=0;
+        }
       }
     }
   } else if (meter_desc_p[meters].type=='p') {
@@ -1708,9 +1740,9 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
   }
   sb_counter++;
 #ifndef SML_OBIS_LINE
-  if (meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') SML_Decode(meters);
+  if (meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') SML_Decode(meters);
 #else
-  if (meter_desc_p[meters].type!='o' && meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') SML_Decode(meters);
+  if (meter_desc_p[meters].type!='o' && meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') SML_Decode(meters);
 #endif
 }
 
@@ -2083,6 +2115,27 @@ void SML_Decode(uint8_t index) {
               mbus_dval = (float)((cp[0]<<8) | cp[1]);
               mp += 4;
               cp += 2;
+            }  else if (!strncmp(mp, "kstr", 4)) {
+              // decode the mantissa
+              uint32_t x = 0;
+              for (uint16_t i = 0; i < cp[5]; i++) {
+                x <<= 8;
+                x |= cp[i + 7];
+              }
+              // decode the exponent
+              uint32_t i = cp[6] & 0x3f;
+              if (cp[6] & 0x40) {
+                i = -i;
+              };
+              //float ifl = pow(10, i);
+              float ifl = 1;
+              for (uint16_t x = 1; x <= i; ++x) {
+                ifl *= 10;
+              }
+              if (cp[6] & 0x80) {
+                ifl = -ifl;
+              }
+              mbus_dval = (double )(x * ifl);
             } else if (!strncmp(mp, "bcd", 3)) {
               mp += 3;
               uint8_t digits = strtol((char*)mp, (char**)&mp, 10);
@@ -2229,7 +2282,7 @@ void SML_Decode(uint8_t index) {
           }
         } else {
           double dval;
-          if (meter_desc_p[mindex].type!='e' && meter_desc_p[mindex].type!='r' && meter_desc_p[mindex].type!='m' && meter_desc_p[mindex].type!='M' && meter_desc_p[mindex].type!='p' && meter_desc_p[mindex].type!='v') {
+          if (meter_desc_p[mindex].type!='e' && meter_desc_p[mindex].type!='r' && meter_desc_p[mindex].type!='m' && meter_desc_p[mindex].type!='M' && meter_desc_p[mindex].type!='k' && meter_desc_p[mindex].type!='p' && meter_desc_p[mindex].type!='v') {
             // get numeric values
             if (meter_desc_p[mindex].type=='o' || meter_desc_p[mindex].type=='c') {
               if (*mp == '(') {
@@ -2262,28 +2315,33 @@ void SML_Decode(uint8_t index) {
             }
           } else {
             // ebus pzem vbus or mbus or raw
-            if (*mp=='b') {
+            if (*mp == 'b') {
               mp++;
               uint8_t shift = *mp&7;
               ebus_dval = (uint32_t)ebus_dval>>shift;
               ebus_dval = (uint32_t)ebus_dval&1;
               mp+=2;
             }
-            if (*mp=='i') {
+            if (*mp == 'i') {
               // mbus index
               mp++;
-              uint8_t mb_index=strtol((char*)mp,(char**)&mp,10);
-              if (mb_index!=meter_desc_p[mindex].index) {
+              uint8_t mb_index = strtol((char*)mp, (char**)&mp, 10);
+              if (mb_index != meter_desc_p[mindex].index) {
                 goto nextsect;
               }
-              uint16_t pos = smltbuf[mindex][2]+3;
-              if (pos>32) pos=32;
-              uint16_t crc = MBUS_calculateCRC(&smltbuf[mindex][0],pos,0xFFFF);
-              if (lowByte(crc)!=smltbuf[mindex][pos]) goto nextsect;
-              if (highByte(crc)!=smltbuf[mindex][pos+1]) goto nextsect;
-              dval=mbus_dval;
-              //AddLog(LOG_LEVEL_INFO, PSTR(">> %s"),mp);
-              mp++;
+              if (meter_desc_p[mindex].type == 'k') {
+                // crc is already checked, decode float value
+                dval = mbus_dval;
+              } else {
+                uint16_t pos = smltbuf[mindex][2] + 3;
+                if (pos > 32) pos = 32;
+                uint16_t crc = MBUS_calculateCRC(&smltbuf[mindex][0], pos, 0xFFFF);
+                if (lowByte(crc) != smltbuf[mindex][pos]) goto nextsect;
+                if (highByte(crc) != smltbuf[mindex][pos + 1]) goto nextsect;
+                dval = mbus_dval;
+                //AddLog(LOG_LEVEL_INFO, PSTR(">> %s"),mp);
+                mp++;
+              }
             } else {
               if (meter_desc_p[mindex].type=='p') {
                 uint8_t crc = SML_PzemCrc(&smltbuf[mindex][0],6);
@@ -3078,7 +3136,7 @@ init10:
     } else {
       // serial input, init
 #ifdef SPECIAL_SS
-        if (meter_desc_p[meters].type=='m' || meter_desc_p[meters].type=='M' || meter_desc_p[meters].type=='p' || meter_desc_p[meters].type=='R' || meter_desc_p[meters].type=='v') {
+        if (meter_desc_p[meters].type=='m' || meter_desc_p[meters].type=='M' || meter_desc_p[meters].type=='k' || meter_desc_p[meters].type=='p' || meter_desc_p[meters].type=='R' || meter_desc_p[meters].type=='v') {
           meter_ss[meters] = new TasmotaSerial(meter_desc_p[meters].srcpin,meter_desc_p[meters].trxpin,1,0,TMSBSIZ);
         } else {
           meter_ss[meters] = new TasmotaSerial(meter_desc_p[meters].srcpin,meter_desc_p[meters].trxpin,1,1,TMSBSIZ);
@@ -3461,17 +3519,49 @@ void SML_Send_Seq(uint32_t meter,char *seq) {
     slen++;
     if (slen >= sizeof(sbuff)-6) break; // leave space for checksum
   }
-  if (script_meter_desc[meter].type == 'm' || script_meter_desc[meter].type == 'M') {
-    if (!rflg) {
+  if (script_meter_desc[meter].type == 'm' || script_meter_desc[meter].type == 'M' || script_meter_desc[meter].type == 'k') {
+    if (script_meter_desc[meter].type == 'k') {
+      // kamstrup, append crc, cr
       *ucp++ = 0;
-      *ucp++ = 2;
+      *ucp++ = 0;
+      slen += 2;
+      uint16_t crc = KS_calculateCRC(sbuff, slen, 0);
+      ucp -= 2;
+      *ucp++ = highByte(crc);
+      *ucp++ = lowByte(crc);
+
+      // now check for escapes
+      uint8_t ksbuff[32];
+      ucp = ksbuff;
+      *ucp++ = 0x80;
+      uint8_t klen = 1;
+      for (uint16_t cnt = 0; cnt < slen; cnt++) {
+        uint8_t iob = sbuff[cnt];
+        if ((iob == 0x80) || (iob == 0x40) || (iob == 0x0d) || (iob == 0x06) || (iob == 0x1b)) {
+          *ucp++ = 0x1b;
+          *ucp++ = iob ^= 0xff;
+          klen += 2;
+        } else {
+          *ucp++ = iob;
+          klen++;
+        }
+      }
+      *ucp++ = 0xd;
+      slen = klen + 1;
+      memcpy(sbuff, ksbuff, sizeof(sbuff));
+    } else {
+      if (!rflg) {
+        *ucp++ = 0;
+        *ucp++ = 2;
+        slen += 2;
+      }
+      // append crc
+      uint16_t crc = MBUS_calculateCRC(sbuff, slen, 0xFFFF);
+      *ucp++ = lowByte(crc);
+      *ucp++ = highByte(crc);
       slen += 2;
     }
-    // append crc
-    uint16_t crc = MBUS_calculateCRC(sbuff, slen, 0xFFFF);
-    *ucp++ = lowByte(crc);
-    *ucp++ = highByte(crc);
-    slen += 2;
+
   }
   if (script_meter_desc[meter].type == 'o') {
     for (uint32_t cnt = 0; cnt < slen; cnt++) {
@@ -3493,7 +3583,7 @@ void SML_Send_Seq(uint32_t meter,char *seq) {
     Hexdump(sbuff, slen);
 #else
     uint8_t type = meter_desc_p[(dump2log&7) - 1].type;
-    if (type == 'm' || type == 'M') {
+    if (type == 'm' || type == 'M' || type == 'k') {
       Hexdump(sbuff, slen);
     }
 #endif
@@ -3519,6 +3609,44 @@ uint16_t MBUS_calculateCRC(uint8_t *frame, uint8_t num, uint16_t start) {
   }
   return crc;
 }
+
+
+uint16_t KS_calculateCRC(const uint8_t *frame, uint8_t num, uint32_t start) {
+  uint32_t crc = start;
+  for (uint32_t i = 0; i < num; i++) {
+      uint8_t mask = 0x80;
+      uint8_t iob = frame[i];
+      while (mask) {
+          crc <<= 1;
+          if (iob & mask) {
+              crc |= 1;
+          }
+          mask >>= 1;
+          if (crc & 0x10000) {
+              crc &= 0xffff;
+              crc ^= 0x1021;
+          }
+      }
+  }
+  return crc;
+}
+
+/*
+def crc_1021(message):
+        poly = 0x1021
+        reg = 0x0000
+        for byte in message:
+                mask = 0x80
+                while(mask > 0):
+                        reg<<=1
+                        if byte & mask:
+                                reg |= 1
+                        mask>>=1
+                        if reg & 0x10000:
+                                reg &= 0xffff
+                                reg ^= poly
+        return reg
+*/
 
 uint8_t SML_PzemCrc(uint8_t *data, uint8_t len) {
   uint16_t crc = 0;
