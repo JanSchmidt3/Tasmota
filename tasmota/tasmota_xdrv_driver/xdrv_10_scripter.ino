@@ -438,6 +438,7 @@ struct SCRIPT_MEM {
     void *script_mem;
     uint16_t script_mem_size;
     uint8_t script_dprec;
+    char script_sepc;
     uint8_t script_lzero;
     uint8_t var_not_found;
     uint8_t glob_error;
@@ -499,7 +500,7 @@ void flt2char(float num, char *nbuff) {
   dtostrfd(num, glob_script_mem.script_dprec, nbuff);
 }
 // convert float to char with leading zeros
-void f2char(float num, uint32_t dprec, uint32_t lzeros, char *nbuff) {
+void f2char(float num, uint32_t dprec, uint32_t lzeros, char *nbuff, char dsep) {
   dtostrfd(num, dprec, nbuff);
   if (lzeros > 1) {
     // check leading zeros
@@ -520,6 +521,13 @@ void f2char(float num, uint32_t dprec, uint32_t lzeros, char *nbuff) {
       *cp=0;
       strcat(cpbuf,nbuff);
       strcpy(nbuff,cpbuf);
+    }
+  }
+  if (dsep != '.') {
+    for (uint16_t cnt = 0; cnt < strlen(nbuff); cnt++) {
+      if (nbuff[cnt] == '.') {
+        nbuff[cnt] = dsep;
+      }
     }
   }
 }
@@ -970,6 +978,7 @@ char *script;
     glob_script_mem.numvars = vars;
     glob_script_mem.script_dprec = SCRIPT_FLOAT_PRECISION;
     glob_script_mem.script_lzero = 0;
+    glob_script_mem.script_sepc = '.';
     glob_script_mem.script_loglevel = LOG_LEVEL_INFO;
 
 
@@ -980,7 +989,7 @@ char *script;
 
       } else {
         char string[32];
-        f2char(glob_script_mem.fvars[dvtp[count].index], glob_script_mem.script_dprec, glob_script_mem.script_lzero, string);
+        f2char(glob_script_mem.fvars[dvtp[count].index], glob_script_mem.script_dprec, glob_script_mem.script_lzero, string, '.');
         toLog(string);
       }
     }
@@ -2569,6 +2578,10 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           lp = GetNumericArgument(lp + 3, OPER_EQU, &fvar, gv);
           while (*lp==' ') lp++;
           glob_script_mem.script_lzero = fvar;
+          if (*lp == ',' || *lp == '.') {
+            glob_script_mem.script_sepc = *lp;
+            lp++;
+          }
           lp = GetNumericArgument(lp , OPER_EQU, &fvar, gv);
           while (*lp==' ') lp++;
           glob_script_mem.script_dprec = fvar;
@@ -4033,8 +4046,10 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           lp += 2;
           uint8_t dprec = glob_script_mem.script_dprec;
           uint8_t lzero = glob_script_mem.script_lzero;
+          char dsep = glob_script_mem.script_sepc;
           if (isdigit(*lp)) {
-            if (*(lp + 1) == '.') {
+            if (*(lp + 1) == '.' || *(lp + 1) == ',') {
+              dsep = *(lp + 1);
               lzero = *lp & 0xf;
               lp += 2;
               dprec = *lp & 0xf;
@@ -4046,7 +4061,7 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           }
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           char str[SCRIPT_MAXSSIZE];
-          f2char(fvar, dprec, lzero, str);
+          f2char(fvar, dprec, lzero, str, dsep);
           if (sp) strlcpy(sp, str, glob_script_mem.max_ssize);
           lp++;
           len = 0;
@@ -5446,6 +5461,7 @@ void Replace_Cmd_Vars(char *srcbuf, uint32_t srcsize, char *dstbuf, uint32_t dst
     uint16_t count;
     uint8_t vtype;
     uint8_t dprec = glob_script_mem.script_dprec;
+    char dsep = glob_script_mem.script_sepc;
     uint8_t lzero = glob_script_mem.script_lzero;
     float fvar;
     cp = srcbuf;
@@ -5460,7 +5476,8 @@ void Replace_Cmd_Vars(char *srcbuf, uint32_t srcsize, char *dstbuf, uint32_t dst
               dstbuf[count] = *cp++;
             } else {
               if (isdigit(*cp)) {
-                if (*(cp+1) == '.') {
+                if (*(cp + 1) == '.' || *(cp + 1) == ',') {
+                  dsep = *(cp + 1);
                   lzero = *cp & 0xf;
                   cp+=2;
                 }
@@ -5469,6 +5486,7 @@ void Replace_Cmd_Vars(char *srcbuf, uint32_t srcsize, char *dstbuf, uint32_t dst
               } else {
                 dprec = glob_script_mem.script_dprec;
                 lzero = glob_script_mem.script_lzero;
+                dsep = glob_script_mem.script_sepc;
               }
               if (*cp=='(') {
                 // math expression
@@ -5480,7 +5498,7 @@ void Replace_Cmd_Vars(char *srcbuf, uint32_t srcsize, char *dstbuf, uint32_t dst
                   glob_script_mem.glob_error = 0;
                   cp = GetStringArgument(slp, OPER_EQU, string, 0);
                 } else {
-                  f2char(fvar, dprec, lzero, string);
+                  f2char(fvar, dprec, lzero, string, dsep);
                 }
                 uint8_t slen = strlen(string);
                 if (count + slen < dstsize - 1) {
@@ -5494,7 +5512,7 @@ void Replace_Cmd_Vars(char *srcbuf, uint32_t srcsize, char *dstbuf, uint32_t dst
                   // found variable as result
                   if (vtype==NUM_RES || (vtype&STYPE)==0) {
                     // numeric result
-                    f2char(fvar, dprec, lzero, string);
+                    f2char(fvar, dprec, lzero, string, dsep);
                   } else {
                     // string result
                   }
@@ -6151,9 +6169,10 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
             } else if (!strncmp(lp, "dp", 2) && isdigit(*(lp + 2))) {
               lp += 2;
               // number precision
-              if (*(lp + 1)== '.') {
+              if (*(lp + 1) == '.' || *(lp + 1) == ',' ) {
+                glob_script_mem.script_sepc = *(lp + 1);
                 glob_script_mem.script_lzero = atoi(lp);
-                lp+=2;
+                lp += 2;
               }
               glob_script_mem.script_dprec = atoi(lp);
               goto next_line;
@@ -9943,7 +9962,7 @@ exgc:
             } else {
               fval = fp[cnt];
             }
-            f2char(fval, glob_script_mem.script_dprec, glob_script_mem.script_lzero, acbuff);
+            f2char(fval, glob_script_mem.script_dprec, glob_script_mem.script_lzero, acbuff, '.');
             WSContentSend_P("%s", acbuff);
             if (ind < anum - 1) { WSContentSend_P(","); }
           }
