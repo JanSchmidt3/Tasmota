@@ -1646,7 +1646,7 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
       if (iob == 0x40) {
         meter_spos[meters] = 0;
       } else if (iob == 0x0d) {
-        uint16_t crc = KS_calculateCRC(&smltbuf[meters][0], meter_spos[meters], 0);
+        uint16_t crc = KS_calculateCRC(&smltbuf[meters][0], meter_spos[meters]);
         if (!crc) {
           uint8_t *ucp = &smltbuf[meters][0];
           for (uint16_t cnt = 0; cnt < meter_spos[meters]; cnt++) {
@@ -2123,7 +2123,7 @@ void SML_Decode(uint8_t index) {
                 x |= cp[i + 7];
               }
               // decode the exponent
-              uint32_t i = cp[6] & 0x3f;
+              int32_t i = cp[6] & 0x3f;
               if (cp[6] & 0x40) {
                 i = -i;
               };
@@ -3525,13 +3525,13 @@ void SML_Send_Seq(uint32_t meter,char *seq) {
       *ucp++ = 0;
       *ucp++ = 0;
       slen += 2;
-      uint16_t crc = KS_calculateCRC(sbuff, slen, 0);
+      uint16_t crc = KS_calculateCRC(sbuff, slen);
       ucp -= 2;
       *ucp++ = highByte(crc);
       *ucp++ = lowByte(crc);
 
       // now check for escapes
-      uint8_t ksbuff[32];
+      uint8_t ksbuff[24];
       ucp = ksbuff;
       *ucp++ = 0x80;
       uint8_t klen = 1;
@@ -3548,7 +3548,7 @@ void SML_Send_Seq(uint32_t meter,char *seq) {
       }
       *ucp++ = 0xd;
       slen = klen + 1;
-      memcpy(sbuff, ksbuff, sizeof(sbuff));
+      memcpy(sbuff, ksbuff, slen);
     } else {
       if (!rflg) {
         *ucp++ = 0;
@@ -3611,8 +3611,8 @@ uint16_t MBUS_calculateCRC(uint8_t *frame, uint8_t num, uint16_t start) {
 }
 
 
-uint16_t KS_calculateCRC(const uint8_t *frame, uint8_t num, uint32_t start) {
-  uint32_t crc = start;
+uint16_t KS_calculateCRC(const uint8_t *frame, uint8_t num) {
+  uint32_t crc = 0;
   for (uint32_t i = 0; i < num; i++) {
       uint8_t mask = 0x80;
       uint8_t iob = frame[i];
@@ -3630,23 +3630,6 @@ uint16_t KS_calculateCRC(const uint8_t *frame, uint8_t num, uint32_t start) {
   }
   return crc;
 }
-
-/*
-def crc_1021(message):
-        poly = 0x1021
-        reg = 0x0000
-        for byte in message:
-                mask = 0x80
-                while(mask > 0):
-                        reg<<=1
-                        if byte & mask:
-                                reg |= 1
-                        mask>>=1
-                        if reg & 0x10000:
-                                reg &= 0xffff
-                                reg ^= poly
-        return reg
-*/
 
 uint8_t SML_PzemCrc(uint8_t *data, uint8_t len) {
   uint16_t crc = 0;
