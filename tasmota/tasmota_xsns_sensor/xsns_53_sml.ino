@@ -2116,6 +2116,7 @@ void SML_Decode(uint8_t index) {
               mp += 4;
               cp += 2;
             }  else if (!strncmp(mp, "kstr", 4)) {
+              mp += 4;
               // decode the mantissa
               uint32_t x = 0;
               for (uint16_t i = 0; i < cp[5]; i++) {
