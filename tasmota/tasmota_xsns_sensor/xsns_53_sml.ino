@@ -1609,13 +1609,13 @@ void sml_empty_receiver(uint32_t meters) {
 void sml_shift_in(uint32_t meters,uint32_t shard) {
   uint32_t count;
 #ifndef SML_OBIS_LINE
-  if (meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') {
+  if (meter_desc_p[meters].type != 'e' && meter_desc_p[meters].type != 'k' && meter_desc_p[meters].type != 'm' && meter_desc_p[meters].type != 'M' && meter_desc_p[meters].type != 'p' && meter_desc_p[meters].type != 'R' && meter_desc_p[meters].type != 'v') {
 #else
-  if (meter_desc_p[meters].type!='o' && meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') {
+  if (meter_desc_p[meters].type!= 'o' && meter_desc_p[meters].type != 'e' && meter_desc_p[meters].type != 'k' && meter_desc_p[meters].type != 'm' && meter_desc_p[meters].type != 'M' && meter_desc_p[meters].type != 'p' && meter_desc_p[meters].type != 'R' && meter_desc_p[meters].type != 'v') {
 #endif
     // shift in
-    for (count=0; count<SML_BSIZ-1; count++) {
-      smltbuf[meters][count]=smltbuf[meters][count+1];
+    for (count = 0; count < SML_BSIZ - 1; count++) {
+      smltbuf[meters][count] = smltbuf[meters][count + 1];
     }
   }
   uint8_t iob = (uint8_t)meter_ss[meters]->read();
@@ -1673,35 +1673,35 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
       smltbuf[meters][meter_spos[meters]] = iob;
       meter_spos[meters]++;
       if (meter_spos[meters] >= SML_BSIZ) {
-        meter_spos[meters]=0;
+        meter_spos[meters] = 0;
       }
       // modbus
-      if (meter_spos[meters]>=8) {
-        uint32_t mlen=smltbuf[meters][2]+5;
-        if (mlen>SML_BSIZ) mlen=SML_BSIZ;
-        if (meter_spos[meters]>=mlen) {
+      if (meter_spos[meters] >= 8) {
+        uint32_t mlen = smltbuf[meters][2] + 5;
+        if (mlen > SML_BSIZ) mlen = SML_BSIZ;
+        if (meter_spos[meters] >= mlen) {
           SML_Decode(meters);
           sml_empty_receiver(meters);
-          meter_spos[meters]=0;
+          meter_spos[meters] = 0;
         }
       }
     }
-  } else if (meter_desc_p[meters].type=='p') {
+  } else if (meter_desc_p[meters].type == 'p') {
     smltbuf[meters][meter_spos[meters]] = iob;
     meter_spos[meters]++;
-    if (meter_spos[meters]>=7) {
+    if (meter_spos[meters] >= 7) {
       SML_Decode(meters);
       sml_empty_receiver(meters);
-      meter_spos[meters]=0;
+      meter_spos[meters] = 0;
     }
-  } else if (meter_desc_p[meters].type=='R') {
+  } else if (meter_desc_p[meters].type == 'R') {
     smltbuf[meters][meter_spos[meters]] = iob;
     meter_spos[meters]++;
-    if (meter_spos[meters]>=SML_BSIZ) {
-      meter_spos[meters]=0;
+    if (meter_spos[meters] >= SML_BSIZ) {
+      meter_spos[meters] = 0;
     }
-  } else if (meter_desc_p[meters].type=='v') {
-    if (iob==EBUS_SYNC) {
+  } else if (meter_desc_p[meters].type == 'v') {
+    if (iob == EBUS_SYNC) {
       sb_counter = 0;
       SML_Decode(meters);
       smltbuf[meters][0] = iob;
@@ -1714,15 +1714,15 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
     }
   }
   else {
-    if (iob==EBUS_SYNC) {
+    if (iob == EBUS_SYNC) {
     	// should be end of telegramm
       // QQ,ZZ,PB,SB,NN ..... CRC, ACK SYNC
-      if (meter_spos[meters]>4+5) {
+      if (meter_spos[meters] > 4 + 5) {
       	// get telegramm lenght
-        uint16_t tlen=smltbuf[meters][4]+5;
+        uint16_t tlen = smltbuf[meters][4] + 5;
         // test crc
-        if (smltbuf[meters][tlen]=ebus_CalculateCRC(smltbuf[meters],tlen)) {
-            ebus_esc(smltbuf[meters],tlen);
+        if (smltbuf[meters][tlen] = ebus_CalculateCRC(smltbuf[meters], tlen)) {
+            ebus_esc(smltbuf[meters], tlen);
             SML_Decode(meters);
         } else {
             // crc error
@@ -1734,15 +1734,15 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
     }
 		smltbuf[meters][meter_spos[meters]] = iob;
 		meter_spos[meters]++;
-		if (meter_spos[meters]>=SML_BSIZ) {
-			meter_spos[meters]=0;
+		if (meter_spos[meters] >= SML_BSIZ) {
+			meter_spos[meters] = 0;
 		}
   }
   sb_counter++;
 #ifndef SML_OBIS_LINE
-  if (meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') SML_Decode(meters);
+  if (meter_desc_p[meters].type != 'e' && meter_desc_p[meters].type != 'm' && meter_desc_p[meters].type != 'M' && meter_desc_p[meters].type != 'k' && meter_desc_p[meters].type != 'p' && meter_desc_p[meters].type != 'R' && meter_desc_p[meters].type != 'v') SML_Decode(meters);
 #else
-  if (meter_desc_p[meters].type!='o' && meter_desc_p[meters].type!='e' && meter_desc_p[meters].type!='m' && meter_desc_p[meters].type!='M' && meter_desc_p[meters].type!='k' && meter_desc_p[meters].type!='p' && meter_desc_p[meters].type!='R' && meter_desc_p[meters].type!='v') SML_Decode(meters);
+  if (meter_desc_p[meters].type != 'o' && meter_desc_p[meters].type != 'e' && meter_desc_p[meters].type != 'm' && meter_desc_p[meters].type != 'M' && meter_desc_p[meters].type != 'k' && meter_desc_p[meters].type != 'p' && meter_desc_p[meters].type != 'R' && meter_desc_p[meters].type != 'v') SML_Decode(meters);
 #endif
 }
 
@@ -1755,7 +1755,7 @@ uint32_t meters;
       if (meter_desc_p[meters].type != 'c') {
         // poll for serial input
         if (!meter_ss[meters]) continue;
-        if (ser_act_LED_pin!=255 && (ser_act_meter_num==0 || ser_act_meter_num-1==meters)) {
+        if (ser_act_LED_pin != 255 && (ser_act_meter_num == 0 || ser_act_meter_num - 1 == meters)) {
           digitalWrite(ser_act_LED_pin, meter_ss[meters]->available() && !digitalRead(ser_act_LED_pin)); // Invert LED, if queue is continuously full
         }
         while (meter_ss[meters]->available()) {
@@ -2691,8 +2691,8 @@ uint32_t debounce_time;
 
 uint32_t SML_getlinelen(char *lp) {
 uint32_t cnt;
-  for (cnt=0; cnt<SML_SRCBSIZE-1; cnt++) {
-    if (lp[cnt]==SCRIPT_EOL) {
+  for (cnt = 0; cnt < SML_SRCBSIZE - 1; cnt++) {
+    if (lp[cnt] == SCRIPT_EOL) {
       break;
     }
   }
@@ -2700,27 +2700,27 @@ uint32_t cnt;
 }
 
 uint32_t SML_getscriptsize(char *lp) {
-uint32_t mlen=0;
-char dstbuf[SML_SRCBSIZE*2];
+uint32_t mlen = 0;
+char dstbuf[SML_SRCBSIZE * 2];
   while (1) {
-    Replace_Cmd_Vars(lp,1,dstbuf,sizeof(dstbuf));
-    lp+=SML_getlinelen(lp)+1;
-    uint32_t slen=strlen(dstbuf);
+    Replace_Cmd_Vars(lp, 1, dstbuf, sizeof(dstbuf));
+    lp += SML_getlinelen(lp) + 1;
+    uint32_t slen = strlen(dstbuf);
     //AddLog(LOG_LEVEL_INFO, PSTR("%d - %s"),slen,dstbuf);
-    mlen+=slen+1;
-    if (*lp=='#') break;
-    if (*lp=='>') break;
-    if (*lp==0) break;
+    mlen += slen + 1;
+    if (*lp == '#') break;
+    if (*lp == '>') break;
+    if (*lp == 0) break;
   }
   //AddLog(LOG_LEVEL_INFO, PSTR("len=%d"),mlen);
-  return mlen+32;
+  return mlen + 32;
 }
 #else
 uint32_t SML_getscriptsize(char *lp) {
-  uint32_t mlen=0;
-  for (uint32_t cnt=0;cnt<METER_DEF_SIZE-1;cnt++) {
-    if (lp[cnt]=='\n' && lp[cnt+1]=='#') {
-      mlen=cnt+3;
+  uint32_t mlen = 0;
+  for (uint32_t cnt = 0; cnt < METER_DEF_SIZE - 1; cnt++) {
+    if (lp[cnt] == '\n' && lp[cnt + 1] == '#') {
+      mlen = cnt + 3;
       break;
     }
   }
@@ -2771,19 +2771,19 @@ void SML_GetSpecOpt(char *cp, uint32_t mnum) {
 #endif
 
 void SML_Init(void) {
-  meters_used=METERS_USED;
-  meter_desc_p=meter_desc;
-  meter_p=meter;
+  meters_used = METERS_USED;
+  meter_desc_p = meter_desc;
+  meter_p = meter;
 
-  sml_desc_cnt=0;
+  sml_desc_cnt = 0;
 
-  for (uint32_t cnt=0;cnt<SML_MAX_VARS;cnt++) {
-    meter_vars[cnt]=0;
-    dvalid[cnt]=0;
+  for (uint32_t cnt = 0; cnt < SML_MAX_VARS; cnt++) {
+    meter_vars[cnt] = 0;
+    dvalid[cnt] = 0;
   }
 
-  for (uint32_t cnt=0;cnt<MAX_METERS;cnt++) {
-    meter_spos[cnt]=0;
+  for (uint32_t cnt = 0; cnt < MAX_METERS; cnt++) {
+    meter_spos[cnt] = 0;
   }
 
 #ifdef USE_SML_SPECOPT
@@ -2795,24 +2795,24 @@ void SML_Init(void) {
 
 #ifdef USE_SCRIPT
 
-  for (uint32_t cnt=0;cnt<MAX_METERS;cnt++) {
+  for (uint32_t cnt = 0; cnt < MAX_METERS; cnt++) {
     if (script_meter_desc[cnt].txmem) {
      free(script_meter_desc[cnt].txmem);
     }
-    script_meter_desc[cnt].txmem=0;
-    script_meter_desc[cnt].trxpin=-1;
+    script_meter_desc[cnt].txmem = 0;
+    script_meter_desc[cnt].trxpin = -1;
 
     if (meter_ss[cnt]) {
         delete meter_ss[cnt];
-        meter_ss[cnt]=NULL;
+        meter_ss[cnt] = NULL;
     }
 
   }
 
   if (bitRead(Settings->rule_enabled, 0)) {
 
-  uint8_t meter_script=Run_Scripter(">M",-2,0);
-  if (meter_script==99) {
+  uint8_t meter_script=Run_Scripter(">M", -2, 0);
+  if (meter_script == 99) {
     // use script definition
     if (script_meter) free(script_meter);
     script_meter = 0;
@@ -2841,23 +2841,23 @@ void SML_Init(void) {
       }
       else {
         if (!*lp || *lp == '#' || *lp == '>') {
-          if (*(tp-1) == '|') *(tp-1) = 0;
+          if (*(tp - 1) == '|') *(tp - 1) = 0;
           break;
         }
         if (*lp == '+') {
           // add descriptor +1,1,c,0,10,H20
           //toLogEOL(">>",lp);
           lp++;
-          index = *lp&7;
+          index = *lp & 7;
           lp += 2;
           if (index < 1 || index > meters_used) {
             AddLog(LOG_LEVEL_INFO, PSTR("illegal meter number!"));
             goto next_line;
           }
           index--;
-          srcpin  = strtol(lp,&lp,10);
+          srcpin  = strtol(lp, &lp, 10);
           if (Gpio_used(abs(srcpin))) {
-            AddLog(LOG_LEVEL_INFO, PSTR("SML: Error: Duplicate GPIO %d defined. Not usable for RX in meter number %d"),abs(srcpin),index+1);
+            AddLog(LOG_LEVEL_INFO, PSTR("SML: Error: Duplicate GPIO %d defined. Not usable for RX in meter number %d"), abs(srcpin), index + 1);
 dddef_exit:
             if (script_meter) free(script_meter);
             script_meter = 0;
@@ -2912,7 +2912,7 @@ dddef_exit:
             lp++;
             script_meter_desc[index].trxpin = strtol(lp, &lp, 10);
             if (Gpio_used(script_meter_desc[index].trxpin)) {
-              AddLog(LOG_LEVEL_INFO, PSTR("SML: Error: Duplicate GPIO %d defined. Not usable for TX in meter number %d"),script_meter_desc[index].trxpin,index+1);
+              AddLog(LOG_LEVEL_INFO, PSTR("SML: Error: Duplicate GPIO %d defined. Not usable for TX in meter number %d"), script_meter_desc[index].trxpin, index + 1);
               goto dddef_exit;
             }
             if (*lp != ',') goto next_line;
@@ -3076,7 +3076,7 @@ dddef_exit:
       }
 
 next_line:
-      if (*lp==SCRIPT_EOL) {
+      if (*lp == SCRIPT_EOL) {
         lp++;
       } else {
         lp = strchr(lp, SCRIPT_EOL);
@@ -3084,16 +3084,16 @@ next_line:
         lp++;
       }
     }
-    *tp=0;
-    meter_desc_p=script_meter_desc;
-    meter_p=script_meter;
+    *tp = 0;
+    meter_desc_p = script_meter_desc;
+    meter_p = script_meter;
   }
   }
 #endif
 
 init10:
   typedef void (*function)();
-  uint8_t cindex=0;
+  uint8_t cindex = 0;
   // preloud counters
   for (byte i = 0; i < MAX_COUNTERS; i++) {
       RtcSettings.pulse_counter[i] = Settings->pulse_counter[i];
@@ -3258,7 +3258,7 @@ uint32_t SML_SetBaud(uint32_t meter, uint32_t br) {
 }
 
 uint32_t SML_Status(uint32_t meter) {
-  if (meter<1 || meter>meters_used) return 0;
+  if (meter < 1 || meter > meters_used) return 0;
   meter--;
 #if defined(ED300L) || defined(AS2020) || defined(DTZ541) || defined(USE_SML_SPECOPT)
   return sml_status[meter];
@@ -3270,20 +3270,20 @@ uint32_t SML_Status(uint32_t meter) {
 
 
 uint32_t SML_Write(uint32_t meter,char *hstr) {
-  if (meter<1 || meter>meters_used) return 0;
+  if (meter < 1 || meter > meters_used) return 0;
   meter--;
   if (!meter_ss[meter]) return 0;
-  SML_Send_Seq(meter,hstr);
+  SML_Send_Seq(meter, hstr);
   return 1;
 }
 
 uint32_t SML_Read(int32_t meter,char *str, uint32_t slen) {
-uint8_t hflg=0;
-  if (meter<0) {
-    meter=abs(meter);
-    hflg=1;
+uint8_t hflg = 0;
+  if (meter < 0) {
+    meter = abs(meter);
+    hflg = 1;
   }
-  if (meter<1 || meter>meters_used) return 0;
+  if (meter < 1 || meter > meters_used) return 0;
   meter--;
   if (!meter_ss[meter]) return 0;
 
@@ -3291,26 +3291,26 @@ uint8_t hflg=0;
     return 0;
   }
 
-  smltbuf[meter][meter_spos[meter]]=0;
+  smltbuf[meter][meter_spos[meter]] = 0;
 
   if (!hflg) {
-    strlcpy(str,(char*)&smltbuf[meter][0],slen);
+    strlcpy(str, (char*)&smltbuf[meter][0], slen);
   } else {
-    uint32_t index=0;
-    for (uint32_t cnt=0; cnt<meter_spos[meter]; cnt++) {
-      sprintf(str,"%02x",smltbuf[meter][cnt]);
-      str+=2;
-      index+=2;
-      if (index>=slen-2) break;
+    uint32_t index = 0;
+    for (uint32_t cnt = 0; cnt < meter_spos[meter]; cnt++) {
+      sprintf(str,"%02x", smltbuf[meter][cnt]);
+      str += 2;
+      index += 2;
+      if (index >= slen - 2) break;
     }
   }
-  meter_spos[meter]=0;
+  meter_spos[meter] = 0;
   return 1;
 }
 
 float SML_GetVal(uint32_t index) {
   if (index < 1 || index > SML_MAX_VARS) { index = 1;}
-  return meter_vars[index-1];
+  return meter_vars[index - 1];
 }
 
 char *SML_GetSVal(uint32_t index) {
