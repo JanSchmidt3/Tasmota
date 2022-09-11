@@ -53,6 +53,8 @@
 #define TMSBSIZ 256
 #endif
 
+#define MODBUS_DEBUG
+
 // addresses a bug in meter DWS74
 //#define DWS74_BUG
 
@@ -1680,6 +1682,10 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
         uint32_t mlen = smltbuf[meters][2] + 5;
         if (mlen > SML_BSIZ) mlen = SML_BSIZ;
         if (meter_spos[meters] >= mlen) {
+#ifdef MODBUS_DEBUG
+          AddLog(LOG_LEVEL_INFO, PSTR("receive index >> %d"),meter_desc_p[meters].index);
+          Hexdump(smltbuf[meters], 10);
+#endif
           SML_Decode(meters);
           sml_empty_receiver(meters);
           meter_spos[meters] = 0;
@@ -3590,6 +3596,14 @@ void SML_Send_Seq(uint32_t meter,char *seq) {
     }
 #endif
   }
+
+#ifdef MODBUS_DEBUG
+      uint8_t type = script_meter_desc[meter].type;      
+      if (type == 'm' || type == 'M' || type == 'k') {
+        AddLog(LOG_LEVEL_INFO, PSTR("transmit index >> %d"),meter_desc_p[meter].index);
+        Hexdump(sbuff, slen);
+      }
+#endif
 
 }
 #endif // USE_SCRIPT
