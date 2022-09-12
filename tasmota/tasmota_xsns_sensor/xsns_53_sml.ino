@@ -3585,6 +3585,12 @@ void SML_Send_Seq(uint32_t meter,char *seq) {
     *ucp++ = SML_PzemCrc(sbuff, 6);
     slen += 6;
   }
+
+  uint8_t type = script_meter_desc[meter].type;
+  if (type == 'm' || type == 'M' || type == 'k') {
+    sml_empty_receiver(meter);
+  }
+
   meter_ss[meter]->write(sbuff, slen);
   if (dump2log) {
 #ifdef SML_DUMP_OUT_ALL
@@ -3598,11 +3604,10 @@ void SML_Send_Seq(uint32_t meter,char *seq) {
   }
 
 #ifdef MODBUS_DEBUG
-      uint8_t type = script_meter_desc[meter].type;      
-      if (type == 'm' || type == 'M' || type == 'k') {
-        AddLog(LOG_LEVEL_INFO, PSTR("transmit index >> %d"),meter_desc_p[meter].index);
-        Hexdump(sbuff, slen);
-      }
+  if (!dump2log && (type == 'm' || type == 'M' || type == 'k')) {
+    AddLog(LOG_LEVEL_INFO, PSTR("transmit index >> %d"),meter_desc_p[meter].index);
+    Hexdump(sbuff, slen);
+  }
 #endif
 
 }
