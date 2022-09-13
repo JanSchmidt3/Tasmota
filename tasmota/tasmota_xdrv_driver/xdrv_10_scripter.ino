@@ -2100,29 +2100,9 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, float *fp, char *sp,
       lp++;
       while (*lp != '"') {
         if (*lp == 0 || *lp == SCRIPT_EOL) break;
-        uint8_t iob = *lp;
-        if (iob == '\\') {
-          lp++;
-          if (*lp == 't') {
-            iob = '\t';
-          } else if (*lp == 'n') {
-            iob = '\n';
-          } else if (*lp == 'r') {
-            iob = '\r';
-          } else if (*lp == '0' && *(lp+1) == 'x') {
-            lp += 2;
-            iob = strtol(lp, 0, 16);
-            lp++;
-          } else if (*lp == '\\') {
-            iob = '\\';
-          } else {
-            lp--;
-          }
-          if (sp) *sp++ = iob;
-        } else {
-          if (sp) *sp++ = iob;
-        }
-        lp++;
+        char iob;
+        lp = Get_esc_char(lp, &iob);
+        if (sp) *sp++ = iob;
       }
       if (sp) *sp = 0;
       *vtype = STR_RES;
