@@ -80,7 +80,7 @@ uint32_t EncodeLightId(uint8_t relay_id);
 uint32_t DecodeLightId(uint32_t hue_id);
 char *web_send_line(char mc, char *lp);
 int32_t web_send_file(char mc, char *file);
-
+char *Get_esc_char(char *cp, char *esc_chr);
 #define SPECIAL_EEPMODE_SIZE 6200
 
 #ifndef STASK_STACK
@@ -797,9 +797,12 @@ char *script;
                     // string vars
                     op++;
                     *snp_p ++= strings_p;
-                    while (*op!='\"') {
-                      if (*op==SCRIPT_EOL) break;
-                      *strings_p++ = *op++;
+                    while (*op != '\"') {
+                      if (*op == SCRIPT_EOL) break;
+                      char iob;
+                      op = Get_esc_char(op, &iob);
+                      //*strings_p++ = *op++;
+                      *strings_p++ = iob;
                     }
                     *strings_p++ = 0;
                     vtypes[vars].bits.is_string = 1;
@@ -2005,6 +2008,33 @@ char *isargs(char *lp, uint32_t isind) {
   lp++;
   return lp;
 }
+
+char *Get_esc_char(char *cp, char *esc_chr) {
+char iob = *cp;
+  if (iob == '\\') {
+    cp++;
+    if (*cp == 't') {
+      iob = '\t';
+    } else if (*cp == 'n') {
+      iob = '\n';
+    } else if (*cp == 'r') {
+      iob = '\r';
+    } else if (*cp == '0' && *(cp + 1) == 'x') {
+      cp += 2;
+      iob = strtol(cp, 0, 16);
+      cp++;
+    } else if (*cp == '\\') {
+      iob = '\\';
+    }
+     else {
+      cp--;
+    }
+  }
+  *esc_chr = iob;
+  cp++;
+  return cp;
+}
+
 
 char *isget(char *lp, char *sp, uint32_t isind, struct GVARS *gv) {
 float fvar;
@@ -3992,7 +4022,13 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           lp = GetStringArgument(lp + 3, OPER_EQU, str, 0);
           SCRIPT_SKIP_SPACES
           char token[2];
-          token[0] = *lp++;
+          if (*lp == '\'') {
+            lp++;
+            lp = Get_esc_char(lp, token);
+            lp++;
+          } else {
+            token[0] = *lp++;
+          }
           token[1] = 0;
           SCRIPT_SKIP_SPACES
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
