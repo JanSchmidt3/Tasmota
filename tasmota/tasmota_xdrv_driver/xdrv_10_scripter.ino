@@ -4884,6 +4884,16 @@ extern char *SML_GetSVal(uint32_t index);
           goto nfuncexit;
         }
 #endif
+        if (!strncmp(lp, "tc(", 3)) {
+          lp = GetNumericArgument(lp + 3, OPER_EQU, &fvar, gv);
+          lp++;
+          if (sp) {
+            sp[0] = fvar;
+            sp[1] = 0;
+          }
+          len = 0;
+          goto strexit;
+        }
         break;
       case 'u':
         if (!strncmp(vname, "uptime", 6)) {
