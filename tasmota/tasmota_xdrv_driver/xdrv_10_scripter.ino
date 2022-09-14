@@ -6118,8 +6118,13 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                     }
                   }
                 }
+              } else {
+                lp += 4;
+                loopdepth--;
+                if (loopdepth < 0) {
+                  loopdepth = 0;
+                }
               }
-
             }
 
             if (!strncmp(lp, "switch", 6)) {
@@ -6206,10 +6211,6 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                   lp = lp_next[loopdepth - 1];
                 }
                 floop[loopdepth - 1]  = 0;
-                loopdepth--;
-                if (loopdepth < 0) {
-                  loopdepth = 0;
-                }
               } else {
                 section = 99;
                 // leave immediately
