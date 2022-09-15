@@ -6645,8 +6645,8 @@ getnext:
                             glob_script_mem.script_loglevel = *dfvar;
                             break;
                           case SCRIPT_TELEPERIOD:
-                            if (*dfvar<10) *dfvar = 10;
-                            if (*dfvar>300) *dfvar = 300;
+                            if (*dfvar < 10) *dfvar = 10;
+                            if (*dfvar > 300) *dfvar = 300;
                             Settings->tele_period = *dfvar;
                             break;
                           case SCRIPT_EVENT_HANDLED:
@@ -6679,7 +6679,7 @@ getnext:
                     SCRIPT_SKIP_SPACES
                     lp = getop(lp, &lastop);
 #ifdef SCRIPT_LM_SUB
-                    if (*lp=='#') {
+                    if (*lp == '#') {
                       // subroutine
                       lp = eval_sub(lp, 0, str);
                     } else {
@@ -6704,17 +6704,17 @@ getnext:
                         script_udp_sendvar(varname, 0, str);
                       }
 #endif //USE_SCRIPT_GLOBVARS
-                      if (saindex>=0) {
-                        if (lastop==OPER_EQU) {
+                      if (saindex >= 0) {
+                        if (lastop == OPER_EQU) {
                           strlcpy(glob_script_mem.last_index_string[glob_script_mem.sind_num] + (saindex * glob_script_mem.max_ssize), str, glob_script_mem.max_ssize);
-                        } else if (lastop==OPER_PLSEQU) {
+                        } else if (lastop == OPER_PLSEQU) {
                           strncat(glob_script_mem.last_index_string[glob_script_mem.sind_num] + (saindex * glob_script_mem.max_ssize), str, glob_script_mem.max_ssize);
                         }
                         gv->strind = -1;
                       } else {
-                        if (lastop==OPER_EQU) {
+                        if (lastop == OPER_EQU) {
                           strlcpy(glob_script_mem.glob_snp + (sindex * glob_script_mem.max_ssize), str, glob_script_mem.max_ssize);
-                        } else if (lastop==OPER_PLSEQU) {
+                        } else if (lastop == OPER_PLSEQU) {
                           strncat(glob_script_mem.glob_snp + (sindex * glob_script_mem.max_ssize), str, glob_script_mem.max_ssize);
                         }
                       }
@@ -6723,7 +6723,7 @@ getnext:
 
             }
             SCRIPT_SKIP_SPACES
-            if (*lp=='{' && if_state[ifstck]==3) {
+            if (*lp == '{' && if_state[ifstck] == 3) {
               lp += 1; // else
               //if_state[ifstck]=3;
             }
@@ -6732,7 +6732,7 @@ getnext:
         } else {
             //Serial.printf(">> decode %s\n",lp );
             // decode line
-            if (*lp=='>' && tlen==1) {
+            if (*lp == '>' && tlen == 1) {
               // called from cmdline
               lp++;
               section = 1;
@@ -6760,7 +6760,7 @@ getnext:
                       numeric = 1;
                       glob_script_mem.glob_error = 0;
                       argptr = GetNumericArgument((char*)ctype + 1, OPER_EQU, &fparam, 0);
-                      if (glob_script_mem.glob_error==1) {
+                      if (glob_script_mem.glob_error == 1) {
                         // was string, not number
                         numeric = 0;
                         // get the string
@@ -6809,7 +6809,7 @@ getnext:
         // next line
     next_line:
         if (section == 99) return 0;
-        if (*lp==SCRIPT_EOL) {
+        if (*lp == SCRIPT_EOL) {
           lp++;
         } else {
           lp = strchr(lp, SCRIPT_EOL);
