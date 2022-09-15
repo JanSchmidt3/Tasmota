@@ -5920,7 +5920,7 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
     uint8_t vtype = 0, sindex, xflg, globvindex, fromscriptcmd = 0;
     // 22 bytes per nested loop
     uint8_t floop[SCRIPT_LOOP_NEST] = {0, 0, 0};
-    int8_t loopdepth = 0;
+    int8_t loopdepth = -1;
     char *lp_next[SCRIPT_LOOP_NEST];
     char *cv_ptr[SCRIPT_LOOP_NEST];
     float *cv_count[SCRIPT_LOOP_NEST], cv_max[SCRIPT_LOOP_NEST], cv_inc[SCRIPT_LOOP_NEST];
@@ -6059,31 +6059,28 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               lp += 3;
               SCRIPT_SKIP_SPACES
               loopdepth++;
-              if (loopdepth > SCRIPT_LOOP_NEST) {
-                loopdepth = SCRIPT_LOOP_NEST;
+              if (loopdepth >= SCRIPT_LOOP_NEST) {
+                loopdepth = SCRIPT_LOOP_NEST - 1;
               }
-              lp_next[loopdepth - 1] = 0;
+              lp_next[loopdepth] = 0;
               lp = isvar(lp, &vtype, &ind, 0, 0, gv);
-              if ((vtype!=VAR_NV) && (vtype&STYPE)==0) {
+              if ((vtype != VAR_NV) && (vtype & STYPE) == 0) {
                   // numeric var
                   uint8_t index = glob_script_mem.type[ind.index].index;
-                  cv_count[loopdepth - 1] = &glob_script_mem.fvars[index];
-                  SCRIPT_SKIP_SPACES
-                  lp = GetNumericArgument(lp, OPER_EQU, cv_count[loopdepth - 1], 0);
-                  SCRIPT_SKIP_SPACES
-                  lp = GetNumericArgument(lp, OPER_EQU, &cv_max[loopdepth - 1], 0);
-                  SCRIPT_SKIP_SPACES
-                  lp = GetNumericArgument(lp, OPER_EQU, &cv_inc[loopdepth - 1], 0);
+                  cv_count[loopdepth] = &glob_script_mem.fvars[index];
+                  lp = GetNumericArgument(lp, OPER_EQU, cv_count[loopdepth], 0);
+                  lp = GetNumericArgument(lp, OPER_EQU, &cv_max[loopdepth], 0);
+                  lp = GetNumericArgument(lp, OPER_EQU, &cv_inc[loopdepth], 0);
                   //SCRIPT_SKIP_EOL
-                  cv_ptr[loopdepth - 1] = lp;
-                  if (*cv_count[loopdepth - 1] <= cv_max[loopdepth - 1] && cv_inc[loopdepth - 1] > 0) {
+                  cv_ptr[loopdepth] = lp;
+                  if (*cv_count[loopdepth] <= cv_max[loopdepth] && cv_inc[loopdepth] > 0) {
                     // inc loop
-                    floop[loopdepth - 1] = 1;
+                    floop[loopdepth] = 1;
                   } else {
                     // dec loop
-                    floop[loopdepth - 1]  = 2;
-                    if (cv_inc[loopdepth - 1] > 0) {
-                      floop[loopdepth - 1] = 1;
+                    floop[loopdepth]  = 2;
+                    if (cv_inc[loopdepth] > 0) {
+                      floop[loopdepth] = 1;
                     }
                   }
               } else {
@@ -6091,38 +6088,41 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
                   toLogEOL("for error", lp);
               }
             } else if (!strncmp(lp, "next", 4)) {
-              lp_next[loopdepth - 1] = lp;
-              if (floop[loopdepth - 1] > 0) {
-                // for next loop
-                *cv_count[loopdepth - 1] += cv_inc[loopdepth - 1];
-                if (floop[loopdepth - 1] == 1) {
-                  if (*cv_count[loopdepth - 1] <= cv_max[loopdepth - 1]) {
-                    lp = cv_ptr[loopdepth - 1];
+getnext:
+              if (loopdepth >= 0) {
+                lp_next[loopdepth] = lp;
+                if (floop[loopdepth] > 0) {
+                  // for next loop
+                  *cv_count[loopdepth] += cv_inc[loopdepth];
+                  if (floop[loopdepth] == 1) {
+                    if (*cv_count[loopdepth] <= cv_max[loopdepth]) {
+                      lp = cv_ptr[loopdepth];
+                    } else {
+                      lp += 4;
+                      floop[loopdepth] = 0;
+                      loopdepth--;
+                      if (loopdepth < -1) {
+                        loopdepth = -1;
+                      }
+                    }
                   } else {
-                    lp += 4;
-                    floop[loopdepth - 1] = 0;
-                    loopdepth--;
-                    if (loopdepth < 0) {
-                      loopdepth = 0;
+                    if (*cv_count[loopdepth] >= cv_max[loopdepth]) {
+                      lp = cv_ptr[loopdepth];
+                    } else {
+                      lp += 4;
+                      floop[loopdepth] = 0;
+                      loopdepth--;
+                      if (loopdepth < -1) {
+                        loopdepth = -1;
+                      }
                     }
                   }
                 } else {
-                  if (*cv_count[loopdepth - 1] >= cv_max[loopdepth - 1]) {
-                    lp = cv_ptr[loopdepth - 1];
-                  } else {
-                    lp += 4;
-                    floop[loopdepth - 1] = 0;
-                    loopdepth--;
-                    if (loopdepth < 0) {
-                      loopdepth = 0;
-                    }
+                  lp += 4;
+                  loopdepth--;
+                  if (loopdepth < -1) {
+                    loopdepth = -1;
                   }
-                }
-              } else {
-                lp += 4;
-                loopdepth--;
-                if (loopdepth < 0) {
-                  loopdepth = 0;
                 }
               }
             }
@@ -6205,17 +6205,21 @@ int16_t Run_script_sub(const char *type, int8_t tlen, struct GVARS *gv) {
               goto next_line;
             } else if (!strncmp(lp, "break", 5)) {
               lp += 5;
-              if (floop[loopdepth - 1] ) {
-                // should break loop
-                if (lp_next[loopdepth - 1]) {
-                  lp = lp_next[loopdepth - 1];
+              if (loopdepth >= 0) {
+                if (floop[loopdepth] ) {
+                  // should break loop
+                  if (lp_next[loopdepth]) {
+                    lp = lp_next[loopdepth];
+                  }
+                  floop[loopdepth]  = 0;
+                  goto getnext;
                 }
-                floop[loopdepth - 1]  = 0;
               } else {
                 section = 99;
                 // leave immediately
+                goto next_line;
               }
-              goto next_line;
+
             } else if (!strncmp(lp, "dp", 2) && isdigit(*(lp + 2))) {
               lp += 2;
               // number precision
