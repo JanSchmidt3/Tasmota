@@ -1982,7 +1982,7 @@ void SML_Decode(uint8_t index) {
       // compare value
       uint8_t found = 1;
       double ebus_dval = 99;
-      float mbus_dval = 99;
+      double mbus_dval = 99;
       while (*mp != '@') {
         if (meter_desc_p[mindex].type == 'o' || meter_desc_p[mindex].type == 'c') {
           if (*mp++ != *cp++) {
