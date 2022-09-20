@@ -33,6 +33,10 @@ uint8_t ctouch_counter;
 extern FS *ffsp;
 #endif
 
+
+enum {GPIO_DP_RES=GPIO_SENSOR_END-1,GPIO_DP_CS,GPIO_DP_RS,GPIO_DP_WR,GPIO_DP_RD,GPIO_DPAR0,GPIO_DPAR1,GPIO_DPAR2,GPIO_DPAR3,GPIO_DPAR4,GPIO_DPAR5,GPIO_DPAR6,GPIO_DPAR7,GPIO_DPAR8,GPIO_DPAR9,GPIO_DPAR10,GPIO_DPAR11,GPIO_DPAR12,GPIO_DPAR13,GPIO_DPAR14,GPIO_DPAR15};
+
+
 #ifndef USE_DISPLAY
 uint8_t color_type;
 uint16_t fg_color;
@@ -228,6 +232,38 @@ int8_t cs;
       }
     }
 
+    cp = strstr(ddesc, "PAR,");
+    if (cp) {
+      cp += 4;
+      // 8 or 16 bus
+      uint8_t mode = strtol(cp, &cp, 10);
+      replacepin(&cp, Pin(GPIO_DP_RES));
+      replacepin(&cp, Pin(GPIO_DP_CS));
+      replacepin(&cp, Pin(GPIO_DP_RS));
+      replacepin(&cp, Pin(GPIO_DP_WR));
+      replacepin(&cp, Pin(GPIO_DP_RD));
+      replacepin(&cp, Pin(GPIO_BACKLIGHT));
+
+      replacepin(&cp, Pin(GPIO_DPAR0));
+      replacepin(&cp, Pin(GPIO_DPAR1));
+      replacepin(&cp, Pin(GPIO_DPAR2));
+      replacepin(&cp, Pin(GPIO_DPAR3));
+      replacepin(&cp, Pin(GPIO_DPAR4));
+      replacepin(&cp, Pin(GPIO_DPAR5));
+      replacepin(&cp, Pin(GPIO_DPAR6));
+      replacepin(&cp, Pin(GPIO_DPAR7));
+
+      if (mode == 16) {
+        replacepin(&cp, Pin(GPIO_DPAR8));
+        replacepin(&cp, Pin(GPIO_DPAR9));
+        replacepin(&cp, Pin(GPIO_DPAR10));
+        replacepin(&cp, Pin(GPIO_DPAR11));
+        replacepin(&cp, Pin(GPIO_DPAR12));
+        replacepin(&cp, Pin(GPIO_DPAR13));
+        replacepin(&cp, Pin(GPIO_DPAR14));
+        replacepin(&cp, Pin(GPIO_DPAR15));
+      }
+    }
 /*
     File fp;
     fp = ffsp->open("/dump.txt", "w");
