@@ -164,6 +164,29 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
               spi_speed = next_val(&lp1);
 
               section = 0;
+            } else if (!strncmp(ibuff, "PAR", 3)) {
+              if (ibuff[3] == '8') {
+                interface = _UDSP_PAR8;
+              } else {
+                interface = _UDSP_PAR16;
+              }
+              par_res = next_val(&lp1);
+              par_cs = next_val(&lp1);
+              par_rs = next_val(&lp1);
+              par_wr = next_val(&lp1);
+              par_rd = next_val(&lp1);
+              bpanel = next_val(&lp1);
+
+              for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+                par_dbl[cnt] = next_val(&lp1);
+              }
+
+              if (interface == _UDSP_PAR16) {
+                for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+                  par_dbh[cnt] = next_val(&lp1);
+                }
+              }
+              section = 0;
             }
             break;
           case 'S':
@@ -387,6 +410,25 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
     Serial.printf("ca_sta: %x\n", i2c_col_start);
     Serial.printf("pa_end: %x\n", i2c_col_end);
     Serial.printf("WRA   : %x\n", saw_3);
+  }
+
+  if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+    Serial.printf("par  res: %d\n", par_res);
+    Serial.printf("par  cs : %d\n", par_cs);
+    Serial.printf("par  rs : %d\n", par_rs);
+    Serial.printf("par  wr : %d\n", par_wr);
+    Serial.printf("par  rd : %d\n", par_rd);
+
+    for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+      Serial.printf("par  d%d: %d\n", cnt, par_dbl[cnt]);
+    }
+
+    if (interface == _UDSP_PAR16) {
+      for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+        Serial.printf("par  d%d: %d\n", cnt, par_dbh[cnt]);
+      }
+    }
+
   }
 #endif
 }

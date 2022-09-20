@@ -11,6 +11,8 @@
 
 #define _UDSP_I2C 1
 #define _UDSP_SPI 2
+#define _UDSP_PAR8 3
+#define _UDSP_PAR16 4
 
 #define UDISP1_WHITE 1
 #define UDISP1_BLACK 0
@@ -226,6 +228,16 @@ class uDisplay : public Renderer {
    int16_t rotmap_ymin;
    int16_t rotmap_ymax;
    void pushColorsMono(uint16_t *data, uint16_t len, bool rgb16_swap = false);
+
+   int8_t par_res;
+   int8_t par_cs;
+   int8_t par_rs;
+   int8_t par_wr;
+   int8_t par_rd;
+
+   int8_t par_dbl[8];
+   int8_t par_dbh[8];
+
 #ifdef ESP32
    // dma section
    bool DMA_Enabled = false;
