@@ -232,11 +232,13 @@ int8_t cs;
       }
     }
 
+#ifdef ESP32
     cp = strstr(ddesc, "PAR,");
     if (cp) {
       cp += 4;
       // 8 or 16 bus
       uint8_t mode = strtol(cp, &cp, 10);
+      cp++;
       replacepin(&cp, Pin(GPIO_DP_RES));
       replacepin(&cp, Pin(GPIO_DP_CS));
       replacepin(&cp, Pin(GPIO_DP_RS));
@@ -264,6 +266,7 @@ int8_t cs;
         replacepin(&cp, Pin(GPIO_DPAR15));
       }
     }
+#endif
 /*
     File fp;
     fp = ffsp->open("/dump.txt", "w");

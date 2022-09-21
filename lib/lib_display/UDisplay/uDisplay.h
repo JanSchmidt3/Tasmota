@@ -7,6 +7,8 @@
 #include <SPI.h>
 #ifdef ESP32
 #include "driver/spi_master.h"
+#include <esp_lcd_panel_io.h>
+#include "esp_private/gdma.h"
 #endif
 
 #define _UDSP_I2C 1
@@ -229,7 +231,7 @@ class uDisplay : public Renderer {
    int16_t rotmap_ymax;
    void pushColorsMono(uint16_t *data, uint16_t len, bool rgb16_swap = false);
 
-   int8_t par_res;
+#ifdef ESP32
    int8_t par_cs;
    int8_t par_rs;
    int8_t par_wr;
@@ -237,6 +239,10 @@ class uDisplay : public Renderer {
 
    int8_t par_dbl[8];
    int8_t par_dbh[8];
+
+   esp_lcd_i80_bus_handle_t _i80_bus = nullptr;
+   gdma_channel_handle_t _dma_chan;
+#endif
 
 #ifdef ESP32
    // dma section

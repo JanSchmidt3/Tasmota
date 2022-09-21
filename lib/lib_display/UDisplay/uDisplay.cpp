@@ -24,7 +24,7 @@
 #include "esp8266toEsp32.h"
 #endif
 
-// #define UDSP_DEBUG
+//#define UDSP_DEBUG
 
 const uint16_t udisp_colors[]={UDISP_BLACK,UDISP_WHITE,UDISP_RED,UDISP_GREEN,UDISP_BLUE,UDISP_CYAN,UDISP_MAGENTA,\
   UDISP_YELLOW,UDISP_NAVY,UDISP_DARKGREEN,UDISP_DARKCYAN,UDISP_MAROON,UDISP_PURPLE,UDISP_OLIVE,\
@@ -165,12 +165,14 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
 
               section = 0;
             } else if (!strncmp(ibuff, "PAR", 3)) {
-              if (ibuff[3] == '8') {
+#ifdef ESP32
+              uint8_t bus = next_val(&lp1);
+              if (bus == 8) {
                 interface = _UDSP_PAR8;
               } else {
                 interface = _UDSP_PAR16;
               }
-              par_res = next_val(&lp1);
+              reset = next_val(&lp1);
               par_cs = next_val(&lp1);
               par_rs = next_val(&lp1);
               par_wr = next_val(&lp1);
@@ -186,6 +188,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
                   par_dbh[cnt] = next_val(&lp1);
                 }
               }
+#endif
               section = 0;
             }
             break;
@@ -413,7 +416,9 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
   }
 
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
-    Serial.printf("par  res: %d\n", par_res);
+#ifdef ESP32
+    Serial.printf("par  mode: %d\n", interface);
+    Serial.printf("par  res: %d\n", reset);
     Serial.printf("par  cs : %d\n", par_cs);
     Serial.printf("par  rs : %d\n", par_rs);
     Serial.printf("par  wr : %d\n", par_wr);
@@ -425,9 +430,10 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
 
     if (interface == _UDSP_PAR16) {
       for (uint32_t cnt = 0; cnt < 8; cnt ++) {
-        Serial.printf("par  d%d: %d\n", cnt, par_dbh[cnt]);
+        Serial.printf("par  d%d: %d\n", cnt + 8, par_dbh[cnt]);
       }
     }
+#endif
 
   }
 #endif
@@ -589,6 +595,66 @@ Renderer *uDisplay::Init(void) {
       if (index >= dsp_ncmds) break;
     }
     SPI_END_TRANSACTION
+
+  }
+
+  if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+#ifdef ESP32
+    analogWrite(bpanel, 32);
+    pinMode(reset, OUTPUT);
+    digitalWrite(reset, HIGH);
+    pinMode(par_cs, OUTPUT);
+    digitalWrite(par_cs, HIGH);
+    pinMode(par_rs, OUTPUT);
+    digitalWrite(par_rs, HIGH);
+    pinMode(par_wr, OUTPUT);
+    digitalWrite(par_wr, HIGH);
+    pinMode(par_rd, OUTPUT);
+    digitalWrite(par_rd, HIGH);
+
+    for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+        pinMode(par_dbl[cnt], INPUT);
+    }
+
+    uint8_t bus_width = 8;
+
+    if (interface == _UDSP_PAR16) {
+      for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+          pinMode(par_dbh[cnt], INPUT);
+      }
+      bus_width = 16;
+    }
+
+    esp_lcd_i80_bus_config_t bus_config = {
+        .dc_gpio_num = par_rs,
+        .wr_gpio_num = par_wr,
+        .bus_width = bus_width,
+        .max_transfer_bytes = 32768
+    };
+
+    if (interface == _UDSP_PAR8) {
+      for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+        bus_config.data_gpio_nums[cnt] = par_dbl[cnt];
+      }
+    } else {
+      for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+        bus_config.data_gpio_nums[cnt] = par_dbh[cnt];
+      }
+      for (uint32_t cnt = 0; cnt < 8; cnt ++) {
+        bus_config.data_gpio_nums[cnt + 8] = par_dbl[cnt];
+      }
+    }
+
+    _i80_bus = nullptr;
+
+    esp_lcd_new_i80_bus(&bus_config, &_i80_bus);
+
+    //_dma_chan = ((esp_lcd_i80_bus_t*)_i80_bus)->dma_chan;
+
+    // esp_lcd_panel_io_i80_config_t bus_config;
+    //esp_err_tesp_lcd_del_i80_bus
+
+#endif
 
   }
 
@@ -870,10 +936,11 @@ void uDisplay::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
     return;
   }
 
-  if (interface != _UDSP_SPI) {
+  if (framebuffer) {
     Renderer::drawFastVLine(x, y, h, color);
     return;
   }
+
   // Rudimentary clipping
   if ((x >= _width) || (y >= _height)) return;
   if ((y + h - 1) >= _height) h = _height - y;
@@ -916,7 +983,7 @@ void uDisplay::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
     return;
   }
 
-  if (interface != _UDSP_SPI) {
+  if (framebuffer) {
     Renderer::drawFastHLine(x, y, w, color);
     return;
   }
@@ -974,7 +1041,7 @@ void uDisplay::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t col
     return;
   }
 
-  if (interface != _UDSP_SPI) {
+  if (framebuffer) {
     Renderer::fillRect(x, y, w, h, color);
     return;
   }
@@ -1307,8 +1374,6 @@ void uDisplay::drawPixel(int16_t x, int16_t y, uint16_t color) {
     return;
   }
 
-
-
   if ((x < 0) || (x >= _width) || (y < 0) || (y >= _height)) return;
 
 
@@ -1333,7 +1398,7 @@ void uDisplay::setRotation(uint8_t rotation) {
     return;
   }
 
-  if (interface == _UDSP_SPI) {
+  if (interface >= _UDSP_SPI) {
 
     if (ep_mode) {
       Renderer::setRotation(cur_rot);
@@ -1613,7 +1678,7 @@ uint32_t uDisplay::next_hex(char **sp) {
 #include "esp32-hal.h"
 #include "soc/spi_struct.h"
 
-// since ardunio transferBits ia completely disfunctional
+// since ardunio transferBits is completely disfunctional
 // we use our own hardware driver for 9 bit spi
 void uDisplay::hw_write9(uint8_t val, uint8_t dc) {
 
