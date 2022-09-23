@@ -1,5 +1,5 @@
 /*
-  xdrv_55_touch.ino - Touch controllers
+  xdrv_55_touch.ino - Touch contolers
 
   Copyright (C) 2021 Gerhard Mutz, Theo Arends & Stephan Hadinger
 
@@ -19,19 +19,19 @@
 
 /*******************************************************************************************\
  * Universal TouchScreen driver, extensible via Berry
- *
+ * 
  * API:
  *   void Touch_Init() - TODO
- *
+ * 
  *   uint32_t Touch_Status(int32_t sel)
  *     0: return 1 if TSGlobal.touched
  *     1: return x
  *     2: return y
- *    -1: return raw x (before conversion for resistive)
+ *    -1: return raw x (before conersion for resistive)
  *    -2: return raw y
- *
+ * 
  *   void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y))
- *
+ * 
  *   void TS_RotConvert(int16_t *x, int16_t *y) - calls the renderer's rotation converter
 \*******************************************************************************************/
 
@@ -213,7 +213,6 @@ void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y)) {
     }
   }
 #endif // USE_XPT2046
-
   TSGlobal.touch_xp = TSGlobal.raw_touch_xp;
   TSGlobal.touch_yp = TSGlobal.raw_touch_yp;
 
@@ -271,8 +270,6 @@ void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y)) {
   }
 }
 
-extern uint8_t GT911_found;
-
 #ifdef USE_TOUCH_BUTTONS
 void Touch_MQTT(uint8_t index, const char *cp, uint32_t val) {
 #ifdef USE_FT5206
@@ -281,19 +278,11 @@ void Touch_MQTT(uint8_t index, const char *cp, uint32_t val) {
 #ifdef USE_XPT2046
   if (XPT2046_found) ResponseTime_P(PSTR(",\"XPT2046\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
 #endif  // USE_XPT2046
-#ifdef USE_GT911
-  if (GT911_found) ResponseTime_P(PSTR(",\"GT911\":{\"%s%d\":\"%d\"}}"), cp, index+1, val);
-#endif  // USE_XPT2046
   MqttPublishTeleSensor();
-}
-
-void EP_Drawbutton(uint32_t count) {
-  renderer->ep_update_area(buttons[count]->spars.xp, buttons[count]->spars.yp, buttons[count]->spars.xs, buttons[count]->spars.ys, 3);
 }
 
 void Touch_RDW_BUTT(uint32_t count, uint32_t pwr) {
   buttons[count]->xdrawButton(pwr);
-  EP_Drawbutton(count);
   if (pwr) buttons[count]->vpower.on_off = 1;
   else buttons[count]->vpower.on_off = 0;
 }
@@ -304,8 +293,8 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
   uint8_t vbutt=0;
 
   if (!renderer) return;
-    if (touched) {
-      //AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), touch_x, touch_y);
+    if (TSGlobal.touched) {
+      // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("touch after convert %d - %d"), pLoc.x, pLoc.y);
       // now must compare with defined buttons
       for (uint8_t count = 0; count < MAX_TOUCH_BUTTONS; count++) {
         if (buttons[count]) {
@@ -318,8 +307,8 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
                   if (!buttons[count]->vpower.is_virtual) {
                     uint8_t pwr=bitRead(TasmotaGlobal.power, rbutt);
                     if (!SendKey(KEY_BUTTON, rbutt+1, POWER_TOGGLE)) {
-                      Touch_RDW_BUTT(count, !pwr);
                       ExecuteCommandPower(rbutt+1, POWER_TOGGLE, SRC_BUTTON);
+                      Touch_RDW_BUTT(count, !pwr);
                     }
                   } else {
                     // virtual button
@@ -334,9 +323,7 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
                       cp="PBT";
                     }
                     buttons[count]->xdrawButton(buttons[count]->vpower.on_off);
-                    EP_Drawbutton(count);
                     Touch_MQTT(count, cp, buttons[count]->vpower.on_off);
-
                   }
                 }
               }
@@ -350,7 +337,6 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
             // slider
             if (buttons[count]->didhit(touch_x, touch_y)) {
               uint16_t value = buttons[count]->UpdateSlider(touch_x, touch_y);
-              EP_Drawbutton(count);
               Touch_MQTT(count, "SLD", value);
             }
           }
@@ -370,7 +356,6 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
                 buttons[count]->vpower.on_off = 0;
                 Touch_MQTT(count,"PBT", buttons[count]->vpower.on_off);
                 buttons[count]->xdrawButton(buttons[count]->vpower.on_off);
-                EP_Drawbutton(count);
               }
             }
           }
@@ -386,6 +371,8 @@ void CheckTouchButtons(bool touched, int16_t touch_x, int16_t touch_y) {
         }
       }
     }
+    TSGlobal.raw_touch_xp = TSGlobal.touch_xp = 0;
+    TSGlobal.raw_touch_yp = TSGlobal.touch_yp = 0;
   }
 }
 #endif // USE_TOUCH_BUTTONS

@@ -446,6 +446,36 @@ char* RemoveSpace(char* p) {
   return p;
 }
 
+// remove spaces at the beginning and end of the string (but not in the middle)
+char* TrimSpace(char *p) {
+  // Remove white-space character (' ','\t','\n','\v','\f','\r')
+  char* write = p;
+  char* read = p;
+  char ch = '.';
+
+  // skip all leading spaces
+  while (isspace(*read)) {
+    read++;
+  }
+  // copy the rest
+  do {
+    ch = *read++;
+    *write++ = ch;
+  } while (ch != '\0');
+  // move to end
+  read = p + strlen(p);
+  // move backwards
+  while (p != read) {
+    read--;
+    if (isspace(*read)) {
+      *read = '\0';
+    } else {
+      break;
+    }
+  }
+  return p;
+}
+
 char* RemoveControlCharacter(char* p) {
   // Remove control character (0x00 .. 0x1F and 0x7F)
   char* write = p;
@@ -2324,6 +2354,14 @@ void I2cScan(uint32_t bus) {
   // I2C_SCL_HELD_LOW_AFTER_READ 2 = I2C bus error. SCL held low beyond client clock stretch time
   // I2C_SDA_HELD_LOW            3 = I2C bus error. SDA line held low by client/another_master after n bits
   // I2C_SDA_HELD_LOW_AFTER_INIT 4 = line busy. SDA again held low by another device. 2nd master?
+  //                             5 = bus busy. Timeout
+  // https://www.arduino.cc/reference/en/language/functions/communication/wire/endtransmission/
+  // 0: success
+  // 1: data too long to fit in transmit buffer
+  // 2: received NACK on transmit of address
+  // 3: received NACK on transmit of data
+  // 4: other error
+  // 5: timeout
 
   uint8_t error = 0;
   uint8_t address = 0;
@@ -2415,7 +2453,12 @@ bool I2cSetDevice(uint32_t addr, uint32_t bus) {
     return false;       // If already active report as not present;
   }
   myWire.beginTransmission((uint8_t)addr);
-  return (0 == myWire.endTransmission());
+//  return (0 == myWire.endTransmission());
+  uint32_t err = myWire.endTransmission();
+  if (err && (err != 2)) {
+    AddLog(LOG_LEVEL_DEBUG, PSTR("I2C: Error %d at 0x%02x"), err, addr);
+  }
+  return (0 == err);
 }
 #endif  // USE_I2C
 

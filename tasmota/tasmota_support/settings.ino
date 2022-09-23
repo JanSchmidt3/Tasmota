@@ -749,7 +749,7 @@ uint32_t CfgTime(void) {
 void SettingsErase(uint8_t type) {
   /*
     For Arduino core and SDK:
-    Erase only works from flash start address to SDK recognized flash end address (flashchip->chip_size = ESP.getFlashChipSize).
+    Erase only works from flash start address to SDK recognized flash end address (flashchip->chip_size = ESP_getFlashChipSize).
     Addresses above SDK recognized size (up to ESP.getFlashChipRealSize) are not accessable.
     For Esptool:
     The only way to erase whole flash is esptool which uses direct SPI writes to flash.
@@ -779,7 +779,7 @@ void SettingsErase(uint8_t type) {
 */
     EsptoolErase(_sectorStart, FLASH_FS_START);
     _sectorStart = EEPROM_LOCATION;
-    _sectorEnd = ESP.getFlashChipSize() / SPI_FLASH_SEC_SIZE;  // Flash size as seen by SDK
+    _sectorEnd = ESP_getFlashChipSize() / SPI_FLASH_SEC_SIZE;  // Flash size as seen by SDK
   }
   else if (3 == type) {    // QPC Reached = QPC and Tasmota and SDK parameter area (0x0F3xxx - 0x0FFFFF)
 #ifdef USE_UFILESYS
@@ -989,6 +989,7 @@ void SettingsDefaultSet2(void) {
   flag.mqtt_sensor_retain |= MQTT_SENSOR_RETAIN;
   flag5.mqtt_info_retain |= MQTT_INFO_RETAIN;
   flag5.mqtt_state_retain |= MQTT_STATE_RETAIN;
+  flag5.mqtt_status_retain |= MQTT_STATUS_RETAIN;
   flag5.mqtt_switches |= MQTT_SWITCHES;
   flag5.mqtt_persistent |= ~MQTT_CLEAN_SESSION;
 //  flag.mqtt_serial |= 0;
@@ -1237,6 +1238,7 @@ void SettingsDefaultSet2(void) {
   flag4.zigbee_distinct_topics |= ZIGBEE_DISTINCT_TOPICS;
   flag4.remove_zbreceived |= ZIGBEE_RMV_ZBRECEIVED;
   flag4.zb_index_ep |= ZIGBEE_INDEX_EP;
+  flag4.zb_topic_fname |= ZIGBEE_TOPIC_FNAME;
   flag4.mqtt_tls |= MQTT_TLS_ENABLED;
   flag4.mqtt_no_retain |= MQTT_NO_RETAIN;
 

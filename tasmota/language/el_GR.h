@@ -152,8 +152,8 @@
 #define D_PROGRAM_FLASH_SIZE "Μέγεθος προγράμματος στη Flash"
 #define D_PROGRAM_SIZE "Μέγεθος προγράμματος"
 #define D_PROJECT "Έργο"
-#define D_RAIN "Rain"
-#define D_RANGE "Range"
+#define D_RAIN "Βροχή"
+#define D_RANGE "Εύρος"
 #define D_RECEIVED "Ελήφθη"
 #define D_RESTART "Επανεκκίνηση"
 #define D_RESTARTING "Επανεκκινεί"
@@ -171,7 +171,7 @@
 #define D_SUBSCRIBE_TO "Εγγραφή στο"
 #define D_UNSUBSCRIBE_FROM "Unsubscribe from"
 #define D_SUCCESSFUL "Επιτυχές"
-#define D_SUNRISE "Σούρουπο"
+#define D_SUNRISE "Ανατολή Ηλίου"
 #define D_SUNSET "Ηλιοβασίλεμα"
 #define D_TEMPERATURE "Θερμοκρασία"
 #define D_TO "έως"
@@ -264,7 +264,7 @@
 #define D_CONFIGURATION "Ρυθμίσεις"
 #define D_INFORMATION "Πληροφορίες"
 #define D_FIRMWARE_UPGRADE "Αναβάθμιση"
-#define D_MANAGEMENT "Consoles"
+#define D_MANAGEMENT "Διαχείριση"
 #define D_CONSOLE "Κονσόλα"
 #define D_CONFIRM_RESTART "Επιβεβαίωση επανεκκίνησης"
 
@@ -934,6 +934,7 @@
 #define D_UNIT_WATT_METER_QUADRAT "W/m²"
 #define D_UNIT_LITER_PER_MINUTE "l/min"
 #define D_UNIT_CUBICMETER_PER_HOUR "m³/h"
+#define D_UNIT_CUBIC_METER "m³"
 
 #define D_NEW_ADDRESS          "Setting address to"
 #define D_OUT_OF_RANGE         "Out of Range"
@@ -1077,6 +1078,8 @@
 
 // xsns_96_flowratemeter.ino
 #define D_FLOWRATEMETER_NAME "Flowrate"
+#define D_FLOWRATEMETER_AMOUNT_TODAY "Amount Today"
+#define D_FLOWRATEMETER_DURATION_TODAY "Duration Today"
 
 // xsns_83_neopool.ino
 #define D_NEOPOOL_MACH_NONE               "NeoPool"           // Machine names

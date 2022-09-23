@@ -109,34 +109,12 @@
 #include "esp_camera.h"
 #include "sensor.h"
 #include "fb_gfx.h"
+#include "camera_pins.h"
 
 bool HttpCheckPriviledgedAccess(bool);
 extern ESP8266WebServer *Webserver;
 
 #define BOUNDARY "e8b8c539-047d-4777-a985-fbba6edff11e"
-
-#ifndef WC_XCLK
-#define WC_XCLK 20000000
-#endif
-
-// CAMERA_MODEL_AI_THINKER default template pins
-#define PWDN_GPIO_NUM     32
-#define RESET_GPIO_NUM    -1
-#define XCLK_GPIO_NUM      0
-#define SIOD_GPIO_NUM     26
-#define SIOC_GPIO_NUM     27
-
-#define Y9_GPIO_NUM       35
-#define Y8_GPIO_NUM       34
-#define Y7_GPIO_NUM       39
-#define Y6_GPIO_NUM       36
-#define Y5_GPIO_NUM       21
-#define Y4_GPIO_NUM       19
-#define Y3_GPIO_NUM       18
-#define Y2_GPIO_NUM        5
-#define VSYNC_GPIO_NUM    25
-#define HREF_GPIO_NUM     23
-#define PCLK_GPIO_NUM     22
 
 #ifndef MAX_PICSTORE
 #define MAX_PICSTORE 4
@@ -370,9 +348,6 @@ uint32_t WcSetup(int32_t fsiz) {
 
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: User template"));
   } else {
-#ifdef CONFIG_IDF_TARGET_ESP32S3
-    return 0;
-#else
     // defaults to AI THINKER
     config.pin_d0 = Y2_GPIO_NUM;
     config.pin_d1 = Y3_GPIO_NUM;
@@ -391,7 +366,6 @@ uint32_t WcSetup(int32_t fsiz) {
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Default template"));
-#endif
   }
 
   int32_t ledc_channel = analogAttach(config.pin_xclk);
@@ -401,9 +375,9 @@ uint32_t WcSetup(int32_t fsiz) {
   config.ledc_channel = (ledc_channel_t) ledc_channel;
   AddLog(LOG_LEVEL_DEBUG_MORE, "CAM: XCLK on GPIO %i using ledc channel %i", config.pin_xclk, config.ledc_channel);
   config.ledc_timer = LEDC_TIMER_0;
-  config.xclk_freq_hz = WC_XCLK;
-  //config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
+
 
   //esp_log_level_set("*", ESP_LOG_INFO);
 
@@ -424,7 +398,15 @@ uint32_t WcSetup(int32_t fsiz) {
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: PSRAM not found"));
   }
 
+//  AddLog(LOG_LEVEL_INFO, PSTR("CAM: heap check 1: %d"),ESP_getFreeHeap());
+
+  // stupid workaround camera diver eats up static ram should prefer PSRAM
+  // so we steal static ram to force driver to alloc PSRAM
+//  uint32_t maxfram = ESP.getMaxAllocHeap();
+//  void *x=malloc(maxfram-4096);
+  void *x = 0;
   esp_err_t err = esp_camera_init(&config);
+  if (x) { free(x); }
 
   if (err != ESP_OK) {
     AddLog(LOG_LEVEL_INFO, PSTR("CAM: Init failed with error 0x%x"), err);
@@ -448,9 +430,7 @@ uint32_t WcSetup(int32_t fsiz) {
 
   WcApplySettings();
 
-  camera_sensor_info_t *info = esp_camera_sensor_get_info(&wc_s->id);
-
-  AddLog(LOG_LEVEL_INFO, PSTR("CAM: %s Initialized"), info->name);
+  AddLog(LOG_LEVEL_INFO, PSTR("CAM: Initialized"));
 
   Wc.up = 1;
   if (psram) { Wc.up = 2; }
@@ -982,11 +962,7 @@ uint32_t WcSetStreamserver(uint32_t flag) {
 
 void WcInterruptControl() {
   WcSetStreamserver(Settings->webcam_config.stream);
-  if (!Settings->webcam_config.stream) {
-    WcSetup(-1);
-  } else {
-    WcSetup(Settings->webcam_config.resolution);
-  }
+  WcSetup(Settings->webcam_config.resolution);
 }
 
 /*********************************************************************************************/
@@ -1063,18 +1039,6 @@ void WcShowStream(void) {
   }
 }
 
-
-
-//#include <human_face_detect_msr01.hpp>
-/*
-#include <human_face_detect_mnp01.hpp>
-#include <face_recognition_tool.hpp>
-#include <face_recognition_112_v1_s16.hpp>
-
-
-FaceRecognition112V1S16 *recognizer;
-*/
-
 void WcInit(void) {
   if (!Settings->webcam_config.data) {
     Settings->webcam_config.stream = 1;
@@ -1088,11 +1052,6 @@ void WcInit(void) {
     WcSetDefaults(1);
     Settings->webcam_config2.upgraded = 1;
   }
-  if (!WcSetup(Settings->webcam_config.resolution)) {
-    Settings->webcam_config.stream = 0;
-  }
-
-
 }
 
 /*********************************************************************************************\
@@ -1198,9 +1157,7 @@ void CmndWebcam(void) {
 void CmndWebcamStream(void) {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 1)) {
     Settings->webcam_config.stream = XdrvMailbox.payload;
-    if (!Settings->webcam_config.stream) {
-      WcInterruptControl();  // Stop stream
-    }
+    if (!Settings->webcam_config.stream) { WcInterruptControl(); }  // Stop stream
   }
   ResponseCmndStateText(Settings->webcam_config.stream);
 }
