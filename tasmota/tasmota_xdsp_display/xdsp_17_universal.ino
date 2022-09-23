@@ -33,6 +33,10 @@ uint8_t ctouch_counter;
 extern FS *ffsp;
 #endif
 
+
+enum {GPIO_DP_RES=GPIO_SENSOR_END-1,GPIO_DP_CS,GPIO_DP_RS,GPIO_DP_WR,GPIO_DP_RD,GPIO_DPAR0,GPIO_DPAR1,GPIO_DPAR2,GPIO_DPAR3,GPIO_DPAR4,GPIO_DPAR5,GPIO_DPAR6,GPIO_DPAR7,GPIO_DPAR8,GPIO_DPAR9,GPIO_DPAR10,GPIO_DPAR11,GPIO_DPAR12,GPIO_DPAR13,GPIO_DPAR14,GPIO_DPAR15};
+
+
 #ifndef USE_DISPLAY
 uint8_t color_type;
 uint16_t fg_color;
@@ -228,6 +232,41 @@ int8_t cs;
       }
     }
 
+#ifdef ESP32
+    cp = strstr(ddesc, "PAR,");
+    if (cp) {
+      cp += 4;
+      // 8 or 16 bus
+      uint8_t mode = strtol(cp, &cp, 10);
+      cp++;
+      replacepin(&cp, Pin(GPIO_DP_RES));
+      replacepin(&cp, Pin(GPIO_DP_CS));
+      replacepin(&cp, Pin(GPIO_DP_RS));
+      replacepin(&cp, Pin(GPIO_DP_WR));
+      replacepin(&cp, Pin(GPIO_DP_RD));
+      replacepin(&cp, Pin(GPIO_BACKLIGHT));
+
+      replacepin(&cp, Pin(GPIO_DPAR0));
+      replacepin(&cp, Pin(GPIO_DPAR1));
+      replacepin(&cp, Pin(GPIO_DPAR2));
+      replacepin(&cp, Pin(GPIO_DPAR3));
+      replacepin(&cp, Pin(GPIO_DPAR4));
+      replacepin(&cp, Pin(GPIO_DPAR5));
+      replacepin(&cp, Pin(GPIO_DPAR6));
+      replacepin(&cp, Pin(GPIO_DPAR7));
+
+      if (mode == 16) {
+        replacepin(&cp, Pin(GPIO_DPAR8));
+        replacepin(&cp, Pin(GPIO_DPAR9));
+        replacepin(&cp, Pin(GPIO_DPAR10));
+        replacepin(&cp, Pin(GPIO_DPAR11));
+        replacepin(&cp, Pin(GPIO_DPAR12));
+        replacepin(&cp, Pin(GPIO_DPAR13));
+        replacepin(&cp, Pin(GPIO_DPAR14));
+        replacepin(&cp, Pin(GPIO_DPAR15));
+      }
+    }
+#endif
 /*
     File fp;
     fp = ffsp->open("/dump.txt", "w");
@@ -301,11 +340,16 @@ int8_t cs;
       inirot = strtol(cp, &cp, 10);
     }
 
+
+    AddLog(LOG_LEVEL_INFO, PSTR("DSP: alloc done"));
+
     // release desc buffer
     if (fbuff) free(fbuff);
 
-    //renderer = udisp->Init();
-    //if (!renderer) return 0;
+    renderer = udisp->Init();
+    if (!renderer) return 0;
+
+    AddLog(LOG_LEVEL_INFO, PSTR("DSP: init done"));
 
     fg_color = renderer->fgcol();
     bg_color = renderer->bgcol();
@@ -316,16 +360,16 @@ int8_t cs;
     renderer->SetDimCB(Core2DisplayDim);
 #endif // USE_M5STACK_CORE2
 
-    renderer->DisplayInit(DISPLAY_INIT_MODE, Settings->display_size, inirot, Settings->display_font);
+    //renderer->DisplayInit(DISPLAY_INIT_MODE, Settings->display_size, inirot, Settings->display_font);
 
     Settings->display_width = renderer->width();
     Settings->display_height = renderer->height();
 
-    ApplyDisplayDimmer();
+    //ApplyDisplayDimmer();
 
 #ifdef SHOW_SPLASH
     if (!Settings->flag5.display_no_splash) {
-      renderer->Splash();
+      //renderer->Splash();
     }
 #endif // SHOW_SPLASH
 
