@@ -619,8 +619,8 @@ Renderer *uDisplay::Init(void) {
     pinMode(par_wr, OUTPUT);
     digitalWrite(par_wr, HIGH);
 
-  //  pinMode(par_rd, OUTPUT);
-  //  digitalWrite(par_rd, HIGH);
+    pinMode(par_rd, OUTPUT);
+    digitalWrite(par_rd, HIGH);
 
     for (uint32_t cnt = 0; cnt < 8; cnt ++) {
         pinMode(par_dbl[cnt], INPUT);
