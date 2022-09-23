@@ -24,7 +24,7 @@
 #include "esp8266toEsp32.h"
 #endif
 
-//#define UDSP_DEBUG
+#define UDSP_DEBUG
 
 const uint16_t udisp_colors[]={UDISP_BLACK,UDISP_WHITE,UDISP_RED,UDISP_GREEN,UDISP_BLUE,UDISP_CYAN,UDISP_MAGENTA,\
   UDISP_YELLOW,UDISP_NAVY,UDISP_DARKGREEN,UDISP_DARKCYAN,UDISP_MAROON,UDISP_PURPLE,UDISP_OLIVE,\
@@ -357,7 +357,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
     ep_mode = 1;
   }
 
-  if (lut_cnt[0]>0 && lut_cnt[1]==lut_cnt[2] && lut_cnt[1]==lut_cnt[3] && lut_cnt[1]==lut_cnt[4]) {
+  if (lut_cnt[0] > 0 && lut_cnt[1] == lut_cnt[2] && lut_cnt[1] == lut_cnt[3] && lut_cnt[1] == lut_cnt[4]) {
     // 5 table mode
     ep_mode = 2;
   }
@@ -556,7 +556,7 @@ Renderer *uDisplay::Init(void) {
       SPI_CS_LOW
 
       iob = dsp_cmds[index++];
-      spi_command(iob);
+      ulcd_command(iob);
 
       uint8_t args = dsp_cmds[index++];
 #ifdef UDSP_DEBUG
@@ -568,9 +568,9 @@ Renderer *uDisplay::Init(void) {
         Serial.printf("%02x ", iob );
 #endif
         if (!allcmd_mode) {
-          spi_data8(iob);
+          ulcd_data8(iob);
         } else {
-          spi_command(iob);
+          ulcd_command(iob);
         }
       }
       SPI_CS_HIGH
@@ -645,9 +645,14 @@ Renderer *uDisplay::Init(void) {
       }
     }
 
+    // to disable SPI TRANSACTION
+    spi_nr = 3;
+    // to disable SPI CS
+    spi_cs = -1;
+
     _i80_bus = nullptr;
 
-    esp_lcd_new_i80_bus(&bus_config, &_i80_bus);
+    //esp_lcd_new_i80_bus(&bus_config, &_i80_bus);
 
     //_dma_chan = ((esp_lcd_i80_bus_t*)_i80_bus)->dma_chan;
 
@@ -709,103 +714,118 @@ void uDisplay::DisplayInit(int8_t p, int8_t size, int8_t rot, int8_t font) {
   }
 }
 
-void uDisplay::spi_command(uint8_t val) {
 
-  if (spi_dc < 0) {
-    if (spi_nr > 2) {
-      if (spi_nr == 3) {
-        write9(val, 0);
+void uDisplay::ulcd_command(uint8_t val) {
+
+  if (interface == _UDSP_SPI) {
+    if (spi_dc < 0) {
+      if (spi_nr > 2) {
+        if (spi_nr == 3) {
+          write9(val, 0);
+        } else {
+          write9_slow(val, 0);
+        }
       } else {
-        write9_slow(val, 0);
+        hw_write9(val, 0);
       }
     } else {
-      hw_write9(val, 0);
-    }
-  } else {
-    SPI_DC_LOW
-    if (spi_nr > 2) {
-      if (spi_nr == 3) {
-        write8(val);
+      SPI_DC_LOW
+      if (spi_nr > 2) {
+        if (spi_nr == 3) {
+          write8(val);
+        } else {
+          write8_slow(val);
+        }
       } else {
-        write8_slow(val);
+        uspi->write(val);
       }
-    } else {
-      uspi->write(val);
+      SPI_DC_HIGH
     }
-    SPI_DC_HIGH
   }
 }
 
-void uDisplay::spi_data8(uint8_t val) {
-  if (spi_dc < 0) {
-    if (spi_nr > 2) {
-      if (spi_nr == 3) {
+void uDisplay::ulcd_data8(uint8_t val) {
+
+  if (interface == _UDSP_SPI) {
+    if (spi_dc < 0) {
+      if (spi_nr > 2) {
+        if (spi_nr == 3) {
+          write9(val, 1);
+        } else {
+          write9_slow(val, 1);
+        }
+      } else {
+        hw_write9(val, 1);
+      }
+    } else {
+      if (spi_nr > 2) {
+        if (spi_nr == 3) {
+          write8(val);
+        } else {
+          write8_slow(val);
+        }
+      } else {
+        uspi->write(val);
+      }
+    }
+  }
+}
+
+void uDisplay::ulcd_data16(uint16_t val) {
+
+  if (interface == _UDSP_SPI) {
+    if (spi_dc < 0) {
+      if (spi_nr > 2) {
+        write9(val >> 8, 1);
         write9(val, 1);
       } else {
-        write9_slow(val, 1);
+        hw_write9(val >> 8, 1);
+        hw_write9(val, 1);
       }
     } else {
-      hw_write9(val, 1);
-    }
-  } else {
-    if (spi_nr > 2) {
-      if (spi_nr == 3) {
-        write8(val);
+      if (spi_nr > 2) {
+        write16(val);
       } else {
-        write8_slow(val);
+        uspi->write16(val);
+      }
+    }
+  }
+}
+
+void uDisplay::ulcd_data32(uint32_t val) {
+
+  if (interface == _UDSP_SPI) {
+    if (spi_dc < 0) {
+      if (spi_nr > 2) {
+        write9(val >> 24, 1);
+        write9(val >> 16, 1);
+        write9(val >> 8, 1);
+        write9(val, 1);
+      } else {
+        hw_write9(val >> 24, 1);
+        hw_write9(val >> 16, 1);
+        hw_write9(val >> 8, 1);
+        hw_write9(val, 1);
       }
     } else {
-      uspi->write(val);
+      if (spi_nr > 2) {
+        write32(val);
+      } else {
+        uspi->write32(val);
+      }
     }
   }
 }
 
-void uDisplay::spi_data16(uint16_t val) {
-  if (spi_dc < 0) {
-    if (spi_nr > 2) {
-      write9(val >> 8, 1);
-      write9(val, 1);
-    } else {
-      hw_write9(val >> 8, 1);
-      hw_write9(val, 1);
-    }
-  } else {
-    if (spi_nr > 2) {
-      write16(val);
-    } else {
-      uspi->write16(val);
-    }
-  }
-}
+void uDisplay::ulcd_command_one(uint8_t val) {
 
-void uDisplay::spi_data32(uint32_t val) {
-  if (spi_dc < 0) {
-    if (spi_nr > 2) {
-      write9(val >> 24, 1);
-      write9(val >> 16, 1);
-      write9(val >> 8, 1);
-      write9(val, 1);
-    } else {
-      hw_write9(val >> 24, 1);
-      hw_write9(val >> 16, 1);
-      hw_write9(val >> 8, 1);
-      hw_write9(val, 1);
-    }
-  } else {
-    if (spi_nr > 2) {
-      write32(val);
-    } else {
-      uspi->write32(val);
-    }
+  if (interface == _UDSP_SPI) {
+    SPI_BEGIN_TRANSACTION
+    SPI_CS_LOW
+    ulcd_command(val);
+    SPI_CS_HIGH
+    SPI_END_TRANSACTION
   }
-}
-
-void uDisplay::spi_command_one(uint8_t val) {
-  SPI_BEGIN_TRANSACTION
-  SPI_CS_LOW
-  spi_command(val);
-  SPI_CS_HIGH
-  SPI_END_TRANSACTION
 }
 
 void uDisplay::i2c_command(uint8_t val) {
@@ -895,9 +915,9 @@ void uDisplay::Updateframe(void) {
     SPI_CS_LOW
 
     // below commands are not needed for SH1107
-    // spi_command(saw_1 | 0x0);  // set low col = 0, 0x00
-    // spi_command(i2c_page_start | 0x0);  // set hi col = 0, 0x10
-    // spi_command(i2c_page_end | 0x0); // set startline line #0, 0x40
+    // ulcd_command(saw_1 | 0x0);  // set low col = 0, 0x00
+    // ulcd_command(i2c_page_start | 0x0);  // set hi col = 0, 0x10
+    // ulcd_command(i2c_page_end | 0x0); // set startline line #0, 0x40
 
 	  uint8_t ys = gys >> 3;
 	  uint8_t xs = gxs >> 3;
@@ -911,13 +931,13 @@ void uDisplay::Updateframe(void) {
 	  uint8_t i, j, k = 0;
 	  for ( i = 0; i < ys; i++) {   // i = line from 0 to ys
 		    // send a bunch of data in one xmission
-        spi_command(0xB0 + i + m_row); //set page address
-        spi_command(m_col & 0xf); //set lower column address
-        spi_command(0x10 | (m_col >> 4)); //set higher column address
+        ulcd_command(0xB0 + i + m_row); //set page address
+        ulcd_command(m_col & 0xf); //set lower column address
+        ulcd_command(0x10 | (m_col >> 4)); //set higher column address
 
         for ( j = 0; j < 8; j++) {
             for ( k = 0; k < xs; k++, p++) {
-		            spi_data8(framebuffer[p]);
+		            ulcd_data8(framebuffer[p]);
             }
 	      }
     }
@@ -960,9 +980,9 @@ void uDisplay::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
     b = (b * 255) / 31;
 
     while (h--) {
-      spi_data8(r);
-      spi_data8(g);
-      spi_data8(b);
+      ulcd_data8(r);
+      ulcd_data8(g);
+      ulcd_data8(b);
     }
   } else {
     while (h--) {
@@ -1008,9 +1028,9 @@ void uDisplay::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
     b = (b * 255) / 31;
 
     while (w--) {
-      spi_data8(r);
-      spi_data8(g);
-      spi_data8(b);
+      ulcd_data8(r);
+      ulcd_data8(g);
+      ulcd_data8(b);
     }
   } else {
     while (w--) {
@@ -1066,9 +1086,9 @@ void uDisplay::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t col
 
     for (y = h; y > 0; y--) {
       for (x = w; x > 0; x--) {
-        spi_data8(r);
-        spi_data8(g);
-        spi_data8(b);
+        ulcd_data8(r);
+        ulcd_data8(g);
+        ulcd_data8(b);
       }
     }
 
@@ -1163,14 +1183,14 @@ void uDisplay::setAddrWindow_int(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
       uint32_t xa = ((uint32_t)x << 16) | (x+w-1);
       uint32_t ya = ((uint32_t)y << 16) | (y+h-1);
 
-      spi_command(saw_1);
-      spi_data32(xa);
+      ulcd_command(saw_1);
+      ulcd_data32(xa);
 
-      spi_command(saw_2);
-      spi_data32(ya);
+      ulcd_command(saw_2);
+      ulcd_data32(ya);
 
       if (saw_3 != 0xff) {
-        spi_command(saw_3); // write to RAM
+        ulcd_command(saw_3); // write to RAM
       }
     } else {
       uint16_t x2 = x + w - 1,
@@ -1180,24 +1200,24 @@ void uDisplay::setAddrWindow_int(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
         udisp_swap(x,y);
         udisp_swap(x2,y2);
       }
-      spi_command(saw_1);
+      ulcd_command(saw_1);
       if (allcmd_mode) {
-        spi_data8(x);
-        spi_data8(x2);
+        ulcd_data8(x);
+        ulcd_data8(x2);
       } else {
-        spi_command(x);
-        spi_command(x2);
+        ulcd_command(x);
+        ulcd_command(x2);
       }
-      spi_command(saw_2);
+      ulcd_command(saw_2);
       if (allcmd_mode) {
-        spi_data8(y);
-        spi_data8(y2);
+        ulcd_data8(y);
+        ulcd_data8(y2);
       } else {
-        spi_command(y);
-        spi_command(y2);
+        ulcd_command(y);
+        ulcd_command(y2);
       }
       if (saw_3 != 0xff) {
-        spi_command(saw_3); // write to RAM
+        ulcd_command(saw_3); // write to RAM
       }
     }
 }
@@ -1353,11 +1373,11 @@ void uDisplay::WriteColor(uint16_t color) {
     g = (g * 255) / 63;
     b = (b * 255) / 31;
 
-    spi_data8(r);
-    spi_data8(g);
-    spi_data8(b);
+    ulcd_data8(r);
+    ulcd_data8(g);
+    ulcd_data8(b);
   } else {
-    spi_data16(color);
+    ulcd_data16(color);
   }
 }
 
@@ -1406,17 +1426,17 @@ void uDisplay::setRotation(uint8_t rotation) {
     }
     SPI_BEGIN_TRANSACTION
     SPI_CS_LOW
-    spi_command(madctrl);
+    ulcd_command(madctrl);
 
     if (!allcmd_mode) {
-      spi_data8(rot[cur_rot]);
+      ulcd_data8(rot[cur_rot]);
     } else {
-      spi_command(rot[cur_rot]);
+      ulcd_command(rot[cur_rot]);
     }
 
     if ((sa_mode == 8) && !allcmd_mode) {
-      spi_command(startline);
-      spi_data8((cur_rot < 2) ? height() : 0);
+      ulcd_command(startline);
+      ulcd_data8((cur_rot < 2) ? height() : 0);
     }
 
     SPI_CS_HIGH
@@ -1465,7 +1485,7 @@ void uDisplay::DisplayOnff(int8_t on) {
     }
   } else {
     if (on) {
-      if (dsp_on != 0xff) spi_command_one(dsp_on);
+      if (dsp_on != 0xff) ulcd_command_one(dsp_on);
       if (bpanel >= 0) {
 #ifdef ESP32
         if (!bpmode) {
@@ -1483,7 +1503,7 @@ void uDisplay::DisplayOnff(int8_t on) {
       }
 
     } else {
-      if (dsp_off != 0xff) spi_command_one(dsp_off);
+      if (dsp_off != 0xff) ulcd_command_one(dsp_off);
       if (bpanel >= 0) {
 #ifdef ESP32
         if (!bpmode) {
@@ -1511,9 +1531,9 @@ void uDisplay::invertDisplay(boolean i) {
 
   if (interface == _UDSP_SPI) {
     if (i) {
-      spi_command_one(inv_on);
+      ulcd_command_one(inv_on);
     } else {
-      spi_command_one(inv_off);
+      ulcd_command_one(inv_off);
     }
   }
   if (interface == _UDSP_I2C) {
@@ -1557,8 +1577,8 @@ void uDisplay::dim10(uint8_t dim, uint16_t dim_gamma) {           // dimmer with
     if (dim_op != 0xff) {   // send SPI command if dim configured
       SPI_BEGIN_TRANSACTION
       SPI_CS_LOW
-      spi_command(dim_op);
-      spi_data8(dimmer8);
+      ulcd_command(dim_op);
+      ulcd_data8(dimmer8);
       SPI_CS_HIGH
       SPI_END_TRANSACTION
     }
@@ -1816,7 +1836,7 @@ void USECACHE uDisplay::write32(uint32_t val) {
 void uDisplay::spi_data8_EPD(uint8_t val) {
   SPI_BEGIN_TRANSACTION
   SPI_CS_LOW
-  spi_data8(val);
+  ulcd_data8(val);
   SPI_CS_HIGH
   SPI_END_TRANSACTION
 }
@@ -1824,7 +1844,7 @@ void uDisplay::spi_data8_EPD(uint8_t val) {
 void uDisplay::spi_command_EPD(uint8_t val) {
   SPI_BEGIN_TRANSACTION
   SPI_CS_LOW
-  spi_command(val);
+  ulcd_command(val);
   SPI_CS_HIGH
   SPI_END_TRANSACTION
 }

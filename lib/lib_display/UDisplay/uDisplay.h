@@ -114,11 +114,11 @@ class uDisplay : public Renderer {
    void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
    uint32_t str2c(char **sp, char *vp, uint32_t len);
    void i2c_command(uint8_t val);
-   void spi_command_one(uint8_t val);
-   void spi_command(uint8_t val);
-   void spi_data8(uint8_t val);
-   void spi_data16(uint16_t val);
-   void spi_data32(uint32_t val);
+   void ulcd_command_one(uint8_t val);
+   void ulcd_command(uint8_t val);
+   void ulcd_data8(uint8_t val);
+   void ulcd_data16(uint16_t val);
+   void ulcd_data32(uint32_t val);
    void write8(uint8_t val);
    void write8_slow(uint8_t val);
    void write9(uint8_t val, uint8_t dc);
