@@ -623,14 +623,14 @@ Renderer *uDisplay::Init(void) {
     digitalWrite(par_rd, HIGH);
 
     for (uint32_t cnt = 0; cnt < 8; cnt ++) {
-        pinMode(par_dbl[cnt], INPUT);
+        pinMode(par_dbl[cnt], OUTPUT);
     }
 
     uint8_t bus_width = 8;
 
     if (interface == _UDSP_PAR16) {
       for (uint32_t cnt = 0; cnt < 8; cnt ++) {
-          pinMode(par_dbh[cnt], INPUT);
+          pinMode(par_dbh[cnt], OUTPUT);
       }
       bus_width = 16;
     }
@@ -662,9 +662,25 @@ Renderer *uDisplay::Init(void) {
 
     _i80_bus = nullptr;
 
-    //esp_lcd_new_i80_bus(&bus_config, &_i80_bus);
+    esp_lcd_new_i80_bus(&bus_config, &_i80_bus);
 
-    //_dma_chan = ((esp_lcd_i80_bus_t*)_i80_bus)->dma_chan;
+    _dma_chan = _i80_bus->dma_chan;
+
+#define WRITE_FREQUENCY 20000000
+
+    uint32_t div_a, div_b, div_n, clkcnt;
+    calcClockDiv(&div_a, &div_b, &div_n, &clkcnt, 240*1000*1000, WRITE_FREQUENCY);
+    lcd_cam_lcd_clock_reg_t lcd_clock;
+    lcd_clock.lcd_clkcnt_n = std::max(1u, clkcnt - 1);
+    lcd_clock.lcd_clk_equ_sysclk = (clkcnt == 1);
+    lcd_clock.lcd_ck_idle_edge = true;
+    lcd_clock.lcd_ck_out_edge = false;
+    lcd_clock.lcd_clkm_div_num = div_n;
+    lcd_clock.lcd_clkm_div_b = div_b;
+    lcd_clock.lcd_clkm_div_a = div_a;
+    lcd_clock.lcd_clk_sel = 2; // clock_select: 1=XTAL CLOCK / 2=240MHz / 3=160MHz
+    lcd_clock.clk_en = true;
+    _clock_reg_value = lcd_clock.val;
 
     // esp_lcd_panel_io_i80_config_t bus_config;
     //esp_err_tesp_lcd_del_i80_bus

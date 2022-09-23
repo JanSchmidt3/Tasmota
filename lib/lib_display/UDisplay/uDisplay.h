@@ -9,6 +9,10 @@
 #include "driver/spi_master.h"
 #include <esp_lcd_panel_io.h>
 #include "esp_private/gdma.h"
+#include <hal/gpio_ll.h>
+#include <hal/lcd_hal.h>
+#include <soc/lcd_cam_reg.h>
+#include <soc/lcd_cam_struct.h>
 #endif
 
 #define _UDSP_I2C 1
@@ -79,6 +83,22 @@ enum uColorType { uCOLOR_BW, uCOLOR_COLOR };
 #define SPI_DC_HIGH if (spi_dc >= 0) GPIO_SET_SLOW(spi_dc);
 
 #define LUTMAXSIZE 64
+
+#ifdef ESP32
+struct esp_lcd_i80_bus_t {
+    int bus_id;            // Bus ID, index from 0
+    portMUX_TYPE spinlock; // spinlock used to protect i80 bus members(hal, device_list, cur_trans)
+    lcd_hal_context_t hal; // Hal object
+    size_t bus_width;      // Number of data lines
+    intr_handle_t intr;    // LCD peripheral interrupt handle
+    void* pm_lock; // Power management lock
+    size_t num_dma_nodes;  // Number of DMA descriptors
+    uint8_t *format_buffer;  // The driver allocates an internal buffer for DMA to do data format transformer
+    size_t resolution_hz;    // LCD_CLK resolution, determined by selected clock source
+    gdma_channel_handle_t dma_chan; // DMA channel handle
+};
+#endif
+
 
 class uDisplay : public Renderer {
  public:
@@ -242,6 +262,7 @@ class uDisplay : public Renderer {
 
    esp_lcd_i80_bus_handle_t _i80_bus = nullptr;
    gdma_channel_handle_t _dma_chan;
+   uint32_t _clock_reg_value;
 #endif
 
 #ifdef ESP32
