@@ -232,7 +232,7 @@ int8_t cs;
       }
     }
 
-#ifdef ESP32
+#ifdef CONFIG_IDF_TARGET_ESP32S3
     cp = strstr(ddesc, "PAR,");
     if (cp) {
       cp += 4;
@@ -266,7 +266,7 @@ int8_t cs;
         replacepin(&cp, Pin(GPIO_DPAR15));
       }
     }
-#endif
+#endif // CONFIG_IDF_TARGET_ESP32S3
 /*
     File fp;
     fp = ffsp->open("/dump.txt", "w");

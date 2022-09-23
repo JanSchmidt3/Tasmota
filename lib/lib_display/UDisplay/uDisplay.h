@@ -5,8 +5,19 @@
 #include <renderer.h>
 #include <Wire.h>
 #include <SPI.h>
+
+
+#ifdef ESP32
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+#define USE_ESP32_S3
+#endif
+#endif
+
 #ifdef ESP32
 #include "driver/spi_master.h"
+#endif
+
+#ifdef USE_ESP32_S3
 #include <esp_lcd_panel_io.h>
 #include "esp_private/gdma.h"
 #include <hal/gpio_ll.h>
@@ -84,7 +95,7 @@ enum uColorType { uCOLOR_BW, uCOLOR_COLOR };
 
 #define LUTMAXSIZE 64
 
-#ifdef ESP32
+#ifdef USE_ESP32_S3
 struct esp_lcd_i80_bus_t {
     int bus_id;            // Bus ID, index from 0
     portMUX_TYPE spinlock; // spinlock used to protect i80 bus members(hal, device_list, cur_trans)
@@ -251,7 +262,7 @@ class uDisplay : public Renderer {
    int16_t rotmap_ymax;
    void pushColorsMono(uint16_t *data, uint16_t len, bool rgb16_swap = false);
 
-#ifdef ESP32
+#ifdef USE_ESP32_S3
    int8_t par_cs;
    int8_t par_rs;
    int8_t par_wr;

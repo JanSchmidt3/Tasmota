@@ -165,7 +165,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
 
               section = 0;
             } else if (!strncmp(ibuff, "PAR", 3)) {
-#ifdef ESP32
+#ifdef USE_ESP32_S3
               uint8_t bus = next_val(&lp1);
               if (bus == 8) {
                 interface = _UDSP_PAR8;
@@ -188,7 +188,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
                   par_dbh[cnt] = next_val(&lp1);
                 }
               }
-#endif
+#endif // USE_ESP32_S3
               section = 0;
             }
             break;
@@ -416,7 +416,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
   }
 
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
-#ifdef ESP32
+#ifdef USE_ESP32_S3
     Serial.printf("par  mode: %d\n", interface);
     Serial.printf("par  res: %d\n", reset);
     Serial.printf("par  cs : %d\n", par_cs);
@@ -434,7 +434,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
         Serial.printf("par  d%d: %d\n", cnt + 8, par_dbh[cnt]);
       }
     }
-#endif
+#endif // USE_ESP32_S3
 
   }
 #endif
@@ -601,7 +601,7 @@ Renderer *uDisplay::Init(void) {
   }
 
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
-#ifdef ESP32
+#ifdef USE_ESP32_S3
 
     if (bpanel >= 0) {
       analogWrite(bpanel, 32);
@@ -668,6 +668,7 @@ Renderer *uDisplay::Init(void) {
 
 #define WRITE_FREQUENCY 20000000
 
+/*
     uint32_t div_a, div_b, div_n, clkcnt;
     calcClockDiv(&div_a, &div_b, &div_n, &clkcnt, 240*1000*1000, WRITE_FREQUENCY);
     lcd_cam_lcd_clock_reg_t lcd_clock;
@@ -681,11 +682,11 @@ Renderer *uDisplay::Init(void) {
     lcd_clock.lcd_clk_sel = 2; // clock_select: 1=XTAL CLOCK / 2=240MHz / 3=160MHz
     lcd_clock.clk_en = true;
     _clock_reg_value = lcd_clock.val;
-
+*/
     // esp_lcd_panel_io_i80_config_t bus_config;
     //esp_err_tesp_lcd_del_i80_bus
 
-#endif
+#endif // USE_ESP32_S3
 
   }
 
