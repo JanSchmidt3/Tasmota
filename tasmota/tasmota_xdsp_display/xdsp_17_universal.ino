@@ -304,8 +304,8 @@ int8_t cs;
     // release desc buffer
     if (fbuff) free(fbuff);
 
-    renderer = udisp->Init();
-    if (!renderer) return 0;
+    //renderer = udisp->Init();
+    //if (!renderer) return 0;
 
     fg_color = renderer->fgcol();
     bg_color = renderer->bgcol();
