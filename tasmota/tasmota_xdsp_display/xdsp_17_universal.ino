@@ -340,16 +340,11 @@ int8_t cs;
       inirot = strtol(cp, &cp, 10);
     }
 
-
-    AddLog(LOG_LEVEL_INFO, PSTR("DSP: alloc done"));
-
     // release desc buffer
     if (fbuff) free(fbuff);
 
     renderer = udisp->Init();
     if (!renderer) return 0;
-
-    AddLog(LOG_LEVEL_INFO, PSTR("DSP: init done"));
 
     fg_color = renderer->fgcol();
     bg_color = renderer->bgcol();
@@ -360,16 +355,16 @@ int8_t cs;
     renderer->SetDimCB(Core2DisplayDim);
 #endif // USE_M5STACK_CORE2
 
-    //renderer->DisplayInit(DISPLAY_INIT_MODE, Settings->display_size, inirot, Settings->display_font);
+    renderer->DisplayInit(DISPLAY_INIT_MODE, Settings->display_size, inirot, Settings->display_font);
 
     Settings->display_width = renderer->width();
     Settings->display_height = renderer->height();
 
-    //ApplyDisplayDimmer();
+    ApplyDisplayDimmer();
 
 #ifdef SHOW_SPLASH
     if (!Settings->flag5.display_no_splash) {
-      //renderer->Splash();
+      renderer->Splash();
     }
 #endif // SHOW_SPLASH
 

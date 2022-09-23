@@ -24,7 +24,7 @@
 #include "esp8266toEsp32.h"
 #endif
 
-#define UDSP_DEBUG
+//#define UDSP_DEBUG
 
 const uint16_t udisp_colors[]={UDISP_BLACK,UDISP_WHITE,UDISP_RED,UDISP_GREEN,UDISP_BLUE,UDISP_CYAN,UDISP_MAGENTA,\
   UDISP_YELLOW,UDISP_NAVY,UDISP_DARKGREEN,UDISP_DARKCYAN,UDISP_MAROON,UDISP_PURPLE,UDISP_OLIVE,\
@@ -423,6 +423,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
     Serial.printf("par  rs : %d\n", par_rs);
     Serial.printf("par  wr : %d\n", par_wr);
     Serial.printf("par  rd : %d\n", par_rd);
+    Serial.printf("par  bp : %d\n", bpanel);
 
     for (uint32_t cnt = 0; cnt < 8; cnt ++) {
       Serial.printf("par  d%d: %d\n", cnt, par_dbl[cnt]);
@@ -480,6 +481,7 @@ Renderer *uDisplay::Init(void) {
     }
 
   }
+
   if (interface == _UDSP_SPI) {
 
     if (bpanel >= 0) {
@@ -600,17 +602,25 @@ Renderer *uDisplay::Init(void) {
 
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
 #ifdef ESP32
-    analogWrite(bpanel, 32);
+
+    if (bpanel >= 0) {
+      analogWrite(bpanel, 32);
+    }
+
     pinMode(reset, OUTPUT);
     digitalWrite(reset, HIGH);
+
     pinMode(par_cs, OUTPUT);
     digitalWrite(par_cs, HIGH);
+
     pinMode(par_rs, OUTPUT);
     digitalWrite(par_rs, HIGH);
+
     pinMode(par_wr, OUTPUT);
     digitalWrite(par_wr, HIGH);
-    pinMode(par_rd, OUTPUT);
-    digitalWrite(par_rd, HIGH);
+
+  //  pinMode(par_rd, OUTPUT);
+  //  digitalWrite(par_rd, HIGH);
 
     for (uint32_t cnt = 0; cnt < 8; cnt ++) {
         pinMode(par_dbl[cnt], INPUT);
