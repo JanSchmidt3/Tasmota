@@ -36,7 +36,7 @@
 \*******************************************************************************************/
 
 
-#if defined(USE_LVGL_TOUCHSCREEN) || defined(USE_FT5206) || defined(USE_XPT2046) || defined(USE_LILYGO47) || defined(USE_TOUCH_BUTTONS)
+#if defined(USE_LVGL_TOUCHSCREEN) || defined(USE_FT5206) || defined(USE_XPT2046) || defined(USE_LILYGO47) || defined(USE_TOUCH_BUTTONS) || defined(SIMPLE_RES_TOUCH)
 
 #ifdef USE_DISPLAY_LVGL_ONLY
 #undef USE_TOUCH_BUTTONS
@@ -73,6 +73,7 @@ TSGlobal_t TSGlobal;
 
 bool FT5206_found = false;
 bool XPT2046_found = false;
+bool SRES_found = false;
 
 #ifndef MAX_TOUCH_BUTTONS
 #define MAX_TOUCH_BUTTONS 16
@@ -130,6 +131,65 @@ uint32_t Touch_Status(int32_t sel) {
 #ifdef USE_M5STACK_CORE2
 uint8_t tbstate[3];
 #endif // USE_M5STACK_CORE2
+
+
+// simple resistive touch pins
+// with dma it should check for active transfers
+// so currently dont use dma
+#ifdef SIMPLE_RES_TOUCH
+struct RES_TOUCH {
+  int8_t xplus;
+  int8_t xminus;
+  int8_t yplus;
+  int8_t yminus;
+} sres_touch;
+
+void Simple_ResTouch_Init(int8_t xp, int8_t xm, int8_t yp, int8_t ym) {
+  sres_touch.xplus = xp; // d1
+  sres_touch.xminus = xm; // cs
+  sres_touch.yplus = yp; // rs
+  sres_touch.yminus = ym; // d0
+  SRES_found = true;
+  AddLog(LOG_LEVEL_INFO, PSTR("TS: simple resistive touch init"));
+}
+
+#define SRES_THRESHOLD 100
+
+bool SRES_touched() {
+  pinMode(sres_touch.xplus, INPUT_PULLUP);
+  pinMode(sres_touch.yminus, INPUT_PULLUP);
+  digitalWrite(sres_touch.xminus, 1);
+  digitalWrite(sres_touch.yplus, 1);
+  uint16_t xp = 4096 -analogRead(sres_touch.xplus);
+  if (xp < 0) xp = 0;
+  uint16_t yp =  analogRead(sres_touch.yminus);
+  if (yp < 0) yp = 0;
+  pinMode(sres_touch.xplus, OUTPUT);
+  pinMode(sres_touch.yminus, OUTPUT);
+  if (xp > SRES_THRESHOLD && yp > SRES_THRESHOLD) {
+    return 1;
+  }
+  return 0;
+}
+int16_t SRES_x() {
+  int16_t xp;
+  digitalWrite(sres_touch.xminus, 1);
+  pinMode(sres_touch.xplus, INPUT_PULLUP);
+  xp = 4096 - analogRead(sres_touch.xplus);
+  if (xp < 0) xp = 0;
+  pinMode(sres_touch.xplus, OUTPUT);
+  return xp;
+}
+int16_t SRES_y() {
+  int16_t yp;
+  digitalWrite(sres_touch.yplus, 1);
+  pinMode(sres_touch.yminus, INPUT_PULLUP);
+  yp = analogRead(sres_touch.yminus);
+  if (yp < 0) yp = 0;
+  pinMode(sres_touch.yminus, OUTPUT);
+  return yp;
+}
+#endif
 
 #ifdef USE_FT5206
 #include <FT5206.h>
@@ -193,6 +253,17 @@ int16_t XPT2046_y() {
 
 void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y)) {
   static bool was_touched = false;    // flag used to log the data sent when the screen was just released
+
+
+#ifdef SIMPLE_RES_TOUCH
+  if (SRES_found) {
+    TSGlobal.touched = SRES_touched();
+    if (TSGlobal.touched) {
+      TSGlobal.raw_touch_xp = SRES_x();
+      TSGlobal.raw_touch_yp = SRES_y();
+    }
+  }
+#endif
 
 #ifdef USE_FT5206
   if (FT5206_found) {
@@ -404,7 +475,7 @@ bool Xdrv55(uint8_t function) {
     case FUNC_INIT:
       break;
     case FUNC_EVERY_100_MSECOND:
-      if (FT5206_found || XPT2046_found) {
+      if (FT5206_found || XPT2046_found || SRES_found) {
         Touch_Check(TS_RotConvert);
       }
       break;

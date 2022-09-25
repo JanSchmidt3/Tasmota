@@ -50,7 +50,6 @@ extern uint16_t bg_color;
 
 #define DISPDESC_SIZE 1000
 
-
 void Core2DisplayPower(uint8_t on);
 void Core2DisplayDim(uint8_t dim);
 
@@ -239,15 +238,20 @@ int8_t cs;
       // 8 or 16 bus
       uint8_t mode = strtol(cp, &cp, 10);
       cp++;
+      int8_t xp, xm, yp, ym;
       replacepin(&cp, Pin(GPIO_DP_RES));
-      replacepin(&cp, Pin(GPIO_DP_CS));
-      replacepin(&cp, Pin(GPIO_DP_RS));
+      xm = replacepin(&cp, Pin(GPIO_DP_CS));
+      yp = replacepin(&cp, Pin(GPIO_DP_RS));
       replacepin(&cp, Pin(GPIO_DP_WR));
       replacepin(&cp, Pin(GPIO_DP_RD));
       replacepin(&cp, Pin(GPIO_BACKLIGHT));
 
-      replacepin(&cp, Pin(GPIO_DPAR0));
-      replacepin(&cp, Pin(GPIO_DPAR1));
+      ym = replacepin(&cp, Pin(GPIO_DPAR0));
+      xp = replacepin(&cp, Pin(GPIO_DPAR1));
+#ifdef SIMPLE_RES_TOUCH
+      Simple_ResTouch_Init(xp, xm, yp, ym);
+#endif
+
       replacepin(&cp, Pin(GPIO_DPAR2));
       replacepin(&cp, Pin(GPIO_DPAR3));
       replacepin(&cp, Pin(GPIO_DPAR4));
