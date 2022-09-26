@@ -188,6 +188,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
                   par_dbh[cnt] = next_val(&lp1);
                 }
               }
+              spi_speed = next_val(&lp1);
 #endif // USE_ESP32_S3
               section = 0;
             }
@@ -434,6 +435,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
         Serial.printf("par  d%d: %d\n", cnt + 8, par_dbh[cnt]);
       }
     }
+    Serial.printf("par  freq : %d\n", spi_speed);
 #endif // USE_ESP32_S3
 
   }
@@ -666,11 +668,9 @@ Renderer *uDisplay::Init(void) {
 
     _dma_chan = _i80_bus->dma_chan;
 
-#define WRITE_FREQUENCY 20000000
-
 /*
     uint32_t div_a, div_b, div_n, clkcnt;
-    calcClockDiv(&div_a, &div_b, &div_n, &clkcnt, 240*1000*1000, WRITE_FREQUENCY);
+    calcClockDiv(&div_a, &div_b, &div_n, &clkcnt, 240*1000*1000, spi_speed*1000000);
     lcd_cam_lcd_clock_reg_t lcd_clock;
     lcd_clock.lcd_clkcnt_n = std::max(1u, clkcnt - 1);
     lcd_clock.lcd_clk_equ_sysclk = (clkcnt == 1);
