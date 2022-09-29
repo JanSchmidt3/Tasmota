@@ -668,7 +668,6 @@ Renderer *uDisplay::Init(void) {
 
     _dma_chan = _i80_bus->dma_chan;
 
-/*
     uint32_t div_a, div_b, div_n, clkcnt;
     calcClockDiv(&div_a, &div_b, &div_n, &clkcnt, 240*1000*1000, spi_speed*1000000);
     lcd_cam_lcd_clock_reg_t lcd_clock;
@@ -682,9 +681,9 @@ Renderer *uDisplay::Init(void) {
     lcd_clock.lcd_clk_sel = 2; // clock_select: 1=XTAL CLOCK / 2=240MHz / 3=160MHz
     lcd_clock.clk_en = true;
     _clock_reg_value = lcd_clock.val;
-*/
-    // esp_lcd_panel_io_i80_config_t bus_config;
-    //esp_err_tesp_lcd_del_i80_bus
+
+    _alloc_dmadesc(1);
+
 
 #endif // USE_ESP32_S3
 
@@ -2316,6 +2315,198 @@ void uDisplay::pushPixels3DMA(uint8_t* image, uint32_t len) {
   }
 }
 
+#ifdef USE_ESP32_S3
+void uDisplay::calcClockDiv(uint32_t* div_a, uint32_t* div_b, uint32_t* div_n, uint32_t* clkcnt, uint32_t baseClock, uint32_t targetFreq) {
+    uint32_t diff = INT32_MAX;
+    *div_n = 256;
+    *div_a = 63;
+    *div_b = 62;
+    *clkcnt = 64;
+    uint32_t start_cnt = std::min<uint32_t>(64u, (baseClock / (targetFreq * 2) + 1));
+    uint32_t end_cnt = std::max<uint32_t>(2u, baseClock / 256u / targetFreq);
+    if (start_cnt <= 2) { end_cnt = 1; }
+    for (uint32_t cnt = start_cnt; diff && cnt >= end_cnt; --cnt)
+    {
+      float fdiv = (float)baseClock / cnt / targetFreq;
+      uint32_t n = std::max<uint32_t>(2u, (uint32_t)fdiv);
+      fdiv -= n;
 
+      for (uint32_t a = 63; diff && a > 0; --a)
+      {
+        uint32_t b = roundf(fdiv * a);
+        if (a == b && n == 256) {
+          break;
+        }
+        uint32_t freq = baseClock / ((n * cnt) + (float)(b * cnt) / (float)a);
+        uint32_t d = abs((int)targetFreq - (int)freq);
+        if (diff <= d) { continue; }
+        diff = d;
+        *clkcnt = cnt;
+        *div_n = n;
+        *div_b = b;
+        *div_a = a;
+        if (b == 0 || a == b) {
+          break;
+        }
+      }
+    }
+    if (*div_a == *div_b)
+    {
+        *div_b = 0;
+        *div_n += 1;
+    }
+  }
+
+void uDisplay::_alloc_dmadesc(size_t len) {
+    if (_dmadesc) heap_caps_free(_dmadesc);
+    _dmadesc_size = len;
+    _dmadesc = (lldesc_t*)heap_caps_malloc(sizeof(lldesc_t) * len, MALLOC_CAP_DMA);
+}
+
+
+void uDisplay::pb_beginTransaction(void) {
+    auto dev = _dev;
+    dev->lcd_clock.val = _clock_reg_value;
+    // int clk_div = std::min(63u, std::max(1u, 120*1000*1000 / (_cfg.freq_write+1)));
+    // dev->lcd_clock.lcd_clk_sel = 2; // clock_select: 1=XTAL CLOCK / 2=240MHz / 3=160MHz
+    // dev->lcd_clock.lcd_clkcnt_n = clk_div;
+    // dev->lcd_clock.lcd_clk_equ_sysclk = 0;
+    // dev->lcd_clock.lcd_ck_idle_edge = true;
+    // dev->lcd_clock.lcd_ck_out_edge = false;
+
+    dev->lcd_misc.val = LCD_CAM_LCD_CD_IDLE_EDGE;
+    // dev->lcd_misc.lcd_cd_idle_edge = 1;
+    // dev->lcd_misc.lcd_cd_cmd_set = 0;
+    // dev->lcd_misc.lcd_cd_dummy_set = 0;
+    // dev->lcd_misc.lcd_cd_data_set = 0;
+
+    dev->lcd_user.val = 0;
+    // dev->lcd_user.lcd_byte_order = false;
+    // dev->lcd_user.lcd_bit_order = false;
+    // dev->lcd_user.lcd_8bits_order = false;
+
+    dev->lcd_user.val = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG;
+
+    _cache_flip = _cache[0];
+  }
+
+void uDisplay::pb_endTransaction(void) {
+    auto dev = _dev;
+    while (dev->lcd_user.val & LCD_CAM_LCD_START) {}
+}
+
+void uDisplay::pb_wait(void) {
+    auto dev = _dev;
+    while (dev->lcd_user.val & LCD_CAM_LCD_START) {}
+}
+
+bool uDisplay::pb_busy(void) {
+    auto dev = _dev;
+    return (dev->lcd_user.val & LCD_CAM_LCD_START);
+}
+
+bool uDisplay::pb_writeCommand(uint32_t data, uint_fast8_t bit_length) {
+    if (interface == _UDSP_PAR8) {
+      // 8bit bus
+      auto bytes = bit_length >> 3;
+      auto dev = _dev;
+      auto reg_lcd_user = &(dev->lcd_user.val);
+      dev->lcd_misc.val = LCD_CAM_LCD_CD_IDLE_EDGE | LCD_CAM_LCD_CD_CMD_SET;
+      do {
+        dev->lcd_cmd_val.lcd_cmd_value = data;
+        data >>= 8;
+        while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+        *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+      } while (--bytes);
+      return true;
+    } else {
+      // 16 bit bus
+      if (_has_align_data) { _send_align_data(); }
+      auto dev = _dev;
+      auto reg_lcd_user = &(dev->lcd_user.val);
+      dev->lcd_misc.val = LCD_CAM_LCD_CD_IDLE_EDGE | LCD_CAM_LCD_CD_CMD_SET;
+      dev->lcd_cmd_val.val = data;
+
+      if (bit_length <= 16) {
+        while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+        *reg_lcd_user = LCD_CAM_LCD_2BYTE_EN | LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+        return true;
+      }
+
+      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+      *reg_lcd_user = LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_2BYTE_EN | LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+      return true;
+    }
+ }
+
+
+
+void uDisplay::pb_writeData(uint32_t data, uint_fast8_t bit_length) {
+  if (interface == _UDSP_PAR8) {
+    auto bytes = bit_length >> 3;
+    auto dev = _dev;
+    auto reg_lcd_user = &(dev->lcd_user.val);
+    dev->lcd_misc.val = LCD_CAM_LCD_CD_IDLE_EDGE;
+
+    if (bytes & 1) {
+      dev->lcd_cmd_val.lcd_cmd_value = data;
+      data >>= 8;
+      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+      *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+      if (0 == --bytes) { return; }
+    }
+
+    dev->lcd_cmd_val.lcd_cmd_value = (data & 0xFF) | (data << 8);
+    while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+    *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+    bytes >>= 1;
+    if (--bytes) {
+      data >>= 16;
+      dev->lcd_cmd_val.lcd_cmd_value = (data & 0xFF) | (data << 8);
+      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+      *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+    }
+  } else {
+    auto bytes = bit_length >> 3;
+    auto dev = _dev;
+    auto reg_lcd_user = &(dev->lcd_user.val);
+    dev->lcd_misc.val = LCD_CAM_LCD_CD_IDLE_EDGE;
+    if (_has_align_data) {
+      _has_align_data = false;
+      dev->lcd_cmd_val.val = _align_data | (data << 8);
+      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+      *reg_lcd_user = LCD_CAM_LCD_2BYTE_EN | LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+      if (--bytes == 0) { return; }
+      data >>= 8;
+    }
+
+    if (bytes > 1) {
+      dev->lcd_cmd_val.val = data;
+      if (bytes == 4) {
+        while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+        *reg_lcd_user = LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_2BYTE_EN | LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+        return;
+      }
+      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+      *reg_lcd_user = LCD_CAM_LCD_2BYTE_EN | LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+      if (bytes == 2) { return; }
+      data >>= 16;
+    }
+    _has_align_data = true;
+    _align_data = data;
+  }
+}
+
+void uDisplay::_send_align_data(void) {
+    _has_align_data = false;
+    auto dev = _dev;
+    dev->lcd_cmd_val.lcd_cmd_value = _align_data;
+    auto reg_lcd_user = &(dev->lcd_user.val);
+    while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+    *reg_lcd_user = LCD_CAM_LCD_2BYTE_EN | LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+}
+
+
+#endif // USE_ESP32_S3
 
 #endif // ESP32

@@ -273,7 +273,24 @@ class uDisplay : public Renderer {
 
    esp_lcd_i80_bus_handle_t _i80_bus = nullptr;
    gdma_channel_handle_t _dma_chan;
+   lldesc_t *_dmadesc = nullptr;
+   uint32_t _dmadesc_size = 0;
    uint32_t _clock_reg_value;
+   void calcClockDiv(uint32_t* div_a, uint32_t* div_b, uint32_t* div_n, uint32_t* clkcnt, uint32_t baseClock, uint32_t targetFreq);
+   void _alloc_dmadesc(size_t len);
+   void pb_beginTransaction(void);
+   void pb_endTransaction(void);
+   void pb_wait(void);
+   bool pb_busy(void);
+   bool pb_writeCommand(uint32_t data, uint_fast8_t bit_length);
+   void pb_writeData(uint32_t data, uint_fast8_t bit_length);
+   void _send_align_data(void);
+   volatile lcd_cam_dev_t* _dev;
+   uint32_t* _cache_flip;
+   static constexpr size_t CACHE_SIZE = 256;
+   uint32_t _cache[2][CACHE_SIZE / sizeof(uint32_t)];
+   bool _has_align_data;
+   uint8_t _align_data;
 #endif
 
 #ifdef ESP32
