@@ -232,13 +232,14 @@ int8_t cs;
     }
 
 #ifdef CONFIG_IDF_TARGET_ESP32S3
+    int8_t xp, xm, yp, ym;
     cp = strstr(ddesc, "PAR,");
     if (cp) {
       cp += 4;
       // 8 or 16 bus
       uint8_t mode = strtol(cp, &cp, 10);
       cp++;
-      int8_t xp, xm, yp, ym;
+
       replacepin(&cp, Pin(GPIO_DP_RES));
       xm = replacepin(&cp, Pin(GPIO_DP_CS));
       yp = replacepin(&cp, Pin(GPIO_DP_RS));
@@ -248,9 +249,6 @@ int8_t cs;
 
       ym = replacepin(&cp, Pin(GPIO_DPAR0));
       xp = replacepin(&cp, Pin(GPIO_DPAR1));
-#ifdef SIMPLE_RES_TOUCH
-      Simple_ResTouch_Init(xp, xm, yp, ym);
-#endif
 
       replacepin(&cp, Pin(GPIO_DPAR2));
       replacepin(&cp, Pin(GPIO_DPAR3));
@@ -335,6 +333,16 @@ int8_t cs;
 	    XPT2046_Touch_Init(touch_cs);
     }
 #endif // USE_XPT2046
+
+#ifdef CONFIG_IDF_TARGET_ESP32S3
+#ifdef SIMPLE_RES_TOUCH
+    cp = strstr(ddesc, ":ST,");
+    if (cp) {
+      cp+=4;
+      Simple_ResTouch_Init(xp, xm, yp, ym);
+    }
+#endif
+#endif
 
     uint8_t inirot = Settings->display_rotate;
 

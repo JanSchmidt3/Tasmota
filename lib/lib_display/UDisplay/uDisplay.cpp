@@ -51,6 +51,9 @@ uDisplay::~uDisplay(void) {
   if (framebuffer) {
     free(framebuffer);
   }
+#ifdef USE_ESP32_S3
+  if (_dmadesc) heap_caps_free(_dmadesc);
+#endif
 }
 
 uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
@@ -609,9 +612,6 @@ Renderer *uDisplay::Init(void) {
       analogWrite(bpanel, 32);
     }
 
-    pinMode(reset, OUTPUT);
-    digitalWrite(reset, HIGH);
-
     pinMode(par_cs, OUTPUT);
     digitalWrite(par_cs, HIGH);
 
@@ -637,6 +637,16 @@ Renderer *uDisplay::Init(void) {
       bus_width = 16;
     }
 
+    if (reset >= 0) {
+      pinMode(reset, OUTPUT);
+      digitalWrite(reset, HIGH);
+      delay(50);
+      digitalWrite(reset, LOW);
+      delay(50);
+      digitalWrite(reset, HIGH);
+      delay(200);
+    }
+
     esp_lcd_i80_bus_config_t bus_config = {
         .dc_gpio_num = par_rs,
         .wr_gpio_num = par_wr,
@@ -659,8 +669,7 @@ Renderer *uDisplay::Init(void) {
 
     // to disable SPI TRANSACTION
     spi_nr = 3;
-    // to disable SPI CS
-    spi_cs = -1;
+    spi_cs = par_cs;
 
     _i80_bus = nullptr;
 
@@ -683,6 +692,54 @@ Renderer *uDisplay::Init(void) {
     _clock_reg_value = lcd_clock.val;
 
     _alloc_dmadesc(1);
+
+
+    _dev = &LCD_CAM;
+
+
+    pb_beginTransaction();
+    uint16_t index = 0;
+    while (1) {
+      uint8_t iob;
+      cs_control(0);
+
+      iob = dsp_cmds[index++];
+      pb_writeCommand(iob, 8);
+
+      uint8_t args = dsp_cmds[index++];
+    #ifdef UDSP_DEBUG
+      Serial.printf("cmd, args %02x, %d ", iob, args&0x1f);
+    #endif
+      for (uint32_t cnt = 0; cnt < (args & 0x1f); cnt++) {
+        iob = dsp_cmds[index++];
+    #ifdef UDSP_DEBUG
+        Serial.printf("%02x ", iob );
+    #endif
+        pb_writeData(iob, 8);
+      }
+      cs_control(1);
+    #ifdef UDSP_DEBUG
+      Serial.printf("\n");
+    #endif
+      if (args & 0x80) {  // delay after the command
+        uint32_t delay_ms = 0;
+        switch (args & 0xE0) {
+          case 0x80:  delay_ms = 150; break;
+          case 0xA0:  delay_ms =  10; break;
+          case 0xE0:  delay_ms = 500; break;
+        }
+        if (delay_ms > 0) {
+          delay(delay_ms);
+    #ifdef UDSP_DEBUG
+          Serial.printf("delay %d ms\n", delay_ms);
+    #endif
+        }
+
+      }
+      if (index >= dsp_ncmds) break;
+    }
+
+    pb_endTransaction();
 
 
 #endif // USE_ESP32_S3
@@ -767,6 +824,11 @@ void uDisplay::ulcd_command(uint8_t val) {
       }
       SPI_DC_HIGH
     }
+    return;
+  }
+
+  if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+    pb_writeCommand(val, 8);
   }
 }
 
@@ -794,6 +856,11 @@ void uDisplay::ulcd_data8(uint8_t val) {
         uspi->write(val);
       }
     }
+    return;
+  }
+
+  if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+    pb_writeData(val, 8);
   }
 }
 
@@ -815,6 +882,11 @@ void uDisplay::ulcd_data16(uint16_t val) {
         uspi->write16(val);
       }
     }
+    return;
+  }
+
+  if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+    pb_writeData(val, 16);
   }
 }
 
@@ -840,6 +912,13 @@ void uDisplay::ulcd_data32(uint32_t val) {
         uspi->write32(val);
       }
     }
+    return;
+  }
+  if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+    pb_writeData(val >> 24, 8);
+    pb_writeData(val >> 16, 8);
+    pb_writeData(val >> 8, 8);
+    pb_writeData(val, 8);
   }
 }
 
@@ -1206,8 +1285,8 @@ void uDisplay::setAddrWindow_int(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
     y += y_addr_offs[cur_rot];
 
     if (sa_mode != 8) {
-      uint32_t xa = ((uint32_t)x << 16) | (x+w-1);
-      uint32_t ya = ((uint32_t)y << 16) | (y+h-1);
+      uint32_t xa = ((uint32_t)x << 16) | (x + w - 1);
+      uint32_t ya = ((uint32_t)y << 16) | (y + h - 1);
 
       ulcd_command(saw_1);
       ulcd_data32(xa);
@@ -1415,7 +1494,7 @@ void uDisplay::drawPixel(int16_t x, int16_t y, uint16_t color) {
     return;
   }
 
-  if (interface != _UDSP_SPI || bpp < 16) {
+  if (framebuffer) {
     Renderer::drawPixel(x, y, color);
     return;
   }
@@ -1439,7 +1518,7 @@ void uDisplay::drawPixel(int16_t x, int16_t y, uint16_t color) {
 void uDisplay::setRotation(uint8_t rotation) {
   cur_rot = rotation;
 
-  if (interface != _UDSP_SPI || bpp < 16) {
+  if (framebuffer) {
     Renderer::setRotation(cur_rot);
     return;
   }
@@ -1555,7 +1634,7 @@ void uDisplay::invertDisplay(boolean i) {
     return;
   }
 
-  if (interface == _UDSP_SPI) {
+  if (interface == _UDSP_SPI || interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
     if (i) {
       ulcd_command_one(inv_on);
     } else {
@@ -2440,7 +2519,6 @@ bool uDisplay::pb_writeCommand(uint32_t data, uint_fast8_t bit_length) {
  }
 
 
-
 void uDisplay::pb_writeData(uint32_t data, uint_fast8_t bit_length) {
   if (interface == _UDSP_PAR8) {
     auto bytes = bit_length >> 3;
@@ -2505,6 +2583,39 @@ void uDisplay::_send_align_data(void) {
     while (*reg_lcd_user & LCD_CAM_LCD_START) {}
     *reg_lcd_user = LCD_CAM_LCD_2BYTE_EN | LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
 }
+
+
+void uDisplay::cs_control(bool level) {
+    auto pin = par_cs;
+    if (pin < 0) return;
+    if (level) {
+      gpio_hi(pin);
+    }
+    else {
+      gpio_lo(pin);
+    }
+}
+
+#if 0
+void TFT_eSPI::startWrite(void)
+{
+  begin_tft_write();
+  lockTransaction = true; // Lock transaction for all sequentially run sketch functions
+  inTransaction = true;
+}
+
+/***************************************************************************************
+** Function name:           endWrite
+** Description:             end transaction with CS high
+***************************************************************************************/
+void TFT_eSPI::endWrite(void)
+{
+  lockTransaction = false; // Release sketch induced transaction lock
+  inTransaction = false;
+  DMA_BUSY_CHECK;          // Safety check - user code should have checked this!
+  end_tft_write();         // Release SPI bus
+}
+#endif
 
 
 #endif // USE_ESP32_S3
