@@ -893,7 +893,9 @@ void uDisplay::ulcd_data16(uint16_t val) {
   }
 
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
-    pb_writeData(val, 16);
+    //pb_writeData(val, 16);
+    pb_writeData(val >> 8, 8);
+    pb_writeData(val, 8);
   }
 }
 
