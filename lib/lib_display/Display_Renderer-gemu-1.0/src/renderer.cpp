@@ -639,6 +639,9 @@ void Renderer::ep_update_mode(uint8_t mode) {
 void Renderer::ep_update_area(uint16_t xp, uint16_t yp, uint16_t width, uint16_t height, uint8_t mode) {
 }
 
+bool Renderer::pb_busy(void)  {
+  return false;
+}
 
 // #ifndef USE_DISPLAY_LVGL_ONLY
 

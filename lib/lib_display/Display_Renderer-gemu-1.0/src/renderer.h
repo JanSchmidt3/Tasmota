@@ -90,6 +90,7 @@ public:
   virtual LVGL_PARAMS *lvgl_pars(void);
   virtual void ep_update_mode(uint8_t mode);
   virtual void ep_update_area(uint16_t xp, uint16_t yp, uint16_t width, uint16_t height, uint8_t mode);
+  virtual bool pb_busy(void); 
 
   void setDrawMode(uint8_t mode);
   uint8_t drawmode;

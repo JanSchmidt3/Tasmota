@@ -156,6 +156,9 @@ void Simple_ResTouch_Init(int8_t xp, int8_t xm, int8_t yp, int8_t ym) {
 #define SRES_THRESHOLD 100
 
 bool SRES_touched() {
+  if (renderer->pb_busy()) {
+    return false;
+  }
   pinMode(sres_touch.xplus, INPUT_PULLUP);
   pinMode(sres_touch.yminus, INPUT_PULLUP);
   digitalWrite(sres_touch.xminus, 1);
@@ -248,8 +251,6 @@ int16_t XPT2046_y() {
   return pLoc.y;
 }
 #endif  // USE_XPT2046
-
-
 
 void Touch_Check(void(*rotconvert)(int16_t *x, int16_t *y)) {
   static bool was_touched = false;    // flag used to log the data sent when the screen was just released
