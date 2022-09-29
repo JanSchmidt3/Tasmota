@@ -52,7 +52,14 @@ uDisplay::~uDisplay(void) {
     free(framebuffer);
   }
 #ifdef USE_ESP32_S3
-  if (_dmadesc) heap_caps_free(_dmadesc);
+  if (_dmadesc) {
+    heap_caps_free(_dmadesc);
+    _dmadesc = nullptr;
+    _dmadesc_size = 0;
+  }
+  if (_i80_bus) {
+    esp_lcd_del_i80_bus(_i80_bus);
+  }
 #endif
 }
 
@@ -621,8 +628,10 @@ Renderer *uDisplay::Init(void) {
     pinMode(par_wr, OUTPUT);
     digitalWrite(par_wr, HIGH);
 
-    pinMode(par_rd, OUTPUT);
-    digitalWrite(par_rd, HIGH);
+    if (par_rd >= 0) {
+      pinMode(par_rd, OUTPUT);
+      digitalWrite(par_rd, HIGH);
+    }
 
     for (uint32_t cnt = 0; cnt < 8; cnt ++) {
         pinMode(par_dbl[cnt], OUTPUT);
@@ -693,9 +702,7 @@ Renderer *uDisplay::Init(void) {
 
     _alloc_dmadesc(1);
 
-
     _dev = &LCD_CAM;
-
 
     pb_beginTransaction();
     uint16_t index = 0;
@@ -1523,7 +1530,7 @@ void uDisplay::setRotation(uint8_t rotation) {
     return;
   }
 
-  if (interface >= _UDSP_SPI) {
+  if (interface == _UDSP_SPI || interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
 
     if (ep_mode) {
       Renderer::setRotation(cur_rot);
