@@ -613,6 +613,7 @@ Renderer *uDisplay::Init(void) {
   }
 
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+
 #ifdef USE_ESP32_S3
 
     if (bpanel >= 0) {
@@ -834,9 +835,11 @@ void uDisplay::ulcd_command(uint8_t val) {
     return;
   }
 
+#ifdef USE_ESP32_S3
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
     pb_writeCommand(val, 8);
   }
+#endif
 }
 
 void uDisplay::ulcd_data8(uint8_t val) {
@@ -866,9 +869,11 @@ void uDisplay::ulcd_data8(uint8_t val) {
     return;
   }
 
+#ifdef USE_ESP32_S3
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
     pb_writeData(val, 8);
   }
+#endif
 }
 
 void uDisplay::ulcd_data16(uint16_t val) {
@@ -892,11 +897,13 @@ void uDisplay::ulcd_data16(uint16_t val) {
     return;
   }
 
+#ifdef USE_ESP32_S3
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
     //pb_writeData(val, 16);
     pb_writeData(val >> 8, 8);
     pb_writeData(val, 8);
   }
+#endif
 }
 
 void uDisplay::ulcd_data32(uint32_t val) {
@@ -923,12 +930,15 @@ void uDisplay::ulcd_data32(uint32_t val) {
     }
     return;
   }
+
+#ifdef USE_ESP32_S3
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
     pb_writeData(val >> 24, 8);
     pb_writeData(val >> 16, 8);
     pb_writeData(val >> 8, 8);
     pb_writeData(val, 8);
   }
+#endif
 }
 
 void uDisplay::ulcd_command_one(uint8_t val) {
