@@ -142,6 +142,8 @@ struct RES_TOUCH {
   int8_t xminus;
   int8_t yplus;
   int8_t yminus;
+  uint16_t xp;
+  uint16_t yp;
 } sres_touch;
 
 void Simple_ResTouch_Init(int8_t xp, int8_t xm, int8_t yp, int8_t ym) {
@@ -153,44 +155,32 @@ void Simple_ResTouch_Init(int8_t xp, int8_t xm, int8_t yp, int8_t ym) {
   AddLog(LOG_LEVEL_INFO, PSTR("TS: simple resistive touch init"));
 }
 
-#define SRES_THRESHOLD 100
+#define SRES_THRESHOLD 500
 
 bool SRES_touched() {
-  if (renderer->pb_busy()) {
+  uint32_t val = renderer->get_sr_touch(sres_touch.xplus, sres_touch.xminus, sres_touch.yplus, sres_touch.yminus);
+  if (val == 0) {
     return false;
   }
-  pinMode(sres_touch.xplus, INPUT_PULLUP);
-  pinMode(sres_touch.yminus, INPUT_PULLUP);
-  digitalWrite(sres_touch.xminus, 1);
-  digitalWrite(sres_touch.yplus, 1);
-  uint16_t xp = 4096 -analogRead(sres_touch.xplus);
-  if (xp < 0) xp = 0;
-  uint16_t yp =  analogRead(sres_touch.yminus);
-  if (yp < 0) yp = 0;
-  pinMode(sres_touch.xplus, OUTPUT);
-  pinMode(sres_touch.yminus, OUTPUT);
+  sres_touch.xp = val >> 16;
+  sres_touch.yp  = val & 0xffff;
+
+  int16_t xp = sres_touch.xp;
+  int16_t yp = sres_touch.yp;
+
+  //AddLog(LOG_LEVEL_INFO, "TS x=%i y=%i)", xp, yp);
+
   if (xp > SRES_THRESHOLD && yp > SRES_THRESHOLD) {
     return 1;
   }
   return 0;
 }
+
 int16_t SRES_x() {
-  int16_t xp;
-  digitalWrite(sres_touch.xminus, 1);
-  pinMode(sres_touch.xplus, INPUT_PULLUP);
-  xp = 4096 - analogRead(sres_touch.xplus);
-  if (xp < 0) xp = 0;
-  pinMode(sres_touch.xplus, OUTPUT);
-  return xp;
+  return sres_touch.xp;
 }
 int16_t SRES_y() {
-  int16_t yp;
-  digitalWrite(sres_touch.yplus, 1);
-  pinMode(sres_touch.yminus, INPUT_PULLUP);
-  yp = analogRead(sres_touch.yminus);
-  if (yp < 0) yp = 0;
-  pinMode(sres_touch.yminus, OUTPUT);
-  return yp;
+  return sres_touch.yp;
 }
 #endif
 

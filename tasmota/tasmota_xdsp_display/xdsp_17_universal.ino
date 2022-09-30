@@ -336,9 +336,9 @@ int8_t cs;
 
 #ifdef CONFIG_IDF_TARGET_ESP32S3
 #ifdef SIMPLE_RES_TOUCH
-    cp = strstr(ddesc, ":ST,");
+    cp = strstr(ddesc, ":TR,");
     if (cp) {
-      cp+=4;
+      cp += 4;
       Simple_ResTouch_Init(xp, xm, yp, ym);
     }
 #endif

@@ -289,6 +289,7 @@ class uDisplay : public Renderer {
    void pb_endTransaction(void);
    void pb_wait(void);
    bool pb_busy(void);
+   void _pb_init_pin(bool);
    bool pb_writeCommand(uint32_t data, uint_fast8_t bit_length);
    void pb_writeData(uint32_t data, uint_fast8_t bit_length);
    void _send_align_data(void);
@@ -299,6 +300,7 @@ class uDisplay : public Renderer {
    bool _has_align_data;
    uint8_t _align_data;
    void cs_control(bool level);
+   uint32_t get_sr_touch(uint32_t xp, uint32_t xm, uint32_t yp, uint32_t ym);
 #endif
 
 #ifdef ESP32

@@ -2605,6 +2605,94 @@ void uDisplay::cs_control(bool level) {
     }
 }
 
+void uDisplay::_pb_init_pin(bool read) {
+    if (read) {
+      if (interface == _UDSP_PAR8) {
+        for (size_t i = 0; i < 8; ++i) {
+          gpio_ll_output_disable(&GPIO, (gpio_num_t)par_dbl[i]);
+        }
+      } else {
+        for (size_t i = 0; i < 8; ++i) {
+          gpio_ll_output_disable(&GPIO, (gpio_num_t)par_dbl[i]);
+        }
+        for (size_t i = 0; i < 8; ++i) {
+          gpio_ll_output_disable(&GPIO, (gpio_num_t)par_dbh[i]);
+        }
+      }
+    }
+    else {
+      auto idx_base = LCD_DATA_OUT0_IDX;
+      if (interface == _UDSP_PAR8) {
+        for (size_t i = 0; i < 8; ++i) {
+          gpio_matrix_out(par_dbl[i], idx_base + i, 0, 0);
+        }
+      } else {
+        for (size_t i = 0; i < 8; ++i) {
+          gpio_matrix_out(par_dbl[i], idx_base + i, 0, 0);
+        }
+        for (size_t i = 0; i < 8; ++i) {
+          gpio_matrix_out(par_dbh[i], idx_base + 8 + i, 0, 0);
+        }
+      }
+    }
+}
+
+/* read analog value from pin for simple digitizer
+X+ = d1
+X- = CS
+Y+ = RS
+Y- = D0
+
+define YP A2  // must be an analog pin, use "An" notation!
+#define XM A3  // must be an analog pin, use "An" notation!
+#define YM 8   // can be a digital pin
+#define XP 9   // can be a digital pin
+
+*/
+uint32_t uDisplay::get_sr_touch(uint32_t _xp, uint32_t _xm, uint32_t _yp, uint32_t _ym) {
+  uint32_t aval = 0;
+  uint16_t xp,yp;
+  if (pb_busy()) return 0;
+
+  _pb_init_pin(true);
+  gpio_matrix_out(par_rs, 0x100, 0, 0);
+
+  pinMode(_ym, INPUT_PULLUP); // d0
+  pinMode(_yp, INPUT_PULLUP); // rs
+
+  pinMode(_xm, OUTPUT); // cs
+  pinMode(_xp, OUTPUT); // d1
+  digitalWrite(_xm, HIGH); // cs
+  digitalWrite(_xp, LOW); // d1
+
+  xp = 4096 - analogRead(_ym); // d0
+
+  pinMode(_xm, INPUT_PULLUP); // cs
+  pinMode(_xp, INPUT_PULLUP); // d1
+
+  pinMode(_ym, OUTPUT); // d0
+  pinMode(_yp, OUTPUT); // rs
+  digitalWrite(_ym, HIGH); // d0
+  digitalWrite(_yp, LOW); // rs
+
+  yp = 4096 - analogRead(_xp); // d1
+
+  aval = (xp << 16) | yp;
+
+  pinMode(_yp, OUTPUT); // rs
+  pinMode(_xm, OUTPUT); // cs
+  pinMode(_ym, OUTPUT); // d0
+  pinMode(_xp, OUTPUT); // d1
+  digitalWrite(_yp, HIGH); // rs
+  digitalWrite(_xm, HIGH); // cs
+
+  _pb_init_pin(false);
+  gpio_matrix_out(par_rs, LCD_DC_IDX, 0, 0);
+
+  return aval;
+}
+
+
 #if 0
 void TFT_eSPI::startWrite(void)
 {
