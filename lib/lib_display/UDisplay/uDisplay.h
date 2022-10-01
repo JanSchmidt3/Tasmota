@@ -285,6 +285,7 @@ class uDisplay : public Renderer {
    uint32_t _clock_reg_value;
    void calcClockDiv(uint32_t* div_a, uint32_t* div_b, uint32_t* div_n, uint32_t* clkcnt, uint32_t baseClock, uint32_t targetFreq);
    void _alloc_dmadesc(size_t len);
+   void _setup_dma_desc_links(const uint8_t *data, int32_t len);
    void pb_beginTransaction(void);
    void pb_endTransaction(void);
    void pb_wait(void);
@@ -292,6 +293,8 @@ class uDisplay : public Renderer {
    void _pb_init_pin(bool);
    bool pb_writeCommand(uint32_t data, uint_fast8_t bit_length);
    void pb_writeData(uint32_t data, uint_fast8_t bit_length);
+   void pb_pushPixels(uint16_t* data, uint32_t length, bool swap_bytes, bool use_dma);
+   void pb_writeBytes(const uint8_t* data, uint32_t length, bool use_dma);
    void _send_align_data(void);
    volatile lcd_cam_dev_t* _dev;
    uint32_t* _cache_flip;

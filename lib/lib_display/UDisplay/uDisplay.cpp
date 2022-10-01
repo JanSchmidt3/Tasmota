@@ -60,7 +60,7 @@ uDisplay::~uDisplay(void) {
   if (_i80_bus) {
     esp_lcd_del_i80_bus(_i80_bus);
   }
-#endif
+#endif // USE_ESP32_S3
 }
 
 uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
@@ -839,7 +839,7 @@ void uDisplay::ulcd_command(uint8_t val) {
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
     pb_writeCommand(val, 8);
   }
-#endif
+#endif // USE_ESP32_S3
 }
 
 void uDisplay::ulcd_data8(uint8_t val) {
@@ -873,7 +873,7 @@ void uDisplay::ulcd_data8(uint8_t val) {
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
     pb_writeData(val, 8);
   }
-#endif
+#endif // USE_ESP32_S3
 }
 
 void uDisplay::ulcd_data16(uint16_t val) {
@@ -903,7 +903,7 @@ void uDisplay::ulcd_data16(uint16_t val) {
     pb_writeData(val >> 8, 8);
     pb_writeData(val, 8);
   }
-#endif
+#endif // USE_ESP32_S3
 }
 
 void uDisplay::ulcd_data32(uint32_t val) {
@@ -938,7 +938,7 @@ void uDisplay::ulcd_data32(uint32_t val) {
     pb_writeData(val >> 8, 8);
     pb_writeData(val, 8);
   }
-#endif
+#endif // USE_ESP32_S3
 }
 
 void uDisplay::ulcd_command_one(uint8_t val) {
@@ -1447,9 +1447,15 @@ void uDisplay::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
 
       } else {
         // 9 bit and others
-        lvgl_color_swap(data, len);
-        while (len--) {
-          WriteColor(*data++);
+        if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+  #ifdef USE_ESP32_S3
+          pb_pushPixels(data, len, true, false);
+  #endif // USE_ESP32_S3
+        } else {
+          lvgl_color_swap(data, len);
+          while (len--) {
+            WriteColor(*data++);
+          }
         }
       }
 #endif // ESP32
@@ -1479,8 +1485,14 @@ void uDisplay::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
   #endif
     } else {
       // 9 bit and others
-      while (len--) {
-        WriteColor(*data++);
+      if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
+#ifdef USE_ESP32_S3
+        pb_pushPixels(data, len, false, false);
+#endif // USE_ESP32_S3
+      } else {
+        while (len--) {
+          WriteColor(*data++);
+        }
       }
     }
   }
@@ -2461,6 +2473,28 @@ void uDisplay::_alloc_dmadesc(size_t len) {
     _dmadesc = (lldesc_t*)heap_caps_malloc(sizeof(lldesc_t) * len, MALLOC_CAP_DMA);
 }
 
+void uDisplay::_setup_dma_desc_links(const uint8_t *data, int32_t len) {
+    static constexpr size_t MAX_DMA_LEN = (4096-4);
+/*
+    if (_dmadesc_size * MAX_DMA_LEN < len) {
+      _alloc_dmadesc(len / MAX_DMA_LEN + 1);
+    }
+    lldesc_t *dmadesc = _dmadesc;
+
+    while (len > MAX_DMA_LEN) {
+      len -= MAX_DMA_LEN;
+      dmadesc->buffer = (uint8_t *)data;
+      data += MAX_DMA_LEN;
+      *(uint32_t*)dmadesc = MAX_DMA_LEN | MAX_DMA_LEN << 12 | 0x80000000;
+      dmadesc->next = dmadesc + 1;
+      dmadesc++;
+    }
+    *(uint32_t*)dmadesc = ((len + 3) & ( ~3 )) | len << 12 | 0xC0000000;
+    dmadesc->buffer = (uint8_t *)data;
+    dmadesc->next = nullptr;
+    */
+  }
+
 
 void uDisplay::pb_beginTransaction(void) {
     auto dev = _dev;
@@ -2593,6 +2627,60 @@ void uDisplay::pb_writeData(uint32_t data, uint_fast8_t bit_length) {
     _align_data = data;
   }
 }
+
+void uDisplay::pb_pushPixels(uint16_t* data, uint32_t length, bool swap_bytes, bool use_dma) {
+
+  if (swap_bytes) {
+    lvgl_color_swap(data, length);
+  }
+
+  while (length--) {
+    WriteColor(*data++);
+  }
+}
+
+
+void uDisplay::pb_writeBytes(const uint8_t* data, uint32_t length, bool use_dma) {
+
+/*
+    uint32_t freq = spi_speed * 1000000;
+    uint32_t slow = (freq< 4000000) ? 2 : (freq < 8000000) ? 1 : 0;
+
+    auto dev = _dev;
+    do {
+      auto reg_lcd_user = &(dev->lcd_user.val);
+      dev->lcd_misc.lcd_cd_cmd_set  = 0;
+      dev->lcd_cmd_val.lcd_cmd_value = data[0] | data[1] << 16;
+      uint32_t cmd_val = data[2] | data[3] << 16;
+      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+      *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+
+      if (use_dma) {
+        if (slow) { ets_delay_us(slow); }
+        _setup_dma_desc_links(&data[4], length - 4);
+        gdma_start(_dma_chan, (intptr_t)(_dmadesc));
+        length = 0;
+      } else {
+        size_t len = length;
+        if (len > CACHE_SIZE) {
+          len = (((len - 1) % CACHE_SIZE) + 4) & ~3u;
+        }
+        memcpy(_cache_flip, &data[4], (len-4+3)&~3);
+        _setup_dma_desc_links((const uint8_t*)_cache_flip, len-4);
+        gdma_start(_dma_chan, (intptr_t)(_dmadesc));
+        length -= len;
+        data += len;
+        _cache_flip = _cache[(_cache_flip == _cache[0])];
+      }
+      dev->lcd_cmd_val.lcd_cmd_value = cmd_val;
+      dev->lcd_misc.lcd_cd_data_set = 0;
+      *reg_lcd_user = LCD_CAM_LCD_ALWAYS_OUT_EN | LCD_CAM_LCD_DOUT | LCD_CAM_LCD_CMD | LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_UPDATE_REG;
+      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+      *reg_lcd_user = LCD_CAM_LCD_ALWAYS_OUT_EN | LCD_CAM_LCD_DOUT | LCD_CAM_LCD_CMD | LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_START;
+    } while (length);
+*/
+}
+
 
 void uDisplay::_send_align_data(void) {
     _has_align_data = false;
