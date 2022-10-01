@@ -899,9 +899,7 @@ void uDisplay::ulcd_data16(uint16_t val) {
 
 #ifdef USE_ESP32_S3
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
-    //pb_writeData(val, 16);
-    pb_writeData(val >> 8, 8);
-    pb_writeData(val, 8);
+    pb_writeData(val, 16);
   }
 #endif // USE_ESP32_S3
 }
@@ -933,10 +931,7 @@ void uDisplay::ulcd_data32(uint32_t val) {
 
 #ifdef USE_ESP32_S3
   if (interface == _UDSP_PAR8 || interface == _UDSP_PAR16) {
-    pb_writeData(val >> 24, 8);
-    pb_writeData(val >> 16, 8);
-    pb_writeData(val >> 8, 8);
-    pb_writeData(val, 8);
+    pb_writeData(val, 32);
   }
 #endif // USE_ESP32_S3
 }
@@ -2579,24 +2574,15 @@ void uDisplay::pb_writeData(uint32_t data, uint_fast8_t bit_length) {
     auto reg_lcd_user = &(dev->lcd_user.val);
     dev->lcd_misc.val = LCD_CAM_LCD_CD_IDLE_EDGE;
 
-    if (bytes & 1) {
-      dev->lcd_cmd_val.lcd_cmd_value = data;
-      data >>= 8;
+    uint8_t shift = (bytes - 1) * 8;
+    for (uint32_t cnt = 0; cnt < bytes; cnt++) {
+      dev->lcd_cmd_val.lcd_cmd_value = (data >> shift) & 0xff;
+      shift -= 8;
       while (*reg_lcd_user & LCD_CAM_LCD_START) {}
       *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
-      if (0 == --bytes) { return; }
     }
+    return;
 
-    dev->lcd_cmd_val.lcd_cmd_value = (data & 0xFF) | (data << 8);
-    while (*reg_lcd_user & LCD_CAM_LCD_START) {}
-    *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
-    bytes >>= 1;
-    if (--bytes) {
-      data >>= 16;
-      dev->lcd_cmd_val.lcd_cmd_value = (data & 0xFF) | (data << 8);
-      while (*reg_lcd_user & LCD_CAM_LCD_START) {}
-      *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_CMD_2_CYCLE_EN | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
-    }
   } else {
     auto bytes = bit_length >> 3;
     auto dev = _dev;
@@ -2630,12 +2616,39 @@ void uDisplay::pb_writeData(uint32_t data, uint_fast8_t bit_length) {
 
 void uDisplay::pb_pushPixels(uint16_t* data, uint32_t length, bool swap_bytes, bool use_dma) {
 
-  if (swap_bytes) {
-    lvgl_color_swap(data, length);
-  }
-
-  while (length--) {
-    WriteColor(*data++);
+  if (interface == _UDSP_PAR8) {
+    auto dev = _dev;
+    auto reg_lcd_user = &(dev->lcd_user.val);
+    dev->lcd_misc.val = LCD_CAM_LCD_CD_IDLE_EDGE;
+    if (swap_bytes) {
+      for (uint32_t cnt = 0; cnt < length; cnt++) {
+        dev->lcd_cmd_val.lcd_cmd_value = *data;
+        while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+        *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+        dev->lcd_cmd_val.lcd_cmd_value = *data >> 8;
+        while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+        *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+        data++;
+      }
+    } else {
+      for (uint32_t cnt = 0; cnt < length; cnt++) {
+        dev->lcd_cmd_val.lcd_cmd_value = *data >> 8;
+        while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+        *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+        dev->lcd_cmd_val.lcd_cmd_value = *data;
+        while (*reg_lcd_user & LCD_CAM_LCD_START) {}
+        *reg_lcd_user = LCD_CAM_LCD_CMD | LCD_CAM_LCD_UPDATE_REG | LCD_CAM_LCD_START;
+        data++;
+      }
+    }
+    return;
+  } else {
+    if (swap_bytes) {
+      lvgl_color_swap(data, length);
+    }
+    while (length--) {
+      WriteColor(*data++);
+    }
   }
 }
 
