@@ -2284,6 +2284,14 @@ void SML_Decode(uint8_t index) {
                 meter_id[mindex][p] = *cp++;
               }
               meter_id[mindex][p] = 0;
+            } else if (meter_desc_p[mindex].type == 'k') {
+              // 220901
+              uint32_t date = mbus_dval;
+              uint8_t year = date / 10000; // = 22
+              date -= year * 10000;
+              uint8_t month = date / 100; // = 09
+              uint8_t day = date % 100; // = 01
+              sprintf(&meter_id[mindex][0],"%02d.%02d.%02d",day, month, year);
             } else {
               sml_getvalue(cp,mindex);
             }
@@ -2494,7 +2502,7 @@ void SML_Show(boolean json) {
           continue;
         }
         // skip compare section
-        cp=strchr(mp, '@');
+        cp = strchr(mp, '@');
         if (cp) {
           cp++;
           tststr:
