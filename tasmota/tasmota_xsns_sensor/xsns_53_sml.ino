@@ -2125,13 +2125,13 @@ void SML_Decode(uint8_t index) {
               mp += 4;
               // decode the mantissa
               uint32_t x = 0;
-              for (uint16_t i = 0; i < cp[5]; i++) {
+              for (uint16_t i = 0; i < cp[1]; i++) {
                 x <<= 8;
-                x |= cp[i + 7];
+                x |= cp[i + 3];
               }
               // decode the exponent
-              int32_t i = cp[6] & 0x3f;
-              if (cp[6] & 0x40) {
+              int32_t i = cp[2] & 0x3f;
+              if (cp[2] & 0x40) {
                 i = -i;
               };
               //float ifl = pow(10, i);
@@ -2139,10 +2139,11 @@ void SML_Decode(uint8_t index) {
               for (uint16_t x = 1; x <= i; ++x) {
                 ifl *= 10;
               }
-              if (cp[6] & 0x80) {
+              if (cp[2] & 0x80) {
                 ifl = -ifl;
               }
               mbus_dval = (double )(x * ifl);
+
             } else if (!strncmp(mp, "bcd", 3)) {
               mp += 3;
               uint8_t digits = strtol((char*)mp, (char**)&mp, 10);
