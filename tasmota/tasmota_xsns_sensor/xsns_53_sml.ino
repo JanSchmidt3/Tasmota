@@ -1660,9 +1660,9 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
           }
           index++;
         }
+        Hexdump(smltbuf[meters], meter_spos[meters]);
         uint16_t crc = KS_calculateCRC(&smltbuf[meters][0],index);
         if (!crc) {
-          Hexdump(smltbuf[meters], meter_spos[meters]);
           SML_Decode(meters);
         }
         sml_empty_receiver(meters);
