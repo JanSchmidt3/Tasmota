@@ -1660,6 +1660,7 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
               *ucp++ = iob;
             }
           }
+          Hexdump(smltbuf[meters], meter_spos[meters]);
           SML_Decode(meters);
         }
         sml_empty_receiver(meters);
