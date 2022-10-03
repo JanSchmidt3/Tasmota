@@ -1648,18 +1648,20 @@ void sml_shift_in(uint32_t meters,uint32_t shard) {
       if (iob == 0x40) {
         meter_spos[meters] = 0;
       } else if (iob == 0x0d) {
-        uint16_t crc = KS_calculateCRC(&smltbuf[meters][0], meter_spos[meters]);
-        if (!crc) {
-          uint8_t *ucp = &smltbuf[meters][0];
-          for (uint16_t cnt = 0; cnt < meter_spos[meters]; cnt++) {
-            uint8_t iob = smltbuf[meters][cnt];
-            if (iob == 0x1b) {
-              *ucp++ = smltbuf[meters][cnt + 1] ^ 0xff;
-              cnt++;
-            } else {
-              *ucp++ = iob;
-            }
+        uint8_t index = 0;
+        uint8_t *ucp = &smltbuf[meters][0];
+        for (uint16_t cnt = 0; cnt < meter_spos[meters]; cnt++) {
+          uint8_t iob = smltbuf[meters][cnt];
+          if (iob == 0x1b) {
+            *ucp++ = smltbuf[meters][cnt + 1] ^ 0xff;
+            cnt++;
+          } else {
+            *ucp++ = iob;
           }
+          index++;
+        }
+        uint16_t crc = KS_calculateCRC(&smltbuf[meters][0],index);
+        if (!crc) {
           Hexdump(smltbuf[meters], meter_spos[meters]);
           SML_Decode(meters);
         }
