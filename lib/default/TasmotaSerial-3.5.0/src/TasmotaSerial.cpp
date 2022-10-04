@@ -27,6 +27,18 @@ extern "C" {
 
 #include <TasmotaSerial.h>
 
+
+#ifdef TS_SWS_INVERT
+// inverted software serial
+#define TS_HIGH LOW
+#define TS_LOW HIGH
+#define TS_READ (!digitalRead(m_rx_pin))
+#else
+#define TS_HIGH HIGH
+#define TS_LOW LOW
+#define TS_READ (digitalRead(m_rx_pin))
+#endif
+
 #ifdef ESP8266
 
 void IRAM_ATTR callRxRead(void *self) { ((TasmotaSerial*)self)->rxRead(); };
@@ -75,7 +87,11 @@ TasmotaSerial::TasmotaSerial(int receive_pin, int transmit_pin, int hardware_fal
       m_bit_start_time = m_bit_time + m_bit_time/3 - 500; // pre-compute first wait
       pinMode(m_rx_pin, INPUT);
       tms_obj_list[m_rx_pin] = this;
+#ifdef TS_SWS_INVERT
+      attachInterruptArg(m_rx_pin, callRxRead, this, (m_nwmode) ? CHANGE : RISING);
+#else
       attachInterruptArg(m_rx_pin, callRxRead, this, (m_nwmode) ? CHANGE : FALLING);
+#endif
     }
     if (m_tx_pin > -1) {
       pinMode(m_tx_pin, OUTPUT);
@@ -303,16 +319,7 @@ int TasmotaSerial::available(void) {
   }
 }
 
-#ifdef TS_SWS_INVERT
-// inverted software serial
-#define TS_HIGH LOW
-#define TS_LOW HIGH
-#define TS_READ (!digitalRead(m_rx_pin))
-#else
-#define TS_HIGH HIGH
-#define TS_LOW LOW
-#define TS_READ (digitalRead(m_rx_pin))
-#endif
+
 
 #define TM_SERIAL_WAIT_SND { while (ESP.getCycleCount() < (wait + start)) if (!m_high_speed) optimistic_yield(1); wait += m_bit_time; } // Watchdog timeouts
 #define TM_SERIAL_WAIT_SND_FAST { while (ESP.getCycleCount() < (wait + start)); wait += m_bit_time; }
