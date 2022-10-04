@@ -79,7 +79,7 @@ TasmotaSerial::TasmotaSerial(int receive_pin, int transmit_pin, int hardware_fal
     }
     if (m_tx_pin > -1) {
       pinMode(m_tx_pin, OUTPUT);
-      digitalWrite(m_tx_pin, HIGH);
+      digitalWrite(m_tx_pin, TS_HIGH);
     }
   }
 #endif  // ESP8266
