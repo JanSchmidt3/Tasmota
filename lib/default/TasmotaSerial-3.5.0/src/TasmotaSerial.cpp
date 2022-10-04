@@ -303,6 +303,17 @@ int TasmotaSerial::available(void) {
   }
 }
 
+#ifdef TS_SWS_INVERT
+// inverted software serial
+#define TS_HIGH LOW
+#define TS_LOW HIGH
+#define TS_READ (!digitalRead(m_rx_pin))
+#else
+#define TS_HIGH HIGH
+#define TS_LOW LOW
+#define TS_READ (digitalRead(m_rx_pin))
+#endif
+
 #define TM_SERIAL_WAIT_SND { while (ESP.getCycleCount() < (wait + start)) if (!m_high_speed) optimistic_yield(1); wait += m_bit_time; } // Watchdog timeouts
 #define TM_SERIAL_WAIT_SND_FAST { while (ESP.getCycleCount() < (wait + start)); wait += m_bit_time; }
 #define TM_SERIAL_WAIT_RCV { while (ESP.getCycleCount() < (wait + start)); wait += m_bit_time; }
@@ -312,15 +323,15 @@ void IRAM_ATTR TasmotaSerial::_fast_write(uint8_t b) {
   uint32_t wait = m_bit_time;
   uint32_t start = ESP.getCycleCount();
   // Start bit;
-  digitalWrite(m_tx_pin, LOW);
+  digitalWrite(m_tx_pin, TS_LOW);
   TM_SERIAL_WAIT_SND_FAST;
   for (uint32_t i = 0; i < 8; i++) {
-    digitalWrite(m_tx_pin, (b & 1) ? HIGH : LOW);
+    digitalWrite(m_tx_pin, (b & 1) ? TS_HIGH : TS_LOW);
     TM_SERIAL_WAIT_SND_FAST;
     b >>= 1;
   }
   // Stop bit(s)
-  digitalWrite(m_tx_pin, HIGH);
+  digitalWrite(m_tx_pin, TS_HIGH);
   for (uint32_t i = 0; i < m_stop_bits; i++) {
     TM_SERIAL_WAIT_SND_FAST;
   }
@@ -345,15 +356,15 @@ size_t TasmotaSerial::write(uint8_t b) {
       //digitalWrite(m_tx_pin, HIGH);     // already in HIGH mode
       uint32_t start = ESP.getCycleCount();
       // Start bit;
-      digitalWrite(m_tx_pin, LOW);
+      digitalWrite(m_tx_pin, TS_LOW);
       TM_SERIAL_WAIT_SND;
       for (uint32_t i = 0; i < 8; i++) {
-        digitalWrite(m_tx_pin, (b & 1) ? HIGH : LOW);
+        digitalWrite(m_tx_pin, (b & 1) ? TS_HIGH : TS_LOW);
         TM_SERIAL_WAIT_SND;
         b >>= 1;
       }
       // Stop bit(s)
-      digitalWrite(m_tx_pin, HIGH);
+      digitalWrite(m_tx_pin, TS_HIGH);
       // re-enable interrupts during stop bits, it's not an issue if they are longer than expected
       for (uint32_t i = 0; i < m_stop_bits; i++) {
         TM_SERIAL_WAIT_SND;
@@ -376,7 +387,7 @@ void IRAM_ATTR TasmotaSerial::rxRead(void) {
       for (uint32_t i = 0; i < 8; i++) {
         TM_SERIAL_WAIT_RCV;
         rec >>= 1;
-        if (digitalRead(m_rx_pin)) rec |= 0x80;
+        if (TS_READ) rec |= 0x80;
       }
       // Store the received value in the buffer unless we have an overflow
       uint32_t next = (m_in_pos+1) % serial_buffer_size;
@@ -398,7 +409,7 @@ void IRAM_ATTR TasmotaSerial::rxRead(void) {
       for (uint32_t i = 0; i < 12; i++) {
         TM_SERIAL_WAIT_RCV_LOOP;    // wait for 1/4 bits
         wait += m_bit_time / 4;
-        if (!digitalRead(m_rx_pin)) {
+        if (!TS_READ) {
           // this is the start bit of the next byte
           wait += m_bit_time;   // we have advanced in the first 1/4 of bit, and already added 1/4 of bit so we're roughly centered. Just skip start bit.
           start_of_next_byte = true;
@@ -422,7 +433,7 @@ void IRAM_ATTR TasmotaSerial::rxRead(void) {
 
     GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, 1 << m_rx_pin);
 
-    level = digitalRead(m_rx_pin);
+    level = TS_READ;
 
     if (!level && !ss_index) {
       // start condition
