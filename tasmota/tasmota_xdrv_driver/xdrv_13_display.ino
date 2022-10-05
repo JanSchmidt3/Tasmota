@@ -593,7 +593,7 @@ void DisplayText(void)
                if (isdigit(*ep)) {
                  var = atoiv(ep, &scale);
                  ep += var;
-                }
+               }
                Draw_RGB_Bitmap(cp,disp_xpos,disp_ypos, scale, false);
                cp = ep;
              }
@@ -2445,30 +2445,23 @@ void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp, uint8_t scale) {
   uint16_t ysize;
 
   if (jpgsize) {
-    /*
-    File fp;
-    fp = ufsp->open("/test.jpg",FS_FILE_WRITE);
-    if (fp >= 0) {
-      fp.write(mem, jpgsize);
-      fp.close();
-    }*/
-
     if (mem[0] == 0xff && mem[1] == 0xd8) {
       get_jpeg_size(mem, jpgsize, &xsize, &ysize);
       //AddLog(LOG_LEVEL_INFO, PSTR("Pict size %d - %d - %d"), xsize, ysize, jpgsize);
+      scale &= 3;
+      uint8_t fac[4] = {1, 2, 4, 8};
+      xsize /= fac[scale];
+      ysize /= fac[scale];
       renderer->setAddrWindow(xp, yp, xp + xsize, yp + ysize);
       uint8_t *rgbmem = (uint8_t *)special_malloc(xsize * ysize * 2);
-      uint8_t fac[4] = {0, 2, 4, 8};
       if (rgbmem) {
         //jpg2rgb565(mem, jpgsize, rgbmem, JPG_SCALE_NONE);
         jpg2rgb565(mem, jpgsize, rgbmem, (jpg_scale_t)scale);
-
-        renderer->pushColors((uint16_t*)rgbmem, (xsize/fac[scale]) * (ysize/fac[scale]), true);
+        renderer->pushColors((uint16_t*)rgbmem, xsize * ysize, true);
         free(rgbmem);
       }
       renderer->setAddrWindow(0, 0, 0, 0);
     }
-
   }
   if (mem) free(mem);
 }
