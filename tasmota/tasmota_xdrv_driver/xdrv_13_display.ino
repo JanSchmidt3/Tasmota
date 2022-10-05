@@ -587,10 +587,15 @@ void DisplayText(void)
           case 'P':
             { char *ep = strchr(cp,':');
              if (ep) {
-               *ep=0;
+               *ep = 0;
                ep++;
-               Draw_RGB_Bitmap(cp,disp_xpos,disp_ypos, false);
-               cp=ep;
+               int16_t scale = 0;
+               if (isdigit(*ep)) {
+                 var = atoiv(ep, &scale);
+                 ep += var;
+                }
+               Draw_RGB_Bitmap(cp,disp_xpos,disp_ypos, scale, false);
+               cp = ep;
              }
             }
             break;
@@ -2271,7 +2276,7 @@ char ppath[16];
   } else {
     strcat(ppath, ".jpg");
   }
-  Draw_RGB_Bitmap(ppath, xp, yp, inverted);
+  Draw_RGB_Bitmap(ppath, xp, yp, 0, inverted);
 }
 #endif  // USE_TOUCH_BUTTONS
 
@@ -2289,7 +2294,7 @@ char get_jpeg_size(unsigned char* data, unsigned int data_size, unsigned short *
 #ifdef USE_UFILESYS
 extern FS *ufsp;
 #define XBUFF_LEN 128
-void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, bool inverted ) {
+void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, uint8_t scale, bool inverted ) {
   if (!renderer) return;
   File fp;
   char *ending = 0;
@@ -2347,7 +2352,7 @@ void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, bool inverted ) {
     fp = ufsp->open(file, FS_FILE_READ);
     if (!fp) {
       // try url
-      Draw_JPG_from_URL(file, xp, yp);
+      Draw_JPG_from_URL(file, xp, yp, scale);
       return;
     }
     uint32_t size = fp.size();
@@ -2400,7 +2405,7 @@ void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, bool inverted ) {
 #ifdef ESP32
 #ifdef JPEG_PICTS
 #define JPG_DEFSIZE 150000
-void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp) {
+void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp, uint8_t scale) {
   uint8_t *mem = 0;
   WiFiClient http_client;
   HTTPClient http;
@@ -2453,9 +2458,12 @@ void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp) {
       //AddLog(LOG_LEVEL_INFO, PSTR("Pict size %d - %d - %d"), xsize, ysize, jpgsize);
       renderer->setAddrWindow(xp, yp, xp + xsize, yp + ysize);
       uint8_t *rgbmem = (uint8_t *)special_malloc(xsize * ysize * 2);
+      uint8_t fac[4] = {0, 2, 4, 8};
       if (rgbmem) {
-        jpg2rgb565(mem, jpgsize, rgbmem, JPG_SCALE_NONE);
-        renderer->pushColors((uint16_t*)rgbmem, xsize * ysize, true);
+        //jpg2rgb565(mem, jpgsize, rgbmem, JPG_SCALE_NONE);
+        jpg2rgb565(mem, jpgsize, rgbmem, (jpg_scale_t)scale);
+
+        renderer->pushColors((uint16_t*)rgbmem, (xsize/fac[scale]) * (ysize/fac[scale]), true);
         free(rgbmem);
       }
       renderer->setAddrWindow(0, 0, 0, 0);

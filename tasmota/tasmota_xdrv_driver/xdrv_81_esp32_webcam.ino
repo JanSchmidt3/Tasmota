@@ -752,8 +752,6 @@ void HandleImage(void) {
   sensor_t * wc_s = esp_camera_sensor_get();
   uint8_t sres = Settings->webcam_config.resolution;
 
-  AddLog(LOG_LEVEL_INFO, PSTR("CAM: bnum: %d, sres: %d"), bnum, fsiz);
-
   if (!bnum) {
     if (fsiz  && fsiz != sres) {
       wc_s->set_framesize(wc_s, (framesize_t)fsiz);
