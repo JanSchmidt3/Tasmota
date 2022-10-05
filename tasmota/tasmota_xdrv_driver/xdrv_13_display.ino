@@ -2292,14 +2292,20 @@ extern FS *ufsp;
 void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, bool inverted ) {
   if (!renderer) return;
   File fp;
-  char *ending = strrchr(file,'.');
-  if (!ending) return;
-  ending++;
-  char estr[8];
-  memset(estr,0,sizeof(estr));
-  for (uint32_t cnt=0; cnt<strlen(ending); cnt++) {
-    estr[cnt]=tolower(ending[cnt]);
+  char *ending = 0;
+  for (uint32_t cnt = strlen(file) - 1; cnt >= 0; cnt--) {
+    if (file[cnt] == '.') {
+      ending = &file[cnt + 1];
+      break;
+    }
   }
+  if (!ending) return;
+  char estr[8];
+  memset(estr, 0, sizeof(estr));
+  for (uint32_t cnt = 0; cnt < strlen(ending); cnt++) {
+    estr[cnt] = tolower(ending[cnt]);
+  }
+  estr[3] = 0;
 
   if (!strcmp(estr,"rgb")) {
     // special rgb format
@@ -2393,35 +2399,70 @@ void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, bool inverted ) {
 
 #ifdef ESP32
 #ifdef JPEG_PICTS
+#define JPG_DEFSIZE 150000
 void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp) {
+  uint8_t *mem = 0;
   WiFiClient http_client;
   HTTPClient http;
   int32_t httpCode = 0;
   String weburl = "http://" + UrlEncode(url);
   http.begin(http_client, weburl);
   httpCode = http.GET();
-  AddLog(LOG_LEVEL_INFO, PSTR("HTTP RESULT %s"), http.getString().c_str());
+  //AddLog(LOG_LEVEL_INFO, PSTR("HTTP RESULT %d %s"), httpCode , weburl.c_str());
+  uint32_t jpgsize = 0;
   if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+    mem = (uint8_t *)special_malloc(JPG_DEFSIZE);
+    if (!mem) return;
+    uint8_t *jpgp = mem;
     WiFiClient *stream = http.getStreamPtr();
     int32_t len = http.getSize();
     if (len < 0) len = 99999999;
-    uint8_t buff[512];
     while (http.connected() && (len > 0)) {
       size_t size = stream->available();
       if (size) {
-        if (size > sizeof(buff)) {
-          size = sizeof(buff);
+        if (size > JPG_DEFSIZE) {
+          size = JPG_DEFSIZE;
         }
-        uint32_t read = stream->readBytes(buff, size);
-      //  glob_script_mem.files[fref].write(buff, read);
+        uint32_t read = stream->readBytes(jpgp, size);
         len -= read;
-        AddLog(LOG_LEVEL_DEBUG,PSTR("HTTP read %d"), len);
+        jpgp  += read;
+        jpgsize += read;
+        //AddLog(LOG_LEVEL_INFO,PSTR("HTTP read %d - %d"), read, jpgsize);
       }
       delayMicroseconds(1);
     }
+  } else {
+    AddLog(LOG_LEVEL_INFO, PSTR("HTTP ERROR %s"), http.getString().c_str());
   }
   http.end();
   http_client.stop();
+  uint16_t xsize;
+  uint16_t ysize;
+
+  if (jpgsize) {
+    /*
+    File fp;
+    fp = ufsp->open("/test.jpg",FS_FILE_WRITE);
+    if (fp >= 0) {
+      fp.write(mem, jpgsize);
+      fp.close();
+    }*/
+
+    if (mem[0] == 0xff && mem[1] == 0xd8) {
+      get_jpeg_size(mem, jpgsize, &xsize, &ysize);
+      //AddLog(LOG_LEVEL_INFO, PSTR("Pict size %d - %d - %d"), xsize, ysize, jpgsize);
+      renderer->setAddrWindow(xp, yp, xp + xsize, yp + ysize);
+      uint8_t *rgbmem = (uint8_t *)special_malloc(xsize * ysize * 2);
+      if (rgbmem) {
+        jpg2rgb565(mem, jpgsize, rgbmem, JPG_SCALE_NONE);
+        renderer->pushColors((uint16_t*)rgbmem, xsize * ysize, true);
+        free(rgbmem);
+      }
+      renderer->setAddrWindow(0, 0, 0, 0);
+    }
+
+  }
+  if (mem) free(mem);
 }
 #endif // JPEG_PICTS
 #endif // ESP32

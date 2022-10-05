@@ -747,14 +747,18 @@ void HandleImage(void) {
   String response = "HTTP/1.1 200 OK\r\n";
   response += "Content-disposition: inline; filename=cap.jpg\r\n";
   response += "Content-type: image/jpeg\r\n\r\n";
+
   Webserver->sendContent(response);
   sensor_t * wc_s = esp_camera_sensor_get();
   uint8_t sres = Settings->webcam_config.resolution;
+
+  AddLog(LOG_LEVEL_INFO, PSTR("CAM: bnum: %d, sres: %d"), bnum, fsiz);
 
   if (!bnum) {
     if (fsiz  && fsiz != sres) {
       wc_s->set_framesize(wc_s, (framesize_t)fsiz);
       WcApplySettings();
+      AddLog(LOG_LEVEL_INFO, PSTR("CAM switch: bnum: %d, sres: %d"), bnum, fsiz);
     }
 
     size_t _jpg_buf_len = 0;
