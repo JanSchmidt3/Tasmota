@@ -585,7 +585,7 @@ void DisplayText(void)
             break;
 #ifdef USE_UFILESYS
           case 'P':
-            { char *ep=strchr(cp,':');
+            { char *ep = strchr(cp,':');
              if (ep) {
                *ep=0;
                ep++;
@@ -2281,6 +2281,7 @@ char ppath[16];
 #include "img_converters.h"
 #include "esp_jpg_decode.h"
 bool jpg2rgb888(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t scale);
+bool jpg2rgb565(const uint8_t *src, size_t src_len, uint8_t * out, jpg_scale_t scale);
 char get_jpeg_size(unsigned char* data, unsigned int data_size, unsigned short *width, unsigned short *height);
 #endif // JPEG_PICTS
 #endif // ESP32
@@ -2288,7 +2289,7 @@ char get_jpeg_size(unsigned char* data, unsigned int data_size, unsigned short *
 #ifdef USE_UFILESYS
 extern FS *ufsp;
 #define XBUFF_LEN 128
-void Draw_RGB_Bitmap(char *file,uint16_t xp, uint16_t yp, bool inverted ) {
+void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, bool inverted ) {
   if (!renderer) return;
   File fp;
   char *ending = strrchr(file,'.');
@@ -2337,37 +2338,41 @@ void Draw_RGB_Bitmap(char *file,uint16_t xp, uint16_t yp, bool inverted ) {
     // jpeg files on ESP32 with more memory
 #ifdef ESP32
 #ifdef JPEG_PICTS
-    fp=ufsp->open(file,FS_FILE_READ);
-    if (!fp) return;
+    fp = ufsp->open(file, FS_FILE_READ);
+    if (!fp) {
+      // try url
+      Draw_JPG_from_URL(file, xp, yp);
+      return;
+    }
     uint32_t size = fp.size();
-    uint8_t *mem = (uint8_t *)special_malloc(size+4);
+    uint8_t *mem = (uint8_t *)special_malloc(size + 4);
     if (mem) {
-      uint8_t res=fp.read(mem, size);
+      uint8_t res = fp.read(mem, size);
       if (res) {
         uint16_t xsize;
         uint16_t ysize;
-        if (mem[0]==0xff && mem[1]==0xd8) {
+        if (mem[0] == 0xff && mem[1] == 0xd8) {
           get_jpeg_size(mem, size, &xsize, &ysize);
           //Serial.printf(" x,y,fs %d - %d - %d\n",xsize, ysize, size );
           if (xsize && ysize) {
-            uint8_t *out_buf = (uint8_t *)special_malloc((xsize*ysize*3)+4);
+            uint8_t *out_buf = (uint8_t *)special_malloc((xsize * ysize * 3) + 4);
             if (out_buf) {
-              uint16_t *pixb = (uint16_t *)special_malloc((xsize*2)+4);
+              uint16_t *pixb = (uint16_t *)special_malloc((xsize * 2) + 4);
               if (pixb) {
-                uint8_t *ob=out_buf;
+                uint8_t *ob = out_buf;
                 if (jpg2rgb888(mem, size, out_buf, (jpg_scale_t)JPG_SCALE_NONE)) {
-                  renderer->setAddrWindow(xp,yp,xp+xsize,yp+ysize);
-                  for(int32_t j=0; j<ysize; j++) {
-                    if (inverted==false) {
+                  renderer->setAddrWindow(xp, yp, xp + xsize, yp + ysize);
+                  for(int32_t j = 0; j < ysize; j++) {
+                    if (inverted == false) {
                       rgb888_to_565(ob, pixb, xsize);
                     } else {
                       rgb888_to_565i(ob, pixb, xsize);
                     }
-                    ob+=xsize*3;
+                    ob += xsize * 3;
                     renderer->pushColors(pixb, xsize, true);
                     OsWatchLoop();
                   }
-                  renderer->setAddrWindow(0,0,0,0);
+                  renderer->setAddrWindow(0, 0, 0, 0);
                 }
                 free(out_buf);
                 free(pixb);
@@ -2381,6 +2386,17 @@ void Draw_RGB_Bitmap(char *file,uint16_t xp, uint16_t yp, bool inverted ) {
       }
       fp.close();
     }
+
+void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp) {
+  WiFiClient http_client;
+  HTTPClient http;
+  char hbuff[128];
+  strcpy(hbuff, "http://");
+  strcat(hbuff, url);
+  http.begin(http_client, hbuff);
+  httpCode = http.GET();
+}
+
 #endif // JPEG_PICTS
 #endif // ESP32
   }
