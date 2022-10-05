@@ -119,24 +119,6 @@ extern ESP8266WebServer *Webserver;
 #define WC_XCLK 20000000
 #endif
 
-// CAMERA_MODEL_AI_THINKER default template pins
-#define PWDN_GPIO_NUM     32
-#define RESET_GPIO_NUM    -1
-#define XCLK_GPIO_NUM      0
-#define SIOD_GPIO_NUM     26
-#define SIOC_GPIO_NUM     27
-
-#define Y9_GPIO_NUM       35
-#define Y8_GPIO_NUM       34
-#define Y7_GPIO_NUM       39
-#define Y6_GPIO_NUM       36
-#define Y5_GPIO_NUM       21
-#define Y4_GPIO_NUM       19
-#define Y3_GPIO_NUM       18
-#define Y2_GPIO_NUM        5
-#define VSYNC_GPIO_NUM    25
-#define HREF_GPIO_NUM     23
-#define PCLK_GPIO_NUM     22
 
 #ifndef MAX_PICSTORE
 #define MAX_PICSTORE 4
@@ -370,9 +352,6 @@ uint32_t WcSetup(int32_t fsiz) {
 
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: User template"));
   } else {
-#ifdef CONFIG_IDF_TARGET_ESP32S3
-    return 0;
-#else
     // defaults to AI THINKER
     config.pin_d0 = Y2_GPIO_NUM;
     config.pin_d1 = Y3_GPIO_NUM;
@@ -391,7 +370,6 @@ uint32_t WcSetup(int32_t fsiz) {
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Default template"));
-#endif
   }
 
   int32_t ledc_channel = analogAttach(config.pin_xclk);
@@ -402,7 +380,6 @@ uint32_t WcSetup(int32_t fsiz) {
   AddLog(LOG_LEVEL_DEBUG_MORE, "CAM: XCLK on GPIO %i using ledc channel %i", config.pin_xclk, config.ledc_channel);
   config.ledc_timer = LEDC_TIMER_0;
   config.xclk_freq_hz = WC_XCLK;
-  //config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
 
   //esp_log_level_set("*", ESP_LOG_INFO);
@@ -1078,17 +1055,6 @@ void WcShowStream(void) {
   }
 }
 
-
-
-//#include <human_face_detect_msr01.hpp>
-/*
-#include <human_face_detect_mnp01.hpp>
-#include <face_recognition_tool.hpp>
-#include <face_recognition_112_v1_s16.hpp>
-
-
-FaceRecognition112V1S16 *recognizer;
-*/
 
 void WcInit(void) {
   if (!Settings->webcam_config.data) {
