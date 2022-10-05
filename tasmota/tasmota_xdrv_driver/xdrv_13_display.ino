@@ -2386,21 +2386,46 @@ void Draw_RGB_Bitmap(char *file, uint16_t xp, uint16_t yp, bool inverted ) {
       }
       fp.close();
     }
-
-void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp) {
-  WiFiClient http_client;
-  HTTPClient http;
-  char hbuff[128];
-  strcpy(hbuff, "http://");
-  strcat(hbuff, url);
-  http.begin(http_client, hbuff);
-  httpCode = http.GET();
-}
-
 #endif // JPEG_PICTS
 #endif // ESP32
   }
 }
+
+#ifdef ESP32
+#ifdef JPEG_PICTS
+void Draw_JPG_from_URL(char *url, uint16_t xp, uint16_t yp) {
+  WiFiClient http_client;
+  HTTPClient http;
+  int32_t httpCode = 0;
+  String weburl = "http://" + UrlEncode(url);
+  http.begin(http_client, weburl);
+  httpCode = http.GET();
+  AddLog(LOG_LEVEL_INFO, PSTR("HTTP RESULT %s"), http.getString().c_str());
+  if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+    WiFiClient *stream = http.getStreamPtr();
+    int32_t len = http.getSize();
+    if (len < 0) len = 99999999;
+    uint8_t buff[512];
+    while (http.connected() && (len > 0)) {
+      size_t size = stream->available();
+      if (size) {
+        if (size > sizeof(buff)) {
+          size = sizeof(buff);
+        }
+        uint32_t read = stream->readBytes(buff, size);
+      //  glob_script_mem.files[fref].write(buff, read);
+        len -= read;
+        AddLog(LOG_LEVEL_DEBUG,PSTR("HTTP read %d"), len);
+      }
+      delayMicroseconds(1);
+    }
+  }
+  http.end();
+  http_client.stop();
+}
+#endif // JPEG_PICTS
+#endif // ESP32
+
 #endif // USE_UFILESYS
 
 /*********************************************************************************************\
