@@ -27,6 +27,8 @@ extern "C" {
 
 #include <TasmotaSerial.h>
 
+//#define TS_SWS_INVERT
+
 
 #ifdef TS_SWS_INVERT
 // inverted software serial
