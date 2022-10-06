@@ -76,6 +76,7 @@ keywords if then else endif, or, and are better readable for beginners (others m
 #define MAX_SARRAY_NUM 32
 #endif
 
+void Draw_jpeg(uint8_t *mem, uint16_t jpgsize, uint16_t xp, uint16_t yp, uint8_t scale);
 uint32_t EncodeLightId(uint8_t relay_id);
 uint32_t DecodeLightId(uint32_t hue_id);
 char *web_send_line(char mc, char *lp);
@@ -1877,6 +1878,33 @@ if (hsv.S == 0) {
 }
 #endif //USE_LIGHT
 
+#ifdef ESP32
+#ifdef JPEG_PICTS
+struct JPG_TASK {
+  string boundary;
+  bool draw;
+} jpg_task;
+
+int32_t fetch_jpg(uint32_t sel, char *url, uint32_t port, uint32_t xp, uint32_t yp) {
+  switch (sel) {
+    case 0:
+      // open
+      break;
+    case 1:
+      // close
+      break;
+    case 2:
+      // stop drawing
+      break;
+    case 3:
+      // resume drawing
+      break;
+  }
+  return 0;
+}
+#endif // JPEG_PICTS
+#endif // ESP32
+
 
 #ifdef USE_ANGLE_FUNC
 uint32_t pulse_time_hl;
@@ -3575,12 +3603,41 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
 #endif // ESP32
         break;
 
+#ifdef ESP32
+#ifdef JPEG_PICTS
+      case 'j':
+        if (!strncmp(lp, "jpg(", 4)) {
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, 0);
+          uint8_t selector = fvar;
+          switch (selector) {
+            case 0:
+              // start streaming
+              char url[SCRIPT_MAXSSIZE];
+              lp = GetStringArgument(lp, OPER_EQU, url, 0);
+              lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
+              float xp, yp;
+              lp = GetNumericArgument(lp, OPER_EQU, &xp, 0);
+              lp = GetNumericArgument(lp, OPER_EQU, &yp, 0);
+              fvar = fetch_jpg(0, url, fvar, xp, yp);
+              break;
+            case 1:
+            case 2:
+            case 3:
+              // stop streaming
+              fvar = fetch_jpg(selector, 0, 0, 0, 0);
+              break;
+          }
+          goto nfuncexit;
+        }
+        break;
+#endif // JPEG_PICTS
+#endif // ESP32
+
 #ifdef USE_KNX
       case 'k':
         if (!strncmp(lp, "knx(", 4)) {
           float type;
           lp = GetNumericArgument(lp + 4, OPER_EQU, &type, gv);
-          SCRIPT_SKIP_SPACES
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
           SCRIPT_SKIP_SPACES
           KnxSensor(type, fvar);
