@@ -1881,23 +1881,59 @@ if (hsv.S == 0) {
 #ifdef ESP32
 #ifdef JPEG_PICTS
 struct JPG_TASK {
-  string boundary;
+  char boundary[40];
   bool draw;
+  uint8_t scale;
+  uint16_t xp;
+  uint16_t yp;
+  uint8_t *mem;
+  uint16_t size;
+  WiFiClient http_client;
+  HTTPClient http;
 } jpg_task;
 
-int32_t fetch_jpg(uint32_t sel, char *url, uint32_t port, uint32_t xp, uint32_t yp) {
+// "e8b8c539-047d-4777-a985-fbba6edff11e"
+
+int32_t fetch_jpg(uint32_t sel, char *url, uint32_t xp, uint32_t yp, uint32_t scale) {
+  char hbuff[64];
+  int32_t httpCode = 0;
+
   switch (sel) {
     case 0:
       // open
+      jpg_task.xp = xp;
+      jpg_task.yp = yp;
+      jpg_task.scale = scale;
+      sprintf(hbuff,"http://%s", url);
+      jpg_task.http.begin(jpg_task.http_client, hbuff);
+      httpCode = jpg_task.http.GET();
+      if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+
+        AddLog(LOG_LEVEL_INFO, PSTR("HTTP ERROR %s"), jpg_task.http.getString().c_str());
+        WiFiClient *stream = jpg_task.http.getStreamPtr();
+        int32_t len = jpg_task.http.getSize();
+      } else {
+        AddLog(LOG_LEVEL_INFO,PSTR("HTTP error %d = %s"), httpCode, jpg_task.http.errorToString(httpCode).c_str());
+      }
       break;
     case 1:
       // close
+      jpg_task.http.end();
+      jpg_task.http_client.stop();
       break;
     case 2:
-      // stop drawing
+      // get next frame
+      if (jpg_task.draw) {
+        Draw_jpeg(jpg_task.mem, jpg_task.size, jpg_task.xp, jpg_task.yp, jpg_task.scale);
+      }
       break;
     case 3:
+      // stop drawing
+      jpg_task.draw = false;
+      break;
+    case 4:
       // resume drawing
+      jpg_task.draw = true;
       break;
   }
   return 0;
@@ -3614,11 +3650,11 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
               // start streaming
               char url[SCRIPT_MAXSSIZE];
               lp = GetStringArgument(lp, OPER_EQU, url, 0);
-              lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
-              float xp, yp;
+              float xp, yp, scale ;
               lp = GetNumericArgument(lp, OPER_EQU, &xp, 0);
               lp = GetNumericArgument(lp, OPER_EQU, &yp, 0);
-              fvar = fetch_jpg(0, url, fvar, xp, yp);
+              lp = GetNumericArgument(lp, OPER_EQU, &scale, 0);
+              fvar = fetch_jpg(0, url, xp, yp, scale);
               break;
             case 1:
             case 2:
