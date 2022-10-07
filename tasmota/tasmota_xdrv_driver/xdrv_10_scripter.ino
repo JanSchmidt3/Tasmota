@@ -1886,9 +1886,7 @@ struct JPG_TASK {
   uint8_t scale;
   uint16_t xp;
   uint16_t yp;
-  uint8_t *mem;
-  uint16_t size;
-  WiFiClient http_client;
+  WiFiClient stream;
   HTTPClient http;
 } jpg_task;
 
@@ -1897,34 +1895,82 @@ struct JPG_TASK {
 int32_t fetch_jpg(uint32_t sel, char *url, uint32_t xp, uint32_t yp, uint32_t scale) {
   char hbuff[64];
   int32_t httpCode = 0;
+  const char * headerKeys[] = {"Content-Type", "Content-Length"} ;
+  const size_t numberOfHeaders = 2;
 
   switch (sel) {
     case 0:
       // open
+      jpg_task.boundary[0] = 0;
+      jpg_task.draw = false;
       jpg_task.xp = xp;
       jpg_task.yp = yp;
       jpg_task.scale = scale;
       sprintf(hbuff,"http://%s", url);
-      jpg_task.http.begin(jpg_task.http_client, hbuff);
+      jpg_task.http.begin(jpg_task.stream, hbuff);
+      jpg_task.http.collectHeaders(headerKeys, numberOfHeaders);
       httpCode = jpg_task.http.GET();
       if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-
-        AddLog(LOG_LEVEL_INFO, PSTR("HTTP ERROR %s"), jpg_task.http.getString().c_str());
-        WiFiClient *stream = jpg_task.http.getStreamPtr();
-        int32_t len = jpg_task.http.getSize();
+        String boundary = jpg_task.http.header(headerKeys[0]);
+        char *cp = strchr(boundary.c_str(), '=');
+        if (cp) {
+          strcpy(jpg_task.boundary,cp + 1);
+        }
       } else {
         AddLog(LOG_LEVEL_INFO,PSTR("HTTP error %d = %s"), httpCode, jpg_task.http.errorToString(httpCode).c_str());
       }
+      return httpCode;
       break;
     case 1:
       // close
+      jpg_task.stream.stop();
       jpg_task.http.end();
-      jpg_task.http_client.stop();
       break;
     case 2:
       // get next frame
-      if (jpg_task.draw) {
-        Draw_jpeg(jpg_task.mem, jpg_task.size, jpg_task.xp, jpg_task.yp, jpg_task.scale);
+      /*Wc.client.print("--" BOUNDARY "\r\n");
+      Wc.client.printf("Content-Type: image/jpeg\r\n"
+        "Content-Length: %d\r\n"
+        "\r\n", static_cast<int>(_jpg_buf_len));
+        */
+      {
+        if (jpg_task.http.connected()) {
+          char inbuff[64];
+          memset(inbuff, 0, sizeof(inbuff));
+          jpg_task.stream.readBytesUntil('\n', inbuff, sizeof(inbuff));
+          if (inbuff[0] == '\r') {
+            memset(inbuff, 0, sizeof(inbuff));
+            jpg_task.stream.readBytesUntil('\n', inbuff, sizeof(inbuff));
+          }
+          //AddLog(LOG_LEVEL_INFO, PSTR("boundary = %s"), inbuff);
+          memset(inbuff, 0, sizeof(inbuff));
+          jpg_task.stream.readBytesUntil('\n', inbuff, sizeof(inbuff));
+          //AddLog(LOG_LEVEL_INFO, PSTR("type = %s"), inbuff);
+          memset(inbuff, 0, sizeof(inbuff));
+          jpg_task.stream.readBytesUntil('\n', inbuff, sizeof(inbuff));
+          //AddLog(LOG_LEVEL_INFO, PSTR("size = %s"), inbuff);
+          char *cp = strchr(inbuff, ':');
+          uint16_t size = 0;
+          if (cp) {
+            size = atoi(cp + 1);
+          }
+          jpg_task.stream.readBytesUntil('\n', inbuff, sizeof(inbuff));
+
+          if (size > 0) {
+            //AddLog(LOG_LEVEL_INFO, PSTR("size = %d"), size);
+            uint8_t *buff = (uint8_t *)special_malloc(size);
+            if (buff) {
+              jpg_task.stream.readBytes(buff, size);
+            }
+            if (jpg_task.draw) {
+              Draw_jpeg(buff, size, jpg_task.xp, jpg_task.yp, jpg_task.scale);
+            }
+            if (buff) {
+              free(buff);
+            }
+          }
+          return size;
+        }
       }
       break;
     case 3:
@@ -3656,10 +3702,8 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
               lp = GetNumericArgument(lp, OPER_EQU, &scale, 0);
               fvar = fetch_jpg(0, url, xp, yp, scale);
               break;
-            case 1:
-            case 2:
-            case 3:
-              // stop streaming
+            default:
+              // other cmds
               fvar = fetch_jpg(selector, 0, 0, 0, 0);
               break;
           }
